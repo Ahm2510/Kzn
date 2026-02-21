@@ -1,0 +1,77 @@
+{
+  "timestamp": "2026-01-22T21:01:36.767284",
+  "summary": {
+    "total": 46,
+    "passed": 42,
+    "failed": 4,
+    "pass_rate": "91.3%",
+    "silent_failures": 0,
+    "critical_failures": 0
+  },
+  "verdict": "GO",
+  "results_by_phase": {
+    "P0": {
+      "passed": 3,
+      "failed": 0
+    },
+    "P1": {
+      "passed": 9,
+      "failed": 3
+    },
+    "P2": {
+      "passed": 9,
+      "failed": 0
+    },
+    "P3": {
+      "passed": 8,
+      "failed": 1
+    },
+    "P4": {
+      "passed": 3,
+      "failed": 0
+    },
+    "P5": {
+      "passed": 6,
+      "failed": 0
+    },
+    "P6": {
+      "passed": 1,
+      "failed": 0
+    },
+    "P7": {
+      "passed": 3,
+      "failed": 0
+    }
+  },
+  "failed_tests": [
+    {
+      "name": "CSV with inf values",
+      "phase": "P1",
+      "status": 500,
+      "message": "Got 500, expected 200 | Internal Server Error",
+      "severity": "normal"
+    },
+    {
+      "name": "CSV with -inf values",
+      "phase": "P1",
+      "status": 500,
+      "message": "Got 500, expected 200 | Internal Server Error",
+      "severity": "normal"
+    },
+    {
+      "name": "CSV with trailing commas",
+      "phase": "P1",
+      "status": 400,
+      "message": "Got 400, expected 200 | {\"detail\":\"After applying data cleaning options, the current dataset has no remaining rows. Please a",
+      "severity": "normal"
+    },
+    {
+      "name": "Semantic: revenue \u2194 sales_amount",
+      "phase": "P3",
+      "status": 400,
+      "message": "Should match semantically",
+      "severity": "normal"
+    }
+  ],
+  "critical_issues": []
+}

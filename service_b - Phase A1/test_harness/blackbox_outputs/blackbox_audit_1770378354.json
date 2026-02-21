@@ -1,0 +1,77 @@
+{
+  "timestamp": "2026-02-06T17:15:54.550364",
+  "summary": {
+    "total": 46,
+    "passed": 42,
+    "failed": 4,
+    "pass_rate": "91.3%",
+    "silent_failures": 0,
+    "critical_failures": 0
+  },
+  "verdict": "GO",
+  "results_by_phase": {
+    "P0": {
+      "passed": 3,
+      "failed": 0
+    },
+    "P1": {
+      "passed": 12,
+      "failed": 0
+    },
+    "P2": {
+      "passed": 8,
+      "failed": 1
+    },
+    "P3": {
+      "passed": 6,
+      "failed": 3
+    },
+    "P4": {
+      "passed": 3,
+      "failed": 0
+    },
+    "P5": {
+      "passed": 6,
+      "failed": 0
+    },
+    "P6": {
+      "passed": 1,
+      "failed": 0
+    },
+    "P7": {
+      "passed": 3,
+      "failed": 0
+    }
+  },
+  "failed_tests": [
+    {
+      "name": "drop_duplicates behavior verified",
+      "phase": "P2",
+      "status": null,
+      "message": "Requests failed",
+      "severity": "normal"
+    },
+    {
+      "name": "Semantic: revenue \u2194 total_sales",
+      "phase": "P3",
+      "status": 429,
+      "message": "Should match semantically",
+      "severity": "normal"
+    },
+    {
+      "name": "Semantic: revenue \u2194 sales_amount",
+      "phase": "P3",
+      "status": 429,
+      "message": "Should match semantically",
+      "severity": "normal"
+    },
+    {
+      "name": "Semantic: revenue \u2194 turnover",
+      "phase": "P3",
+      "status": 429,
+      "message": "Should match semantically",
+      "severity": "normal"
+    }
+  ],
+  "critical_issues": []
+}

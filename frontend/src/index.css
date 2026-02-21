@@ -1,0 +1,418 @@
+@import url('https://fonts.googleapis.com/css2?family=League+Spartan:wght@400;500;600;700&family=Inter:wght@400;500;600&family=Roboto+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Kaizen Insights Design System
+   Aesthetic: Editorial minimalism, institutional software
+   Feel: Calm, weighted, deliberate, inevitable
+*/
+
+@layer base {
+  :root {
+    /* Light Theme - Warm neutral tones */
+    --background: 40 20% 96%; /* Warm off-white */
+    --foreground: 195 35% 12%; /* Deep teal-black */
+    
+    --card: 40 15% 93%; /* Soft warm card */
+    --card-foreground: 195 35% 12%;
+    
+    --popover: 40 15% 93%;
+    --popover-foreground: 195 35% 12%;
+    
+    --primary: 174 28% 48%; /* Teal accent #4FA6A0 */
+    --primary-foreground: 160 15% 95%;
+    
+    --secondary: 42 35% 63%; /* Gold accent #C9B27C */
+    --secondary-foreground: 195 35% 12%;
+    
+    --muted: 165 8% 62%; /* Muted teal-gray */
+    --muted-foreground: 165 10% 45%;
+    
+    --accent: 174 28% 42%; /* Darker teal for emphasis */
+    --accent-foreground: 160 15% 95%;
+    
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 160 15% 95%;
+    
+    --border: 195 12% 82%;
+    --input: 195 12% 82%;
+    --ring: 174 28% 48%;
+    
+    --radius: 0.5rem;
+    
+    /* Semantic tokens */
+    --surface-elevated: 40 18% 94%;
+    --surface-sunken: 40 12% 91%;
+    --text-tertiary: 165 8% 52%;
+    --insight-severity-high: 0 72% 51%;
+    --insight-severity-medium: 35 92% 50%;
+    --insight-severity-low: 174 28% 48%;
+    --gold-emphasis: 42 35% 63%;
+    
+    /* Sidebar */
+    --sidebar-background: 40 15% 93%;
+    --sidebar-foreground: 195 35% 12%;
+    --sidebar-primary: 174 28% 48%;
+    --sidebar-primary-foreground: 160 15% 95%;
+    --sidebar-accent: 40 12% 88%;
+    --sidebar-accent-foreground: 195 35% 12%;
+    --sidebar-border: 195 12% 82%;
+    --sidebar-ring: 174 28% 48%;
+  }
+
+  .dark {
+    /* Dark Theme - Deep oceanic tones matching landing page */
+    --background: 195 35% 9%; /* #0E1A1F - Page base */
+    --foreground: 160 15% 91%; /* #E6ECEA - Text primary */
+    
+    --card: 195 30% 11%; /* #141F26 - Surface primary */
+    --card-foreground: 160 15% 91%;
+    
+    --popover: 195 28% 13%; /* #1A262D - Surface secondary */
+    --popover-foreground: 160 15% 91%;
+    
+    --primary: 174 28% 48%; /* #4FA6A0 - Primary accent */
+    --primary-foreground: 195 35% 9%;
+    
+    --secondary: 42 35% 63%; /* #C9B27C - Secondary accent (gold) */
+    --secondary-foreground: 195 35% 9%;
+    
+    --muted: 165 8% 62%; /* #9AA6A1 - Muted text */
+    --muted-foreground: 165 8% 62%;
+    
+    --accent: 174 35% 40%; /* Slightly darker teal for hover states */
+    --accent-foreground: 160 15% 91%;
+    
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 160 15% 91%;
+    
+    --border: 195 15% 20%; /* #2B3840 - Borders */
+    --input: 195 15% 20%;
+    --ring: 174 28% 48%;
+    
+    /* Semantic tokens */
+    --surface-elevated: 195 28% 13%;
+    --surface-sunken: 195 35% 7%;
+    --text-tertiary: 165 8% 55%;
+    --insight-severity-high: 0 72% 55%;
+    --insight-severity-medium: 35 92% 55%;
+    --insight-severity-low: 174 28% 48%;
+    --gold-emphasis: 42 35% 63%;
+    
+    /* Sidebar */
+    --sidebar-background: 195 30% 10%;
+    --sidebar-foreground: 160 15% 91%;
+    --sidebar-primary: 174 28% 48%;
+    --sidebar-primary-foreground: 195 35% 9%;
+    --sidebar-accent: 195 28% 15%;
+    --sidebar-accent-foreground: 160 15% 91%;
+    --sidebar-border: 195 15% 20%;
+    --sidebar-ring: 174 28% 48%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  /* Typography Scale */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'League Spartan', system-ui, sans-serif;
+    @apply font-semibold tracking-tight;
+  }
+
+  h1 {
+    @apply text-3xl;
+  }
+
+  h2 {
+    @apply text-2xl;
+  }
+
+  h3 {
+    @apply text-xl;
+  }
+
+  h4 {
+    @apply text-lg;
+  }
+
+  /* Monospace for metrics */
+  .font-mono {
+    font-family: 'Roboto Mono', monospace;
+  }
+
+  /* Display font utility */
+  .font-display {
+    font-family: 'League Spartan', system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  /* Weighted motion - slow, purposeful, mechanical */
+  .transition-weighted {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  .transition-slow {
+    @apply transition-all duration-500 ease-out;
+  }
+
+  .transition-physics {
+    transition: all 600ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .transition-resistance {
+    transition: all 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  /* Surface variants */
+  .surface-elevated {
+    background-color: hsl(var(--surface-elevated));
+  }
+
+  .surface-sunken {
+    background-color: hsl(var(--surface-sunken));
+  }
+
+  /* Insight severity indicators */
+  .severity-high {
+    @apply border-l-2;
+    border-left-color: hsl(var(--insight-severity-high));
+  }
+
+  .severity-medium {
+    @apply border-l-2;
+    border-left-color: hsl(var(--insight-severity-medium));
+  }
+
+  .severity-low {
+    @apply border-l-2;
+    border-left-color: hsl(var(--insight-severity-low));
+  }
+
+  /* Gold emphasis (extremely sparingly) */
+  .gold-emphasis {
+    color: hsl(var(--gold-emphasis));
+  }
+
+  /* Institutional spacing utilities */
+  .section-spacing {
+    @apply mb-14;
+  }
+
+  .section-spacing-sm {
+    @apply mb-10;
+  }
+
+  .content-spacing {
+    @apply space-y-8;
+  }
+
+  .card-spacing {
+    @apply p-6 lg:p-8;
+  }
+
+  /* Calm focus states */
+  .focus-calm {
+    @apply focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary;
+  }
+}
+
+@layer utilities {
+  /* Spacing scale for institutional feel */
+  .space-institutional {
+    @apply space-y-8;
+  }
+
+  /* Text hierarchy */
+  .text-tertiary {
+    color: hsl(var(--text-tertiary));
+  }
+
+  /* Page container with breathing room */
+  .page-container {
+    @apply p-8 lg:p-12 max-w-5xl;
+  }
+
+  /* Reading-optimized line height */
+  .leading-reading {
+    @apply leading-relaxed tracking-normal;
+  }
+}
+
+/* Custom animations for fluid UI */
+@keyframes float-slow {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(20px, -20px) scale(1.05); }
+}
+
+@keyframes float-slower {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-15px, 15px) scale(1.02); }
+}
+
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  33% { transform: translateY(-8px) rotate(1deg); }
+  66% { transform: translateY(4px) rotate(-0.5deg); }
+}
+
+@keyframes shimmer {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+@keyframes shimmer-horizontal {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes bounce-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.2; }
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scale(1); opacity: 0.3; }
+  50% { transform: scale(1.05); opacity: 0.5; }
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes page-enter {
+  0% { 
+    opacity: 0; 
+    transform: translateY(12px);
+  }
+  100% { 
+    opacity: 1; 
+    transform: translateY(0);
+  }
+}
+
+@keyframes page-exit {
+  0% { 
+    opacity: 1; 
+    transform: translateY(0);
+  }
+  100% { 
+    opacity: 0; 
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes slide-up-fade {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes orb-drift {
+  0%, 100% { 
+    transform: translate(0, 0) scale(1);
+    opacity: 0.15;
+  }
+  25% { 
+    transform: translate(30px, -20px) scale(1.1);
+    opacity: 0.25;
+  }
+  50% { 
+    transform: translate(-20px, 30px) scale(0.95);
+    opacity: 0.15;
+  }
+  75% { 
+    transform: translate(10px, 10px) scale(1.05);
+    opacity: 0.2;
+  }
+}
+
+.animate-float-slow {
+  animation: float-slow 8s ease-in-out infinite;
+}
+
+.animate-float-slower {
+  animation: float-slower 12s ease-in-out infinite;
+}
+
+.animate-float-gentle {
+  animation: float-gentle 6s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+.animate-shimmer-horizontal {
+  animation: shimmer-horizontal 4s ease-in-out infinite;
+}
+
+.animate-bounce-slow {
+  animation: bounce-slow 1s ease-in-out infinite;
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 2s ease-in-out infinite;
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 3s ease-in-out infinite;
+}
+
+.animate-breathe {
+  animation: breathe 4s ease-in-out infinite;
+}
+
+.animate-gradient-shift {
+  animation: gradient-shift 8s ease infinite;
+  background-size: 200% 200%;
+}
+
+.animate-page-enter {
+  animation: page-enter 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-page-exit {
+  animation: page-exit 0.25s ease-out forwards;
+}
+
+.animate-slide-up-fade {
+  animation: slide-up-fade 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-orb-drift {
+  animation: orb-drift 15s ease-in-out infinite;
+}
+
+/* Staggered animation delays for children */
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 50ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 100ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 150ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 200ms; }

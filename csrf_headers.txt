@@ -1,0 +1,13 @@
+HTTP/1.1 200 OK
+Date: Sat, 21 Feb 2026 06:36:57 GMT
+Server: WSGIServer/0.2 CPython/3.14.2
+Content-Type: application/json
+Vary: Accept, Cookie, origin
+Allow: OPTIONS, GET
+X-Frame-Options: DENY
+Content-Length: 80
+X-Content-Type-Options: nosniff
+Referrer-Policy: same-origin
+Cross-Origin-Opener-Policy: same-origin
+Set-Cookie: csrftoken=poa5w7Fh1sS8jMOAJA71beZHlX3SbfOw; expires=Sat, 20 Feb 2027 06:36:57 GMT; Max-Age=31449600; Path=/; SameSite=Lax
+

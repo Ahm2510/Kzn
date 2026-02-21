@@ -1,0 +1,9 @@
+{
+  "test": "Health Check",
+  "status": 200,
+  "expected_status": 200,
+  "passed": true,
+  "notes": "",
+  "response": "{\"status\":\"ok\",\"service\":\"service_b\",\"environment\":\"development\",\"version\":\"0.1.0\"}",
+  "timestamp": "2026-01-22T18:10:26.299753"
+}

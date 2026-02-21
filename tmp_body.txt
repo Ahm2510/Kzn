@@ -1,0 +1,1 @@
+{"id":12,"project":13,"status":"pending","current_file_path":"C:\\Users\\Alternate1\\Desktop\\Kaizen_V1\\service_a - Phase A1\\uploads\\13\\4a0ae940-b7f8-42c6-86e4-39a065aaa702.csv","baseline_file_path":null,"cleaning_options":{},"insight_report":null,"pdf_file_path":null,"error_message":null,"created_at":"2026-02-21T08:20:28.399784Z","updated_at":"2026-02-21T08:20:28.399847Z"}

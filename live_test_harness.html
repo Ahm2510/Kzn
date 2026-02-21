@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kaizen Live Test Harness (Service A + Service B)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .kv { display: grid; grid-template-columns: 180px 1fr; gap: 8px 12px; }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+  <header class="bg-white border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-semibold text-slate-900">Kaizen Live Test Harness</h1>
+        <p class="text-sm text-slate-500">Real-time manual testing for credentials, session auth/CSRF, and Service B analysis with CSV uploads.</p>
+      </div>
+      <div class="text-sm text-slate-600 mono" id="statusBar">idle</div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-6 py-6 grid grid-cols-12 gap-6">
+    <!-- Left: Config + Auth -->
+    <section class="col-span-12 lg:col-span-4 space-y-6">
+      <div class="bg-white border border-slate-200 rounded-lg p-4">
+        <h2 class="font-semibold text-slate-800 mb-3">Configuration</h2>
+        <div class="space-y-3">
+          <div class="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-md p-3">
+            <div class="font-medium">Page origin</div>
+            <div class="mono" id="pageOrigin">(unknown)</div>
+            <div class="mt-2 flex flex-wrap gap-2">
+              <button class="px-3 py-2 rounded-md bg-slate-100 text-slate-800 text-sm border" id="btnSyncHost">Sync hosts to this page</button>
+            </div>
+            <div class="mt-2 text-slate-500">
+              Session cookies only persist if you keep the same host.
+              Don’t mix <span class="mono">localhost</span> and <span class="mono">127.0.0.1</span>.
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Service A URL (Django)</label>
+            <input id="serviceA" class="w-full px-3 py-2 border rounded-md text-sm" value="http://127.0.0.1:8002" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Service B URL (FastAPI)</label>
+            <input id="serviceB" class="w-full px-3 py-2 border rounded-md text-sm" value="http://127.0.0.1:8000" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Service B Internal Secret (X-Internal-Secret)</label>
+            <input id="internalSecret" class="w-full px-3 py-2 border rounded-md text-sm mono" value="change_this" />
+          </div>
+          <div class="flex items-center gap-2">
+            <button class="px-3 py-2 rounded-md bg-slate-900 text-white text-sm" id="btnHealth">Check Health</button>
+            <button class="px-3 py-2 rounded-md bg-slate-100 text-slate-800 text-sm border" id="btnClear">Clear Output</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white border border-slate-200 rounded-lg p-4">
+        <h2 class="font-semibold text-slate-800 mb-3">Auth (Service A)</h2>
+        <div class="space-y-3">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">Username / Email</label>
+              <input id="email" class="w-full px-3 py-2 border rounded-md text-sm" value="admin" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">Password</label>
+              <input id="password" type="password" class="w-full px-3 py-2 border rounded-md text-sm" value="admin" />
+            </div>
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <button class="px-3 py-2 rounded-md bg-blue-600 text-white text-sm" id="btnCsrf">Get CSRF</button>
+            <button class="px-3 py-2 rounded-md bg-emerald-600 text-white text-sm" id="btnLogin">Login</button>
+            <button class="px-3 py-2 rounded-md bg-amber-600 text-white text-sm" id="btnMe">Me</button>
+            <button class="px-3 py-2 rounded-md bg-rose-600 text-white text-sm" id="btnLogout">Logout</button>
+          </div>
+
+          <div class="kv text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-md p-3">
+            <div class="font-medium">CSRF token (cached)</div>
+            <div class="mono" id="csrfToken">(none)</div>
+            <div class="font-medium">Session status</div>
+            <div class="mono" id="sessionStatus">unknown</div>
+          </div>
+
+          <p class="text-xs text-slate-500">
+            Note: this harness uses <span class="mono">credentials: "include"</span> for Service A.
+            Serve this file from any port; keep hostnames consistent (127.0.0.1 vs localhost) to avoid cookie issues.
+          </p>
+        </div>
+      </div>
+
+      <div class="bg-white border border-slate-200 rounded-lg p-4">
+        <h2 class="font-semibold text-slate-800 mb-3">Projects (Service A)</h2>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">New project name</label>
+            <input id="projectName" class="w-full px-3 py-2 border rounded-md text-sm" value="live-project" />
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button class="px-3 py-2 rounded-md bg-emerald-600 text-white text-sm" id="btnCreateProject">Create</button>
+            <button class="px-3 py-2 rounded-md bg-blue-600 text-white text-sm" id="btnListProjects">List</button>
+          </div>
+          <div class="kv text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-md p-3">
+            <div class="font-medium">Last project id</div>
+            <div class="mono" id="lastProjectId">(none)</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right: Service B Analyze -->
+    <section class="col-span-12 lg:col-span-8 space-y-6">
+      <div class="bg-white border border-slate-200 rounded-lg p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="font-semibold text-slate-800">Analyze (Service B)</h2>
+          <div class="text-xs text-slate-500">Uploads real CSV files via multipart form-data</div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Current CSV</label>
+            <input id="currentCsv" type="file" accept=".csv,text/csv" class="w-full text-sm" />
+            <p class="text-xs text-slate-500 mt-1">Required</p>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Baseline CSV (optional)</label>
+            <input id="baselineCsv" type="file" accept=".csv,text/csv" class="w-full text-sm" />
+            <p class="text-xs text-slate-500 mt-1">Optional</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">metric_schema (optional)</label>
+            <input id="metricSchema" class="w-full px-3 py-2 border rounded-md text-sm mono" placeholder="auto | revenue | cost | custom:col" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Cleaning options</label>
+            <div class="grid grid-cols-2 gap-2 text-sm">
+              <label class="flex items-center gap-2"><input id="optDropDup" type="checkbox" checked /> drop_duplicates</label>
+              <label class="flex items-center gap-2"><input id="optDropMiss" type="checkbox" checked /> drop_missing</label>
+              <label class="flex items-center gap-2"><input id="optCapOut" type="checkbox" /> cap_outliers</label>
+              <label class="flex items-center gap-2"><input id="optNormCols" type="checkbox" checked /> normalize_columns</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 mt-4">
+          <button class="px-3 py-2 rounded-md bg-slate-900 text-white text-sm" id="btnAnalyze">Analyze CSV</button>
+          <button class="px-3 py-2 rounded-md bg-slate-100 text-slate-800 text-sm border" id="btnAnalyzeNoAuth">Analyze (no secret) → expect 401</button>
+          <a id="pdfDownload" class="hidden px-3 py-2 rounded-md bg-purple-600 text-white text-sm" href="#" download="report.pdf">Download PDF</a>
+        </div>
+
+        <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="bg-slate-50 border border-slate-200 rounded-md p-3">
+            <div class="text-xs font-medium text-slate-700 mb-1">Response summary</div>
+            <div class="kv text-xs text-slate-700">
+              <div class="font-medium">HTTP</div>
+              <div class="mono" id="bHttp">(none)</div>
+              <div class="font-medium">Elapsed</div>
+              <div class="mono" id="bElapsed">(none)</div>
+              <div class="font-medium">Has report</div>
+              <div class="mono" id="bHasReport">(none)</div>
+              <div class="font-medium">Has pdf_base64</div>
+              <div class="mono" id="bHasPdf">(none)</div>
+            </div>
+          </div>
+          <div class="bg-slate-50 border border-slate-200 rounded-md p-3">
+            <div class="text-xs font-medium text-slate-700 mb-1">Business insights</div>
+            <pre class="mono text-xs text-slate-800 whitespace-pre-wrap" id="bInsights">(none)</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white border border-slate-200 rounded-lg p-4">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="font-semibold text-slate-800">Raw Output</h2>
+          <div class="text-xs text-slate-500">Last request/response log</div>
+        </div>
+        <pre id="output" class="mono text-xs bg-slate-950 text-slate-50 rounded-md p-4 overflow-auto" style="min-height: 360px;">Ready.</pre>
+      </div>
+    </section>
+  </main>
+
+<script>
+  const el = (id) => document.getElementById(id);
+
+  function setStatus(text) { el('statusBar').textContent = text; }
+  function out(line) {
+    const o = el('output');
+    o.textContent = `${new Date().toLocaleTimeString()} ${line}\n` + o.textContent;
+  }
+
+  function baseA() { return el('serviceA').value.replace(/\/$/, ''); }
+  function baseB() { return el('serviceB').value.replace(/\/$/, ''); }
+
+  let csrfToken = null;
+  let loggedInServiceAHost = null;
+
+  async function fetchWithTimeout(url, options = {}, timeoutMs = 30000) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const resp = await fetch(url, { ...options, signal: controller.signal });
+      return resp;
+    } finally {
+      clearTimeout(id);
+    }
+  }
+
+  async function fetchA(path, options = {}) {
+    const url = `${baseA()}${path}`;
+    if (loggedInServiceAHost) {
+      try {
+        const currentHost = new URL(baseA()).host;
+        if (currentHost !== loggedInServiceAHost) {
+          out(`WARNING: Service A host changed since login (${loggedInServiceAHost} -> ${currentHost}). Session cookie will NOT carry over.`);
+          setSessionStatus('host-changed');
+        }
+      } catch (_) {
+        // ignore URL parse errors
+      }
+    }
+    const headers = { ...(options.headers || {}) };
+    if (csrfToken) headers['X-CSRFToken'] = csrfToken;
+    return fetchWithTimeout(url, {
+      ...options,
+      headers,
+      credentials: 'include',
+    });
+  }
+
+  async function fetchB(path, options = {}, { skipAuth = false } = {}) {
+    const url = `${baseB()}${path}`;
+    const headers = { ...(options.headers || {}) };
+    if (!skipAuth) {
+      const secret = el('internalSecret').value;
+      if (secret) headers['X-Internal-Secret'] = secret;
+    }
+    return fetchWithTimeout(url, { ...options, headers });
+  }
+
+  function updateCsrfUI() { el('csrfToken').textContent = csrfToken ? csrfToken : '(none)'; }
+  function setSessionStatus(text) { el('sessionStatus').textContent = text; }
+
+  async function checkHealth() {
+    setStatus('health...');
+    try {
+      const [a, b] = await Promise.all([
+        fetchWithTimeout(`${baseA()}/healthz/`, { method: 'GET' }),
+        fetchWithTimeout(`${baseB()}/healthz`, { method: 'GET' }),
+      ]);
+      out(`Service A /healthz/: ${a.status} ${await a.text()}`);
+      out(`Service B /healthz: ${b.status} ${await b.text()}`);
+      setStatus('ok');
+    } catch (e) {
+      out(`Health error: ${e.message}`);
+      setStatus('error');
+    }
+  }
+
+  async function getCsrf() {
+    setStatus('csrf...');
+    try {
+      const r = await fetchA('/api/auth/csrf/', { method: 'GET' });
+      const t = await r.text();
+      out(`GET /api/auth/csrf/: ${r.status} ${t}`);
+      if (r.ok) {
+        const data = JSON.parse(t);
+        csrfToken = data.csrfToken;
+        updateCsrfUI();
+      }
+      setStatus('ok');
+    } catch (e) {
+      out(`CSRF error: ${e.message}`);
+      setStatus('error');
+    }
+  }
+
+  async function login() {
+    setStatus('login...');
+    try {
+      const body = JSON.stringify({ email: el('email').value, password: el('password').value });
+      const r = await fetchA('/api/auth/login/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      });
+      const t = await r.text();
+      out(`POST /api/auth/login/: ${r.status} ${t}`);
+      if (r.ok) {
+        const data = JSON.parse(t);
+        if (data.csrfToken) { csrfToken = data.csrfToken; updateCsrfUI(); }
+        try { loggedInServiceAHost = new URL(baseA()).host; } catch (_) { loggedInServiceAHost = null; }
+        setSessionStatus('logged-in');
+
+        // Verify session cookie persisted by immediately calling /me.
+        // If the cookie wasn't stored/sent, subsequent actions will look unauthenticated.
+        try {
+          const meResp = await fetchA('/api/auth/me/', { method: 'GET' });
+          const meText = await meResp.text();
+          out(`POST-LOGIN CHECK GET /api/auth/me/: ${meResp.status} ${meText}`);
+          if (!meResp.ok) {
+            out(`DIAGNOSTIC: Session did not persist. Check hostnames. page=${window.location.origin} serviceA=${baseA()}`);
+            setSessionStatus('not-authenticated');
+          }
+        } catch (e) {
+          out(`POST-LOGIN CHECK error: ${e.message}`);
+        }
+      }
+      setStatus('ok');
+    } catch (e) {
+      out(`Login error: ${e.message}`);
+      setStatus('error');
+    }
+  }
+
+  function syncHostsToPage() {
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    if (!hostname || protocol === 'file:') {
+      out('Sync hosts: open this file via http:// (not file://) to sync hostnames reliably.');
+      return;
+    }
+    // Keep current ports from the input values.
+    const a = new URL(baseA());
+    const b = new URL(baseB());
+    a.hostname = hostname;
+    b.hostname = hostname;
+    el('serviceA').value = a.origin;
+    el('serviceB').value = b.origin;
+    out(`Synced hosts to page hostname: ${hostname}`);
+  }
+
+  async function me() {
+    setStatus('me...');
+    try {
+      const r = await fetchA('/api/auth/me/', { method: 'GET' });
+      const t = await r.text();
+      out(`GET /api/auth/me/: ${r.status} ${t}`);
+      setSessionStatus(r.ok ? 'logged-in' : 'not-authenticated');
+      setStatus('ok');
+    } catch (e) {
+      out(`Me error: ${e.message}`);
+      setStatus('error');
+    }
+  }
+
+  async function logout() {
+    setStatus('logout...');
+    try {
+      const r = await fetchA('/api/auth/logout/', { method: 'POST' });
+      const t = await r.text();
+      out(`POST /api/auth/logout/: ${r.status} ${t}`);
+      setSessionStatus('logged-out');
+      setStatus('ok');
+    } catch (e) {
+      out(`Logout error: ${e.message}`);
+      setStatus('error');
+    }
+  }
+
+  async function createProject() {
+    setStatus('create-project...');
+    try {
+      const r = await fetchA('/api/projects/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: el('projectName').value }),
+      });
+      const t = await r.text();
+      out(`POST /api/projects/: ${r.status} ${t}`);
+      if (r.ok) {
+        const data = JSON.parse(t);
+        el('lastProjectId').textContent = String(data.id);
+      }
+      setStatus('ok');
+    } catch (e) {
+      out(`Create project error: ${e.message}`);
+      setStatus('error');
+    }
+  }
+
+  async function listProjects() {
+    setStatus('list-projects...');
+    try {
+      const r = await fetchA('/api/projects/', { method: 'GET' });
+      const t = await r.text();
+      out(`GET /api/projects/: ${r.status} ${t}`);
+      setStatus('ok');
+    } catch (e) {
+      out(`List projects error: ${e.message}`);
+      setStatus('error');
+    }
+  }
+
+  async function analyze({ skipAuth = false } = {}) {
+    setStatus('analyze...');
+    el('pdfDownload').classList.add('hidden');
+    el('pdfDownload').removeAttribute('href');
+
+    const current = el('currentCsv').files?.[0];
+    const baseline = el('baselineCsv').files?.[0];
+    if (!current) {
+      out('Analyze: missing current CSV file');
+      setStatus('error');
+      return;
+    }
+
+    const form = new FormData();
+    form.append('current_file', current, current.name);
+    if (baseline) form.append('baseline_file', baseline, baseline.name);
+
+    form.append('drop_duplicates', el('optDropDup').checked ? 'true' : 'false');
+    form.append('drop_missing', el('optDropMiss').checked ? 'true' : 'false');
+    form.append('cap_outliers', el('optCapOut').checked ? 'true' : 'false');
+    form.append('normalize_columns', el('optNormCols').checked ? 'true' : 'false');
+
+    const schema = el('metricSchema').value.trim();
+    if (schema) form.append('metric_schema', schema);
+
+    const start = performance.now();
+    try {
+      const r = await fetchB('/v1/analyze', { method: 'POST', body: form }, { skipAuth });
+      const elapsed = Math.round(performance.now() - start);
+      const t = await r.text();
+      out(`POST /v1/analyze (skipAuth=${skipAuth}): ${r.status} (${elapsed}ms)`);
+      out(t.slice(0, 2000));
+
+      el('bHttp').textContent = String(r.status);
+      el('bElapsed').textContent = `${elapsed}ms`;
+
+      if (!t) {
+        el('bHasReport').textContent = 'no body';
+        el('bHasPdf').textContent = 'no body';
+        el('bInsights').textContent = '(none)';
+        setStatus('ok');
+        return;
+      }
+
+      let data = null;
+      try { data = JSON.parse(t); } catch (_) {}
+
+      el('bHasReport').textContent = data && data.report ? 'yes' : 'no';
+      el('bHasPdf').textContent = data && data.pdf_base64 ? 'yes' : 'no';
+      el('bInsights').textContent = data && data.business_insights ? JSON.stringify(data.business_insights, null, 2) : '(none)';
+
+      if (data && data.pdf_base64) {
+        const byteChars = atob(data.pdf_base64);
+        const byteNumbers = new Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+        const blob = new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = el('pdfDownload');
+        a.href = url;
+        a.classList.remove('hidden');
+      }
+
+      setStatus('ok');
+    } catch (e) {
+      out(`Analyze error: ${e.message}`);
+      setStatus('error');
+    }
+  }
+
+  el('btnHealth').addEventListener('click', checkHealth);
+  el('btnClear').addEventListener('click', () => { el('output').textContent = 'Ready.'; });
+  el('btnSyncHost').addEventListener('click', syncHostsToPage);
+
+  el('btnCsrf').addEventListener('click', getCsrf);
+  el('btnLogin').addEventListener('click', login);
+  el('btnMe').addEventListener('click', me);
+  el('btnLogout').addEventListener('click', logout);
+
+  el('btnCreateProject').addEventListener('click', createProject);
+  el('btnListProjects').addEventListener('click', listProjects);
+
+  el('btnAnalyze').addEventListener('click', () => analyze({ skipAuth: false }));
+  el('btnAnalyzeNoAuth').addEventListener('click', () => analyze({ skipAuth: true }));
+
+  // Init
+  try {
+    el('pageOrigin').textContent = window.location.origin;
+    if (window.location.protocol === 'file:') {
+      out('WARNING: You opened this harness via file://. Cookies/credentials may not persist. Serve it with a local http.server.');
+    } else {
+      // Auto-sync Service A/B hostname to page hostname to prevent session cookie loss.
+      // (127.0.0.1 vs localhost mismatch is the most common cause of "logged in" but later 403.)
+      const hostname = window.location.hostname;
+      if (hostname) {
+        try {
+          const a = new URL(baseA());
+          const b = new URL(baseB());
+          a.hostname = hostname;
+          b.hostname = hostname;
+          el('serviceA').value = a.origin;
+          el('serviceB').value = b.origin;
+        } catch (_) {}
+      }
+    }
+  } catch (_) {}
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+HTTP/1.1 100 Continue
+
+HTTP/1.1 202 Accepted
+Date: Sat, 21 Feb 2026 08:20:28 GMT
+Server: WSGIServer/0.2 CPython/3.14.2
+Content-Type: application/json
+Vary: Accept, Cookie, origin
+Allow: GET, POST, HEAD, OPTIONS
+X-Frame-Options: DENY
+Content-Length: 380
+X-Content-Type-Options: nosniff
+Referrer-Policy: same-origin
+Cross-Origin-Opener-Policy: same-origin
+

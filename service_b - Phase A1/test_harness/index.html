@@ -1,0 +1,1379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service B V1.75 Test Harness</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .drop-zone {
+            border: 2px dashed #cbd5e1;
+            transition: all 0.2s ease;
+        }
+        .drop-zone.drag-over {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        .drop-zone.has-file {
+            border-color: #22c55e;
+            background-color: #f0fdf4;
+        }
+        .log-entry {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+        }
+        .severity-high { color: #dc2626; }
+        .severity-medium { color: #f59e0b; }
+        .severity-low { color: #3b82f6; }
+        .json-view {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .tab-active {
+            border-bottom: 2px solid #3b82f6;
+            color: #3b82f6;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Environment Header -->
+    <header class="bg-white border-b border-gray-200 px-4 py-3">
+        <div class="flex items-center justify-between max-w-full">
+            <div class="flex items-center gap-4">
+                <h1 class="text-xl font-bold text-gray-900">Service B Test Harness</h1>
+                <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">V1.75</span>
+            </div>
+            <div class="flex items-center gap-6 text-sm">
+                <div class="flex items-center gap-2">
+                    <span class="text-gray-500">Target:</span>
+                    <input type="text" id="apiBaseUrl" value="http://localhost:8000" 
+                           class="px-2 py-1 border border-gray-300 rounded text-sm w-48 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-gray-500">Auth:</span>
+                    <span id="authStatus" class="flex items-center gap-1">
+                        <span class="w-2 h-2 bg-yellow-400 rounded-full"></span>
+                        <span class="text-yellow-600">Not Required</span>
+                    </span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-gray-500">Health:</span>
+                    <span id="healthStatus" class="flex items-center gap-1">
+                        <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
+                        <span class="text-gray-500">Unknown</span>
+                    </span>
+                </div>
+                <button onclick="checkHealth()" class="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-sm">
+                    Ping Health
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex h-[calc(100vh-120px)]">
+        <!-- Left Pane: File Upload -->
+        <aside class="w-72 bg-white border-r border-gray-200 p-4 overflow-y-auto">
+            <h2 class="font-semibold text-gray-800 mb-4">File Upload</h2>
+            
+            <!-- Current File Drop Zone -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Current Dataset <span class="text-red-500">*</span></label>
+                <div id="currentFileZone" class="drop-zone rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50"
+                     onclick="document.getElementById('currentFileInput').click()"
+                     ondragover="handleDragOver(event, 'currentFileZone')"
+                     ondragleave="handleDragLeave(event, 'currentFileZone')"
+                     ondrop="handleDrop(event, 'current')">
+                    <i data-lucide="upload-cloud" class="w-8 h-8 mx-auto text-gray-400 mb-2"></i>
+                    <p class="text-sm text-gray-500">Drop CSV or click to upload</p>
+                    <p id="currentFileName" class="text-sm font-medium text-green-600 mt-2 hidden"></p>
+                </div>
+                <input type="file" id="currentFileInput" accept=".csv" class="hidden" onchange="handleFileSelect(event, 'current')">
+            </div>
+
+            <!-- Baseline File Drop Zone -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Baseline Dataset <span class="text-gray-400">(optional)</span></label>
+                <div id="baselineFileZone" class="drop-zone rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50"
+                     onclick="document.getElementById('baselineFileInput').click()"
+                     ondragover="handleDragOver(event, 'baselineFileZone')"
+                     ondragleave="handleDragLeave(event, 'baselineFileZone')"
+                     ondrop="handleDrop(event, 'baseline')">
+                    <i data-lucide="upload-cloud" class="w-8 h-8 mx-auto text-gray-400 mb-2"></i>
+                    <p class="text-sm text-gray-500">Drop CSV or click to upload</p>
+                    <p id="baselineFileName" class="text-sm font-medium text-green-600 mt-2 hidden"></p>
+                </div>
+                <input type="file" id="baselineFileInput" accept=".csv" class="hidden" onchange="handleFileSelect(event, 'baseline')">
+                <button onclick="clearBaseline()" id="clearBaselineBtn" class="mt-2 text-xs text-red-500 hover:text-red-700 hidden">Clear baseline</button>
+            </div>
+
+            <!-- Upload History -->
+            <div class="mt-6">
+                <h3 class="text-sm font-medium text-gray-700 mb-2">Upload History</h3>
+                <div id="uploadHistory" class="space-y-2 max-h-48 overflow-y-auto text-xs">
+                    <p class="text-gray-400 italic">No uploads yet</p>
+                </div>
+            </div>
+
+            <!-- Edge Case Testers -->
+            <div class="mt-6 border-t pt-4">
+                <h3 class="text-sm font-medium text-gray-700 mb-2">Edge Case Tests</h3>
+                <div class="space-y-2">
+                    <button onclick="runEdgeTest('malformed')" class="w-full px-3 py-2 bg-orange-50 text-orange-700 text-xs rounded hover:bg-orange-100 text-left">
+                        🧪 Run Malformed CSV test
+                    </button>
+                    <button onclick="runEdgeTest('empty')" class="w-full px-3 py-2 bg-orange-50 text-orange-700 text-xs rounded hover:bg-orange-100 text-left">
+                        🧪 Run Empty After Cleaning test
+                    </button>
+                    <button onclick="runEdgeTest('ambiguity')" class="w-full px-3 py-2 bg-orange-50 text-orange-700 text-xs rounded hover:bg-orange-100 text-left">
+                        🧪 Run Semantic Ambiguity test
+                    </button>
+                    <button onclick="runEdgeTest('large')" class="w-full px-3 py-2 bg-orange-50 text-orange-700 text-xs rounded hover:bg-orange-100 text-left">
+                        🧪 Run Large file (50k rows) test
+                    </button>
+                </div>
+            </div>
+
+            <!-- Sample Data Generators -->
+            <div class="mt-6 border-t pt-4">
+                <h3 class="text-sm font-medium text-gray-700 mb-2">Sample Data Generators</h3>
+                <div class="space-y-2">
+                    <button onclick="generateSampleData('basic')" class="w-full px-3 py-2 bg-blue-50 text-blue-700 text-xs rounded hover:bg-blue-100 text-left">
+                        📊 Basic Revenue Data (10 rows)
+                    </button>
+                    <button onclick="generateSampleData('decline')" class="w-full px-3 py-2 bg-blue-50 text-blue-700 text-xs rounded hover:bg-blue-100 text-left">
+                        📉 Revenue Decline Scenario
+                    </button>
+                    <button onclick="generateSampleData('growth')" class="w-full px-3 py-2 bg-blue-50 text-blue-700 text-xs rounded hover:bg-blue-100 text-left">
+                        📈 Revenue Growth Scenario
+                    </button>
+                    <button onclick="generateSampleData('volatile')" class="w-full px-3 py-2 bg-blue-50 text-blue-700 text-xs rounded hover:bg-blue-100 text-left">
+                        🎢 High Volatility Data
+                    </button>
+                    <button onclick="generateSampleData('concentrated')" class="w-full px-3 py-2 bg-blue-50 text-blue-700 text-xs rounded hover:bg-blue-100 text-left">
+                        🎯 Concentrated Revenue (20 rows)
+                    </button>
+                    <button onclick="generateSampleData('baseline')" class="w-full px-3 py-2 bg-green-50 text-green-700 text-xs rounded hover:bg-green-100 text-left">
+                        ⚖️ Generate Baseline for Comparison
+                    </button>
+                </div>
+            </div>
+
+            <!-- Comprehensive Test Suite -->
+            <div class="mt-6 border-t pt-4">
+                <h3 class="text-sm font-medium text-gray-700 mb-2">Full Test Suite</h3>
+                <button onclick="runFullTestSuite()" class="w-full px-3 py-2 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 font-medium">
+                    🚀 Run All Feature Tests
+                </button>
+                <div id="testSuiteProgress" class="mt-2 hidden">
+                    <div class="text-xs text-gray-600 mb-1">Progress: <span id="testProgress">0/0</span></div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div id="testProgressBar" class="bg-purple-600 h-2 rounded-full transition-all" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div id="testSuiteResults" class="mt-3 hidden max-h-48 overflow-y-auto text-xs"></div>
+            </div>
+        </aside>
+
+        <!-- Center Pane: Analysis Control & Results -->
+        <main class="flex-1 p-6 overflow-y-auto">
+            <!-- Cleaning Options -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+                <h3 class="font-semibold text-gray-800 mb-3">Cleaning Options</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <label class="flex items-center gap-2 cursor-pointer" title="normalize_columns: Lowercases and strips column names">
+                        <input type="checkbox" id="opt_normalize_columns" checked class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <span class="text-sm text-gray-700">Normalize Columns</span>
+                        <span class="text-xs text-gray-400">ⓘ</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer" title="drop_duplicates: Removes duplicate rows">
+                        <input type="checkbox" id="opt_drop_duplicates" checked class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <span class="text-sm text-gray-700">Drop Duplicates</span>
+                        <span class="text-xs text-gray-400">ⓘ</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer" title="drop_missing: Removes rows with null values">
+                        <input type="checkbox" id="opt_drop_missing" checked class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <span class="text-sm text-gray-700">Drop Missing</span>
+                        <span class="text-xs text-gray-400">ⓘ</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer" title="cap_outliers: Clips extreme values to 1st/99th percentile">
+                        <input type="checkbox" id="opt_cap_outliers" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <span class="text-sm text-gray-700">Cap Outliers</span>
+                        <span class="text-xs text-gray-400">ⓘ</span>
+                    </label>
+                </div>
+                
+                <!-- Advanced Options -->
+                <div class="mt-4 pt-4 border-t border-gray-100">
+                    <details class="text-sm">
+                        <summary class="cursor-pointer text-gray-600 hover:text-gray-800">Advanced Options</summary>
+                        <div class="mt-3 grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">Semantic Confidence Threshold</label>
+                                <input type="range" id="confidenceThreshold" min="0.5" max="1.0" step="0.05" value="0.80" 
+                                       class="w-full" oninput="document.getElementById('confValue').textContent = this.value">
+                                <span id="confValue" class="text-xs text-gray-600">0.80</span>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">Max Rows to Process</label>
+                                <input type="number" id="maxRows" value="100000" min="100" max="1000000"
+                                       class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                            </div>
+                            <label class="flex items-center gap-2 cursor-pointer col-span-2">
+                                <input type="checkbox" id="opt_form_fields" checked class="rounded border-gray-300 text-blue-600">
+                                <span class="text-xs text-gray-600">Send options as Form fields (required for multipart)</span>
+                            </label>
+                        </div>
+                    </details>
+                </div>
+            </div>
+
+            <!-- File Preview -->
+            <div id="previewSection" class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4 hidden">
+                <h3 class="font-semibold text-gray-800 mb-3">Data Preview</h3>
+                <div id="previewContent" class="overflow-x-auto">
+                    <!-- Preview table will be inserted here -->
+                </div>
+                <div id="previewWarnings" class="mt-3 space-y-1">
+                    <!-- Warnings will be inserted here -->
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div id="resultsSection" class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hidden">
+                <!-- Tabs -->
+                <div class="flex border-b border-gray-200 mb-4">
+                    <button onclick="switchTab('summary')" id="tab_summary" class="px-4 py-2 text-sm font-medium tab-active">Summary</button>
+                    <button onclick="switchTab('insights')" id="tab_insights" class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Insights</button>
+                    <button onclick="switchTab('business')" id="tab_business" class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 hidden">Business Interpretation</button>
+                    <button onclick="switchTab('comparison')" id="tab_comparison" class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Comparison</button>
+                    <button onclick="switchTab('raw')" id="tab_raw" class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Raw JSON</button>
+                    <button onclick="switchTab('pdf')" id="tab_pdf" class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">PDF</button>
+                </div>
+
+                <!-- Tab Content -->
+                <div id="tabContent_summary" class="tab-content">
+                    <div id="summaryCard" class="p-4 bg-gray-50 rounded-lg">
+                        <!-- Summary will be inserted here -->
+                    </div>
+                </div>
+                <div id="tabContent_insights" class="tab-content hidden">
+                    <div id="insightsContent">
+                        <!-- Insights will be inserted here -->
+                    </div>
+                </div>
+                <div id="tabContent_business" class="tab-content hidden">
+                    <div id="businessInsightsContent">
+                        <!-- Business insights will be inserted here -->
+                    </div>
+                </div>
+                <div id="tabContent_comparison" class="tab-content hidden">
+                    <div id="comparisonContent">
+                        <!-- Comparison table will be inserted here -->
+                    </div>
+                </div>
+                <div id="tabContent_raw" class="tab-content hidden">
+                    <div class="flex justify-end mb-2">
+                        <button onclick="copyRawJson()" class="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-xs">Copy JSON</button>
+                    </div>
+                    <pre id="rawJsonContent" class="json-view bg-gray-900 text-green-400 p-4 rounded-lg max-h-96 overflow-auto"></pre>
+                </div>
+                <div id="tabContent_pdf" class="tab-content hidden">
+                    <div id="pdfContent">
+                        <p class="text-gray-500 text-sm">PDF preview will appear here when available</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Error Section -->
+            <div id="errorSection" class="bg-red-50 border border-red-200 rounded-lg p-4 hidden">
+                <div class="flex items-start gap-3">
+                    <i data-lucide="alert-circle" class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5"></i>
+                    <div>
+                        <h4 class="font-medium text-red-800">Analysis Failed</h4>
+                        <p id="errorMessage" class="text-sm text-red-600 mt-1"></p>
+                        <pre id="errorDetails" class="mt-2 text-xs bg-red-100 p-2 rounded overflow-auto max-h-32 hidden"></pre>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Right Pane: Logs & Metrics -->
+        <aside class="w-80 bg-white border-l border-gray-200 p-4 overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="font-semibold text-gray-800">Execution Log</h2>
+                <button onclick="clearLogs()" class="text-xs text-gray-500 hover:text-gray-700">Clear</button>
+            </div>
+            
+            <div id="executionLog" class="space-y-2 mb-6 max-h-64 overflow-y-auto text-xs font-mono bg-gray-50 p-2 rounded">
+                <p class="text-gray-400">Waiting for analysis...</p>
+            </div>
+
+            <!-- Metrics -->
+            <div class="border-t pt-4">
+                <h3 class="font-semibold text-gray-800 mb-3">Metrics</h3>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Last Request:</span>
+                        <span id="metricLatency" class="font-mono">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Response Size:</span>
+                        <span id="metricSize" class="font-mono">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">HTTP Status:</span>
+                        <span id="metricStatus" class="font-mono">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Current File Size:</span>
+                        <span id="metricCurrentSize" class="font-mono">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Baseline File Size:</span>
+                        <span id="metricBaselineSize" class="font-mono">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Request Details -->
+            <div class="border-t pt-4 mt-4">
+                <h3 class="font-semibold text-gray-800 mb-3">Last Request</h3>
+                <details class="text-xs">
+                    <summary class="cursor-pointer text-gray-600">Headers (masked)</summary>
+                    <pre id="requestHeaders" class="mt-2 bg-gray-100 p-2 rounded overflow-auto max-h-32">-</pre>
+                </details>
+                <details class="text-xs mt-2">
+                    <summary class="cursor-pointer text-gray-600">Payload Metadata</summary>
+                    <pre id="requestPayload" class="mt-2 bg-gray-100 p-2 rounded overflow-auto max-h-32">-</pre>
+                </details>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Bottom Action Bar -->
+    <footer class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-3">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <button id="runBtn" onclick="runAnalysis()" disabled
+                        class="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2">
+                    <i data-lucide="play" class="w-4 h-4"></i>
+                    Run Analysis
+                </button>
+                <button id="cancelBtn" onclick="cancelAnalysis()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 hidden">
+                    Cancel
+                </button>
+                <button onclick="rerunWithOptions()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+                    Re-run with Options
+                </button>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="downloadPdf()" id="downloadPdfBtn" disabled class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed">
+                    Download PDF
+                </button>
+                <button onclick="saveRawReport()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+                    Save Raw Report
+                </button>
+            </div>
+            <div id="runningIndicator" class="hidden flex items-center gap-2 text-blue-600">
+                <svg class="spinner w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+                    <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"></path>
+                </svg>
+                <span class="text-sm">Analyzing...</span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // State
+        let currentFile = null;
+        let baselineFile = null;
+        let lastResponse = null;
+        let lastPdfPath = null;
+        let uploadHistory = [];
+        let analysisController = null;
+
+        // Initialize Lucide icons
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            updateRunButton();
+        });
+
+        // API Base URL
+        function getApiBase() {
+            return document.getElementById('apiBaseUrl').value.replace(/\/$/, '');
+        }
+
+        // Health Check
+        async function checkHealth() {
+            const statusEl = document.getElementById('healthStatus');
+            statusEl.innerHTML = `<span class="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span><span class="text-yellow-600">Checking...</span>`;
+            
+            try {
+                const start = Date.now();
+                const response = await fetch(`${getApiBase()}/health`, {
+                    method: 'GET'
+                });
+                const latency = Date.now() - start;
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    statusEl.innerHTML = `<span class="w-2 h-2 bg-green-500 rounded-full"></span><span class="text-green-600">OK (${latency}ms)</span>`;
+                    log('INFO', `Health check passed: ${JSON.stringify(data)}`);
+                } else {
+                    statusEl.innerHTML = `<span class="w-2 h-2 bg-red-500 rounded-full"></span><span class="text-red-600">Error ${response.status}</span>`;
+                    log('ERROR', `Health check failed: ${response.status}`);
+                }
+            } catch (e) {
+                statusEl.innerHTML = `<span class="w-2 h-2 bg-red-500 rounded-full"></span><span class="text-red-600">Unreachable</span>`;
+                log('ERROR', `Health check error: ${e.message}`);
+            }
+        }
+
+        // File Handling
+        function handleDragOver(e, zoneId) {
+            e.preventDefault();
+            document.getElementById(zoneId).classList.add('drag-over');
+        }
+
+        function handleDragLeave(e, zoneId) {
+            e.preventDefault();
+            document.getElementById(zoneId).classList.remove('drag-over');
+        }
+
+        function handleDrop(e, type) {
+            e.preventDefault();
+            const zoneId = type === 'current' ? 'currentFileZone' : 'baselineFileZone';
+            document.getElementById(zoneId).classList.remove('drag-over');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                processFile(files[0], type);
+            }
+        }
+
+        function handleFileSelect(e, type) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                processFile(files[0], type);
+            }
+        }
+
+        function processFile(file, type) {
+            if (!file.name.endsWith('.csv')) {
+                log('WARN', `File ${file.name} is not a CSV`);
+                alert('Please upload a CSV file');
+                return;
+            }
+
+            if (type === 'current') {
+                currentFile = file;
+                document.getElementById('currentFileName').textContent = `${file.name} (${formatBytes(file.size)})`;
+                document.getElementById('currentFileName').classList.remove('hidden');
+                document.getElementById('currentFileZone').classList.add('has-file');
+                document.getElementById('metricCurrentSize').textContent = formatBytes(file.size);
+            } else {
+                baselineFile = file;
+                document.getElementById('baselineFileName').textContent = `${file.name} (${formatBytes(file.size)})`;
+                document.getElementById('baselineFileName').classList.remove('hidden');
+                document.getElementById('baselineFileZone').classList.add('has-file');
+                document.getElementById('clearBaselineBtn').classList.remove('hidden');
+                document.getElementById('metricBaselineSize').textContent = formatBytes(file.size);
+            }
+
+            // Add to history
+            addToHistory(file);
+            
+            // Show preview
+            previewFile(file, type);
+            
+            // Update run button
+            updateRunButton();
+            
+            log('INFO', `Uploaded ${type} file: ${file.name} (${formatBytes(file.size)})`);
+        }
+
+        function clearBaseline() {
+            baselineFile = null;
+            document.getElementById('baselineFileName').classList.add('hidden');
+            document.getElementById('baselineFileZone').classList.remove('has-file');
+            document.getElementById('clearBaselineBtn').classList.add('hidden');
+            document.getElementById('metricBaselineSize').textContent = '-';
+            log('INFO', 'Baseline file cleared');
+        }
+
+        function addToHistory(file) {
+            const now = new Date();
+            uploadHistory.unshift({
+                name: file.name,
+                size: file.size,
+                timestamp: now.toLocaleTimeString()
+            });
+            
+            // Keep last 10
+            uploadHistory = uploadHistory.slice(0, 10);
+            
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('uploadHistory');
+            if (uploadHistory.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 italic">No uploads yet</p>';
+                return;
+            }
+            
+            container.innerHTML = uploadHistory.map(h => `
+                <div class="flex justify-between text-gray-600 py-1 border-b border-gray-100">
+                    <span class="truncate max-w-32">${h.name}</span>
+                    <span class="text-gray-400">${h.timestamp}</span>
+                </div>
+            `).join('');
+        }
+
+        async function previewFile(file, type) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const text = e.target.result;
+                const lines = text.split('\n').filter(l => l.trim());
+                const headers = lines[0].split(',').map(h => h.trim());
+                const rows = lines.slice(1, 11).map(l => l.split(',').map(c => c.trim()));
+                
+                // Build preview table
+                let tableHtml = `<div class="text-xs text-gray-500 mb-2">${type === 'current' ? 'Current' : 'Baseline'} Dataset Preview (first 10 rows)</div>`;
+                tableHtml += '<table class="min-w-full divide-y divide-gray-200 text-xs">';
+                tableHtml += '<thead class="bg-gray-50"><tr>';
+                headers.forEach(h => tableHtml += `<th class="px-2 py-1 text-left text-gray-600">${h}</th>`);
+                tableHtml += '</tr></thead><tbody>';
+                rows.forEach(row => {
+                    tableHtml += '<tr class="border-b border-gray-100">';
+                    row.forEach(cell => tableHtml += `<td class="px-2 py-1 text-gray-800">${cell}</td>`);
+                    tableHtml += '</tr>';
+                });
+                tableHtml += '</tbody></table>';
+                
+                // Schema info
+                const nullCounts = headers.map((h, i) => {
+                    const nulls = rows.filter(r => !r[i] || r[i] === '' || r[i] === 'null' || r[i] === 'NaN').length;
+                    return { col: h, nulls };
+                });
+                
+                tableHtml += '<div class="mt-3 text-xs"><strong>Schema:</strong> ';
+                tableHtml += headers.map(h => `<code class="bg-gray-100 px-1 rounded">${h}</code>`).join(', ');
+                tableHtml += '</div>';
+                
+                // Warnings
+                let warnings = [];
+                const numericCols = headers.filter((h, i) => rows.some(r => !isNaN(parseFloat(r[i]))));
+                if (numericCols.length === 0) {
+                    warnings.push({ type: 'warn', msg: 'No numeric columns detected' });
+                }
+                
+                const revenueLike = headers.filter(h => 
+                    ['revenue', 'sales', 'turnover', 'income', 'total_sales', 'earnings'].includes(h.toLowerCase())
+                );
+                if (revenueLike.length === 0) {
+                    warnings.push({ type: 'warn', msg: 'No obvious revenue-like columns found' });
+                }
+                
+                if (lines.length > 50000) {
+                    warnings.push({ type: 'warn', msg: `Large file (${lines.length} rows) - may timeout` });
+                }
+
+                document.getElementById('previewContent').innerHTML = tableHtml;
+                
+                const warningsHtml = warnings.map(w => 
+                    `<div class="flex items-center gap-2 text-${w.type === 'warn' ? 'yellow' : 'red'}-600 text-xs">
+                        <i data-lucide="alert-triangle" class="w-3 h-3"></i>
+                        ${w.msg}
+                    </div>`
+                ).join('');
+                document.getElementById('previewWarnings').innerHTML = warningsHtml;
+                
+                document.getElementById('previewSection').classList.remove('hidden');
+                lucide.createIcons();
+            };
+            reader.readAsText(file);
+        }
+
+        function updateRunButton() {
+            const btn = document.getElementById('runBtn');
+            btn.disabled = !currentFile;
+        }
+
+        // Analysis
+        async function runAnalysis() {
+            if (!currentFile) {
+                alert('Please upload a current dataset file');
+                return;
+            }
+
+            // Reset UI
+            document.getElementById('resultsSection').classList.add('hidden');
+            document.getElementById('errorSection').classList.add('hidden');
+            document.getElementById('runningIndicator').classList.remove('hidden');
+            document.getElementById('runBtn').disabled = true;
+            document.getElementById('cancelBtn').classList.remove('hidden');
+            
+            log('INFO', '--- Starting analysis ---');
+            
+            // Build form data
+            const formData = new FormData();
+            formData.append('current_file', currentFile);
+            
+            if (baselineFile) {
+                formData.append('baseline_file', baselineFile);
+            }
+            
+            // Add cleaning options as form fields
+            const opts = {
+                normalize_columns: document.getElementById('opt_normalize_columns').checked,
+                drop_duplicates: document.getElementById('opt_drop_duplicates').checked,
+                drop_missing: document.getElementById('opt_drop_missing').checked,
+                cap_outliers: document.getElementById('opt_cap_outliers').checked
+            };
+            
+            Object.entries(opts).forEach(([key, value]) => {
+                formData.append(key, value.toString());
+            });
+            
+            log('INFO', `Options: ${JSON.stringify(opts)}`);
+            log('INFO', `Current file: ${currentFile.name}, Baseline: ${baselineFile?.name || 'none'}`);
+
+            // Record request metadata
+            document.getElementById('requestPayload').textContent = JSON.stringify({
+                current_file: { name: currentFile.name, size: currentFile.size },
+                baseline_file: baselineFile ? { name: baselineFile.name, size: baselineFile.size } : null,
+                options: opts
+            }, null, 2);
+
+            document.getElementById('requestHeaders').textContent = JSON.stringify({
+                'Content-Type': 'multipart/form-data',
+                'Authorization': '(masked if present)'
+            }, null, 2);
+
+            // Make request
+            const startTime = Date.now();
+            analysisController = new AbortController();
+            
+            try {
+                const response = await fetch(`${getApiBase()}/v1/analyze`, {
+                    method: 'POST',
+                    body: formData,
+                    signal: analysisController.signal
+                });
+                
+                const latency = Date.now() - startTime;
+                const responseText = await response.text();
+                const responseSize = new Blob([responseText]).size;
+                
+                // Update metrics
+                document.getElementById('metricLatency').textContent = `${latency}ms`;
+                document.getElementById('metricSize').textContent = formatBytes(responseSize);
+                document.getElementById('metricStatus').textContent = response.status;
+                document.getElementById('metricStatus').className = response.ok ? 'font-mono text-green-600' : 'font-mono text-red-600';
+                
+                log('INFO', `Response: ${response.status} in ${latency}ms`);
+                
+                if (response.ok) {
+                    const data = JSON.parse(responseText);
+                    lastResponse = data;
+                    lastPdfPath = data.pdf_path;
+                    displayResults(data);
+                    log('INFO', 'Analysis completed successfully');
+                    document.getElementById('downloadPdfBtn').disabled = !data.pdf_path;
+                } else {
+                    let errorData;
+                    try {
+                        errorData = JSON.parse(responseText);
+                    } catch {
+                        errorData = { detail: responseText };
+                    }
+                    displayError(response.status, errorData);
+                    log('ERROR', `Analysis failed: ${response.status} - ${errorData.detail || 'Unknown error'}`);
+                }
+            } catch (e) {
+                if (e.name === 'AbortError') {
+                    log('WARN', 'Analysis cancelled by user');
+                } else {
+                    log('ERROR', `Network error: ${e.message}`);
+                    displayError(0, { detail: `Network error: ${e.message}` });
+                }
+            } finally {
+                document.getElementById('runningIndicator').classList.add('hidden');
+                document.getElementById('runBtn').disabled = false;
+                document.getElementById('cancelBtn').classList.add('hidden');
+                analysisController = null;
+            }
+        }
+
+        function cancelAnalysis() {
+            if (analysisController) {
+                analysisController.abort();
+            }
+        }
+
+        function displayResults(data) {
+            document.getElementById('resultsSection').classList.remove('hidden');
+            
+            // Summary
+            const report = data.report;
+            let summaryHtml = `
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                        <i data-lucide="check-circle" class="w-4 h-4"></i>
+                        Success
+                    </span>
+                    <span class="text-sm text-gray-500">${document.getElementById('metricLatency').textContent}</span>
+                </div>
+                <h4 class="font-medium text-gray-800 mb-2">Summary</h4>
+                <p class="text-gray-700">${report.summary}</p>
+            `;
+            
+            // Matched metric info (if present in response)
+            if (report.metric_deltas && report.metric_deltas.length > 0) {
+                const metric = report.metric_deltas[0];
+                summaryHtml += `
+                    <div class="mt-4 p-3 bg-blue-50 rounded-lg">
+                        <div class="text-sm font-medium text-blue-800">Matched Metric: ${metric.name}</div>
+                        <div class="text-xs text-blue-600 mt-1">
+                            Current: $${metric.current.toLocaleString()} | 
+                            Baseline: $${metric.baseline.toLocaleString()} | 
+                            Change: ${metric.percent_change >= 0 ? '+' : ''}${metric.percent_change.toFixed(1)}%
+                        </div>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('summaryCard').innerHTML = summaryHtml;
+            
+            // Insights
+            let insightsHtml = '';
+            if (report.insights && report.insights.length > 0) {
+                insightsHtml = report.insights.map(ins => `
+                    <div class="p-3 rounded-lg border ${ins.severity === 'high' ? 'border-red-200 bg-red-50' : ins.severity === 'medium' ? 'border-yellow-200 bg-yellow-50' : 'border-blue-200 bg-blue-50'} mb-3">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="text-xs font-medium px-2 py-0.5 rounded ${ins.severity === 'high' ? 'bg-red-200 text-red-800' : ins.severity === 'medium' ? 'bg-yellow-200 text-yellow-800' : 'bg-blue-200 text-blue-800'}">
+                                ${ins.severity.toUpperCase()}
+                            </span>
+                            <span class="font-medium text-gray-800">${ins.title}</span>
+                        </div>
+                        <p class="text-sm text-gray-600">${ins.description}</p>
+                        <p class="text-xs text-gray-400 mt-1">Affected: ${ins.affected_metric}</p>
+                    </div>
+                `).join('');
+            } else {
+                insightsHtml = '<p class="text-gray-500 text-sm italic">No significant insights detected</p>';
+            }
+            document.getElementById('insightsContent').innerHTML = insightsHtml;
+            
+            // Business Insights (additive - renders only if present)
+            renderBusinessInsights(data.business_insights);
+            
+            // Comparison
+            if (report.metric_deltas && report.metric_deltas.length > 0) {
+                let compHtml = '<table class="min-w-full divide-y divide-gray-200 text-sm">';
+                compHtml += '<thead class="bg-gray-50"><tr><th class="px-4 py-2 text-left">Metric</th><th class="px-4 py-2 text-right">Current</th><th class="px-4 py-2 text-right">Baseline</th><th class="px-4 py-2 text-right">Change</th><th class="px-4 py-2 text-right">% Change</th></tr></thead>';
+                compHtml += '<tbody>';
+                report.metric_deltas.forEach(m => {
+                    const changeClass = m.percent_change > 0 ? 'text-green-600' : m.percent_change < 0 ? 'text-red-600' : 'text-gray-600';
+                    compHtml += `<tr class="border-b">
+                        <td class="px-4 py-2 font-medium">${m.name}</td>
+                        <td class="px-4 py-2 text-right">$${m.current.toLocaleString()}</td>
+                        <td class="px-4 py-2 text-right">$${m.baseline.toLocaleString()}</td>
+                        <td class="px-4 py-2 text-right ${changeClass}">${m.absolute_change >= 0 ? '+' : ''}$${m.absolute_change.toLocaleString()}</td>
+                        <td class="px-4 py-2 text-right ${changeClass}">${m.percent_change >= 0 ? '+' : ''}${m.percent_change.toFixed(1)}%</td>
+                    </tr>`;
+                });
+                compHtml += '</tbody></table>';
+                document.getElementById('comparisonContent').innerHTML = compHtml;
+            } else {
+                document.getElementById('comparisonContent').innerHTML = '<p class="text-gray-500 text-sm">No comparison data (single dataset mode)</p>';
+            }
+            
+            // Raw JSON
+            document.getElementById('rawJsonContent').textContent = JSON.stringify(data, null, 2);
+            
+            // PDF
+            if (data.pdf_path) {
+                document.getElementById('pdfContent').innerHTML = `
+                    <div class="p-4 bg-gray-50 rounded-lg">
+                        <p class="text-sm text-gray-600 mb-2">PDF generated at:</p>
+                        <code class="text-xs bg-gray-200 px-2 py-1 rounded">${data.pdf_path}</code>
+                        <p class="text-xs text-gray-400 mt-2">Note: PDF is on server filesystem. Use Download button to fetch.</p>
+                    </div>
+                `;
+            }
+            
+            lucide.createIcons();
+            switchTab('summary');
+        }
+
+        function displayError(status, data) {
+            document.getElementById('errorSection').classList.remove('hidden');
+            document.getElementById('errorMessage').textContent = data.detail || 'An unknown error occurred';
+            
+            if (data.detail && data.detail.length > 100) {
+                document.getElementById('errorDetails').textContent = data.detail;
+                document.getElementById('errorDetails').classList.remove('hidden');
+            }
+            
+            lucide.createIcons();
+        }
+
+        function switchTab(tab) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('[id^="tab_"]').forEach(el => {
+                el.classList.remove('tab-active');
+                el.classList.add('text-gray-500');
+            });
+            
+            // Show selected
+            document.getElementById(`tabContent_${tab}`).classList.remove('hidden');
+            document.getElementById(`tab_${tab}`).classList.add('tab-active');
+            document.getElementById(`tab_${tab}`).classList.remove('text-gray-500');
+        }
+
+        function copyRawJson() {
+            const json = document.getElementById('rawJsonContent').textContent;
+            navigator.clipboard.writeText(json).then(() => {
+                log('INFO', 'JSON copied to clipboard');
+            });
+        }
+
+        function rerunWithOptions() {
+            if (!currentFile) {
+                alert('Please upload a file first');
+                return;
+            }
+            runAnalysis();
+        }
+
+        function downloadPdf() {
+            if (lastPdfPath) {
+                // Since PDF is on server, we'd need an endpoint to serve it
+                // For now, log the path
+                log('INFO', `PDF download requested: ${lastPdfPath}`);
+                alert(`PDF is at server path: ${lastPdfPath}\n\nNote: To download, the server needs a /download endpoint or the file needs to be served statically.`);
+            }
+        }
+
+        function saveRawReport() {
+            if (!lastResponse) {
+                alert('No analysis results to save');
+                return;
+            }
+            
+            const blob = new Blob([JSON.stringify(lastResponse, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `analysis_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            log('INFO', `Raw report saved: ${a.download}`);
+        }
+
+        // Sample Data Generators
+        function generateSampleData(type) {
+            log('INFO', `Generating sample data: ${type}`);
+            
+            let csvContent, fileName, isBaseline = false;
+            
+            switch(type) {
+                case 'basic':
+                    csvContent = `date,revenue,cost,region
+2024-01-01,10000,6000,North
+2024-01-02,10500,6200,South
+2024-01-03,9800,5900,East
+2024-01-04,11000,6500,West
+2024-01-05,10200,6100,North
+2024-01-06,10800,6400,South
+2024-01-07,9500,5700,East
+2024-01-08,11200,6600,West
+2024-01-09,10300,6150,North
+2024-01-10,10700,6350,South`;
+                    fileName = 'basic_revenue.csv';
+                    break;
+                    
+                case 'decline':
+                    csvContent = `date,revenue,cost
+2024-01-01,10000,5000
+2024-01-02,9500,4800
+2024-01-03,9000,4600
+2024-01-04,8200,4200
+2024-01-05,7500,3900
+2024-01-06,7000,3700
+2024-01-07,6200,3400
+2024-01-08,5800,3200
+2024-01-09,5200,2900
+2024-01-10,4500,2600`;
+                    fileName = 'declining_revenue.csv';
+                    break;
+                    
+                case 'growth':
+                    csvContent = `date,revenue,cost
+2024-01-01,5000,3000
+2024-01-02,5500,3200
+2024-01-03,6200,3500
+2024-01-04,7000,3800
+2024-01-05,7800,4100
+2024-01-06,8500,4400
+2024-01-07,9500,4800
+2024-01-08,10200,5100
+2024-01-09,11000,5400
+2024-01-10,12500,5900`;
+                    fileName = 'growing_revenue.csv';
+                    break;
+                    
+                case 'volatile':
+                    csvContent = `date,revenue,cost
+2024-01-01,10000,5000
+2024-01-02,5000,2800
+2024-01-03,15000,7500
+2024-01-04,3000,1800
+2024-01-05,18000,8500
+2024-01-06,6000,3200
+2024-01-07,12000,6000
+2024-01-08,4000,2200
+2024-01-09,16000,7800
+2024-01-10,7000,3600`;
+                    fileName = 'volatile_revenue.csv';
+                    break;
+                    
+                case 'concentrated':
+                    // 20 rows with top 2 contributing 70% of revenue
+                    csvContent = `customer,revenue
+Enterprise_A,50000
+Enterprise_B,40000
+Midmarket_1,5000
+Midmarket_2,4500
+Midmarket_3,4000
+Midmarket_4,3500
+SMB_01,2000
+SMB_02,1800
+SMB_03,1600
+SMB_04,1400
+SMB_05,1200
+SMB_06,1000
+SMB_07,900
+SMB_08,800
+SMB_09,700
+SMB_10,600
+SMB_11,500
+SMB_12,400
+SMB_13,300
+SMB_14,200`;
+                    fileName = 'concentrated_revenue.csv';
+                    break;
+                    
+                case 'baseline':
+                    // Generate baseline that's slightly lower than typical current
+                    csvContent = `date,revenue,cost
+2023-01-01,9000,4500
+2023-01-02,9200,4600
+2023-01-03,8800,4400
+2023-01-04,9500,4700
+2023-01-05,9100,4550
+2023-01-06,9300,4650
+2023-01-07,8700,4350
+2023-01-08,9600,4800
+2023-01-09,9000,4500
+2023-01-10,9400,4700`;
+                    fileName = 'baseline_revenue.csv';
+                    isBaseline = true;
+                    break;
+            }
+            
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const file = new File([blob], fileName, { type: 'text/csv' });
+            
+            processFile(file, isBaseline ? 'baseline' : 'current');
+        }
+
+        // Full Test Suite
+        async function runFullTestSuite() {
+            const tests = [
+                { name: 'Health Check', fn: testHealthCheck },
+                { name: 'Valid CSV Upload', fn: testValidCSV },
+                { name: 'Malformed CSV Rejection', fn: testMalformedCSV },
+                { name: 'Missing Revenue Column', fn: testMissingRevenue },
+                { name: 'Empty File Rejection', fn: testEmptyFile },
+                { name: 'Path Traversal Block', fn: testPathTraversal },
+                { name: 'Invalid Extension Block', fn: testInvalidExtension },
+                { name: 'With Baseline Comparison', fn: testWithBaseline },
+                { name: 'Business Insights Generation', fn: testBusinessInsights },
+                { name: 'Concentration Insight (20 rows)', fn: testConcentration },
+                { name: 'Large Dataset (10k rows)', fn: testLargeDataset },
+            ];
+            
+            document.getElementById('testSuiteProgress').classList.remove('hidden');
+            document.getElementById('testSuiteResults').classList.remove('hidden');
+            document.getElementById('testSuiteResults').innerHTML = '';
+            
+            let passed = 0, failed = 0;
+            
+            for (let i = 0; i < tests.length; i++) {
+                const test = tests[i];
+                document.getElementById('testProgress').textContent = `${i + 1}/${tests.length}`;
+                document.getElementById('testProgressBar').style.width = `${((i + 1) / tests.length) * 100}%`;
+                
+                log('INFO', `Running test: ${test.name}`);
+                
+                try {
+                    const result = await test.fn();
+                    if (result.pass) {
+                        passed++;
+                        addTestResult(test.name, true, result.message);
+                    } else {
+                        failed++;
+                        addTestResult(test.name, false, result.message);
+                    }
+                } catch (e) {
+                    failed++;
+                    addTestResult(test.name, false, e.message);
+                }
+                
+                // Small delay between tests
+                await new Promise(r => setTimeout(r, 300));
+            }
+            
+            // Summary
+            const summary = `<div class="mt-2 p-2 rounded ${failed === 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                <strong>${failed === 0 ? '✅ ALL TESTS PASSED' : '❌ SOME TESTS FAILED'}</strong><br>
+                Passed: ${passed} | Failed: ${failed}
+            </div>`;
+            document.getElementById('testSuiteResults').innerHTML += summary;
+            
+            log('INFO', `Test suite complete: ${passed} passed, ${failed} failed`);
+        }
+        
+        function addTestResult(name, pass, message) {
+            const html = `<div class="flex items-center gap-2 py-1 border-b border-gray-100">
+                <span class="${pass ? 'text-green-600' : 'text-red-600'}">${pass ? '✓' : '✗'}</span>
+                <span class="flex-1">${name}</span>
+                <span class="text-gray-400">${message || ''}</span>
+            </div>`;
+            document.getElementById('testSuiteResults').innerHTML += html;
+        }
+        
+        // Individual Test Functions
+        async function testHealthCheck() {
+            const r = await fetch(`${getApiBase()}/health`);
+            return { pass: r.ok, message: `${r.status}` };
+        }
+        
+        async function testValidCSV() {
+            const csv = 'date,revenue\n2024-01,1000\n2024-02,1200\n2024-03,1100';
+            const formData = new FormData();
+            formData.append('current_file', new Blob([csv], {type: 'text/csv'}), 'test.csv');
+            const r = await fetch(`${getApiBase()}/v1/analyze`, { method: 'POST', body: formData });
+            const data = await r.json();
+            return { pass: r.ok && data.report, message: r.ok ? 'Has report' : `${r.status}` };
+        }
+        
+        async function testMalformedCSV() {
+            const csv = 'not,valid\n"unclosed';
+            const formData = new FormData();
+            formData.append('current_file', new Blob([csv], {type: 'text/csv'}), 'bad.csv');
+            const r = await fetch(`${getApiBase()}/v1/analyze`, { method: 'POST', body: formData });
+            return { pass: r.status === 400, message: `${r.status}` };
+        }
+        
+        async function testMissingRevenue() {
+            const csv = 'date,cost,quantity\n2024-01,500,10\n2024-02,600,12';
+            const formData = new FormData();
+            formData.append('current_file', new Blob([csv], {type: 'text/csv'}), 'no_rev.csv');
+            const r = await fetch(`${getApiBase()}/v1/analyze`, { method: 'POST', body: formData });
+            return { pass: r.status === 400, message: `${r.status}` };
+        }
+        
+        async function testEmptyFile() {
+            const formData = new FormData();
+            formData.append('current_file', new Blob([''], {type: 'text/csv'}), 'empty.csv');
+            const r = await fetch(`${getApiBase()}/v1/analyze`, { method: 'POST', body: formData });
+            return { pass: r.status === 400, message: `${r.status}` };
+        }
+        
+        async function testPathTraversal() {
+            const csv = 'date,revenue\n2024-01,1000';
+            const formData = new FormData();
+            formData.append('current_file', new Blob([csv], {type: 'text/csv'}), '../../../etc/passwd');
+            const r = await fetch(`${getApiBase()}/v1/analyze`, { method: 'POST', body: formData });
+            return { pass: r.status === 400, message: `${r.status}` };
+        }
+        
+        async function testInvalidExtension() {
+            const formData = new FormData();
+            formData.append('current_file', new Blob(['test'], {type: 'text/plain'}), 'test.exe');
+            const r = await fetch(`${getApiBase()}/v1/analyze`, { method: 'POST', body: formData });
+            return { pass: r.status === 400, message: `${r.status}` };
+        }
+        
+        async function testWithBaseline() {
+            const current = 'date,revenue\n2024-01,1200\n2024-02,1400\n2024-03,1300';
+            const baseline = 'date,revenue\n2023-01,1000\n2023-02,1050\n2023-03,1100';
+            const formData = new FormData();
+            formData.append('current_file', new Blob([current], {type: 'text/csv'}), 'current.csv');
+            formData.append('baseline_file', new Blob([baseline], {type: 'text/csv'}), 'baseline.csv');
+            const r = await fetch(`${getApiBase()}/v1/analyze`, { method: 'POST', body: formData });
+            const data = await r.json();
+            const hasDeltas = data.report?.metric_deltas?.length > 0;
+            return { pass: r.ok && hasDeltas, message: hasDeltas ? 'Has deltas' : 'No deltas' };
+        }
+        
+        async function testBusinessInsights() {
+            const csv = 'date,revenue\n2024-01,800\n2024-02,750\n2024-03,700\n2024-04,650\n2024-05,600';
+            const baseline = 'date,revenue\n2023-01,1000\n2023-02,1050\n2023-03,1100\n2023-04,1150\n2023-05,1200';
+            const formData = new FormData();
+            formData.append('current_file', new Blob([csv], {type: 'text/csv'}), 'current.csv');
+            formData.append('baseline_file', new Blob([baseline], {type: 'text/csv'}), 'baseline.csv');
+            const r = await fetch(`${getApiBase()}/v1/analyze`, { method: 'POST', body: formData });
+            const data = await r.json();
+            const bi = data.business_insights;
+            const hasTrend = bi?.trend?.direction;
+            const hasExec = bi?.executive_summary;
+            return { pass: r.ok && hasTrend && hasExec, message: hasTrend ? 'Has trend + exec' : 'Missing insights' };
+        }
+        
+        async function testConcentration() {
+            // 20 rows needed for concentration
+            let rows = ['customer,revenue'];
+            rows.push('BigCorp,50000', 'MegaCorp,40000');
+            for (let i = 0; i < 18; i++) rows.push(`SMB_${i},${1000 - i * 50}`);
+            const csv = rows.join('\n');
+            const formData = new FormData();
+            formData.append('current_file', new Blob([csv], {type: 'text/csv'}), 'conc.csv');
+            const r = await fetch(`${getApiBase()}/v1/analyze`, { method: 'POST', body: formData });
+            const data = await r.json();
+            const hasConc = data.business_insights?.concentration?.risk_level;
+            return { pass: r.ok && hasConc, message: hasConc || 'No concentration' };
+        }
+        
+        async function testLargeDataset() {
+            let rows = ['date,revenue'];
+            for (let i = 0; i < 10000; i++) {
+                rows.push(`2024-${(i % 12) + 1}-${(i % 28) + 1},${1000 + Math.random() * 9000}`);
+            }
+            const csv = rows.join('\n');
+            const formData = new FormData();
+            formData.append('current_file', new Blob([csv], {type: 'text/csv'}), 'large.csv');
+            const start = Date.now();
+            const r = await fetch(`${getApiBase()}/v1/analyze`, { method: 'POST', body: formData });
+            const elapsed = Date.now() - start;
+            return { pass: r.ok && elapsed < 10000, message: `${elapsed}ms` };
+        }
+
+        // Edge Case Tests
+        function runEdgeTest(testType) {
+            log('INFO', `Running edge test: ${testType}`);
+            
+            let csvContent, fileName;
+            
+            switch(testType) {
+                case 'malformed':
+                    csvContent = 'col1,col2,col3\n1,2\n3,4,5,6\n"unclosed quote\n';
+                    fileName = 'malformed.csv';
+                    break;
+                case 'empty':
+                    csvContent = 'id,revenue\n1,100\n1,100\n1,100\n';  // All duplicates
+                    fileName = 'duplicates_only.csv';
+                    break;
+                case 'ambiguity':
+                    csvContent = 'gmv_value,date\n1000,2024-01-01\n2000,2024-01-02\n';
+                    fileName = 'ambiguous_metrics.csv';
+                    break;
+                case 'large':
+                    // Generate 50k rows
+                    let rows = ['date,revenue'];
+                    for (let i = 0; i < 50000; i++) {
+                        rows.push(`2024-01-${(i % 28) + 1},${Math.floor(Math.random() * 10000)}`);
+                    }
+                    csvContent = rows.join('\n');
+                    fileName = 'large_50k.csv';
+                    break;
+            }
+            
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const file = new File([blob], fileName, { type: 'text/csv' });
+            
+            processFile(file, 'current');
+            
+            // Auto-run after a short delay
+            setTimeout(() => runAnalysis(), 500);
+        }
+
+        // Logging
+        function log(level, message) {
+            const logEl = document.getElementById('executionLog');
+            const time = new Date().toLocaleTimeString();
+            const levelClass = level === 'ERROR' ? 'text-red-600' : level === 'WARN' ? 'text-yellow-600' : 'text-gray-600';
+            
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${levelClass}`;
+            entry.innerHTML = `<span class="text-gray-400">[${time}]</span> <span class="font-medium">${level}</span> ${message}`;
+            
+            // Remove placeholder if exists
+            const placeholder = logEl.querySelector('.text-gray-400.italic');
+            if (placeholder) placeholder.remove();
+            
+            logEl.appendChild(entry);
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('executionLog').innerHTML = '<p class="text-gray-400">Waiting for analysis...</p>';
+        }
+
+        // Business Insights Rendering (additive layer)
+        function renderBusinessInsights(businessInsights) {
+            const container = document.getElementById('businessInsightsContent');
+            const tab = document.getElementById('tab_business');
+            
+            // Hide tab and clear content if no business insights
+            if (!businessInsights) {
+                tab.classList.add('hidden');
+                container.innerHTML = '';
+                return;
+            }
+            
+            // Show the tab
+            tab.classList.remove('hidden');
+            
+            let html = '<div class="space-y-6">';
+            
+            // 1. Trend Direction
+            if (businessInsights.trend && businessInsights.trend.direction) {
+                const trend = businessInsights.trend;
+                html += `
+                    <div class="border-b border-gray-200 pb-4">
+                        <h4 class="text-sm font-semibold text-gray-700 mb-2">Trend Direction</h4>
+                        <p class="text-sm text-gray-800"><strong>Direction:</strong> ${formatTrendDirection(trend.direction)}</p>
+                        ${trend.confidence ? `<p class="text-sm text-gray-600">Confidence: ${trend.confidence}</p>` : ''}
+                        ${trend.description ? `<p class="text-sm text-gray-500 mt-1">${trend.description}</p>` : ''}
+                    </div>
+                `;
+            }
+            
+            // 2. Revenue Stability
+            if (businessInsights.stability && businessInsights.stability.category) {
+                const stability = businessInsights.stability;
+                const cv = stability.coefficient_of_variation;
+                html += `
+                    <div class="border-b border-gray-200 pb-4">
+                        <h4 class="text-sm font-semibold text-gray-700 mb-2">Revenue Stability</h4>
+                        <p class="text-sm text-gray-800"><strong>Category:</strong> ${formatCategory(stability.category)}</p>
+                        ${typeof cv === 'number' ? `<p class="text-sm text-gray-600">Coefficient of Variation: ${cv.toFixed(2)}</p>` : ''}
+                        ${stability.description ? `<p class="text-sm text-gray-500 mt-1">${stability.description}</p>` : ''}
+                    </div>
+                `;
+            }
+            
+            // 3. Revenue Efficiency Signal
+            if (businessInsights.efficiency && businessInsights.efficiency.signal) {
+                const efficiency = businessInsights.efficiency;
+                html += `
+                    <div class="border-b border-gray-200 pb-4">
+                        <h4 class="text-sm font-semibold text-gray-700 mb-2">Revenue Efficiency Signal</h4>
+                        <p class="text-sm text-gray-800"><strong>Signal:</strong> ${formatSignal(efficiency.signal)} <span class="text-xs text-gray-400">(proxy signal)</span></p>
+                        ${typeof efficiency.change_percent === 'number' ? `<p class="text-sm text-gray-600">Change: ${efficiency.change_percent >= 0 ? '+' : ''}${efficiency.change_percent.toFixed(1)}%</p>` : ''}
+                        ${efficiency.description ? `<p class="text-sm text-gray-500 mt-1">${efficiency.description}</p>` : ''}
+                    </div>
+                `;
+            }
+            
+            // 4. Revenue Concentration
+            if (businessInsights.concentration && businessInsights.concentration.risk_level) {
+                const concentration = businessInsights.concentration;
+                html += `
+                    <div class="border-b border-gray-200 pb-4">
+                        <h4 class="text-sm font-semibold text-gray-700 mb-2">Revenue Concentration</h4>
+                        ${typeof concentration.top_10_percent_contribution === 'number' ? `<p class="text-sm text-gray-800"><strong>Top 10% Contribution:</strong> ${concentration.top_10_percent_contribution.toFixed(1)}%</p>` : ''}
+                        <p class="text-sm text-gray-600">Risk Level: ${formatRiskLevel(concentration.risk_level)}</p>
+                        ${concentration.description ? `<p class="text-sm text-gray-500 mt-1">${concentration.description}</p>` : ''}
+                    </div>
+                `;
+            }
+            
+            // 5. Executive Summary
+            if (businessInsights.executive_summary) {
+                html += `
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="text-sm font-semibold text-gray-700 mb-2">Executive Summary</h4>
+                        <p class="text-sm text-gray-700 leading-relaxed">${businessInsights.executive_summary}</p>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            
+            container.innerHTML = html;
+        }
+        
+        function formatTrendDirection(direction) {
+            if (!direction) return 'Unknown';
+            const map = {
+                'strong_upward': 'Strong Upward Trend',
+                'moderate_growth': 'Moderate Growth',
+                'flat': 'Flat / Stagnant',
+                'early_decline': 'Early Decline',
+                'sharp_decline': 'Sharp Decline'
+            };
+            return map[direction] || direction.replace(/_/g, ' ');
+        }
+        
+        function formatCategory(category) {
+            if (!category) return 'Unknown';
+            const map = {
+                'stable': 'Stable',
+                'moderately_volatile': 'Moderately Volatile',
+                'highly_volatile': 'Highly Volatile'
+            };
+            return map[category] || category.replace(/_/g, ' ');
+        }
+        
+        function formatSignal(signal) {
+            if (!signal) return 'Unknown';
+            const map = {
+                'efficiency_improved': 'Efficiency Improved',
+                'marginal_improvement': 'Marginal Improvement',
+                'efficiency_stable': 'Efficiency Stable',
+                'efficiency_declined': 'Efficiency Declined',
+                'positive_revenue': 'Positive Revenue'
+            };
+            return map[signal] || signal.replace(/_/g, ' ');
+        }
+        
+        function formatRiskLevel(level) {
+            if (!level) return 'Unknown';
+            const map = {
+                'low': 'Low',
+                'moderate': 'Moderate',
+                'high': 'High',
+                'critical': 'Critical'
+            };
+            return map[level] || level;
+        }
+
+        // Utilities
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+    </script>
+</body>
+</html>
