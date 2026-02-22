@@ -1,0 +1,78 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-kaizen}
+      POSTGRES_USER: ${POSTGRES_USER:-kaizen}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+
+  service_b:
+    build:
+      context: ./service_b
+    restart: always
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      INTERNAL_SECRET: ${INTERNAL_SECRET:-change_this}
+      ALLOW_INTERNAL_PUBLIC: "false"
+      RATE_LIMIT_ENABLED: "true"
+    expose:
+      - "8000"
+    networks:
+      - internal
+
+  service_a:
+    build:
+      context: ./service_a
+    restart: always
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DEBUG: "false"
+      SECRET_KEY: ${SECRET_KEY:-}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
+
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB:-kaizen}
+      DB_USER: ${POSTGRES_USER:-kaizen}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+
+      SERVICE_B_URL: http://service_b:8000
+      SERVICE_B_TIMEOUT: ${SERVICE_B_TIMEOUT:-300}
+      SERVICE_B_SECRET: ${INTERNAL_SECRET:-change_this}
+
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
+    expose:
+      - "8002"
+    depends_on:
+      - postgres
+      - service_b
+    networks:
+      - internal
+
+  nginx:
+    build:
+      context: .
+      dockerfile: nginx/Dockerfile
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - service_a
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  postgres_data:
