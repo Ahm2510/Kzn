@@ -8,6 +8,11 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-kaizen}
       POSTGRES_USER: ${POSTGRES_USER:-kaizen}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -52,8 +57,10 @@ services:
     expose:
       - "8002"
     depends_on:
-      - postgres
-      - service_b
+      postgres:
+        condition: service_healthy
+      service_b:
+        condition: service_started
     networks:
       - internal
 

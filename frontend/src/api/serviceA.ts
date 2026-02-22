@@ -50,7 +50,7 @@ function resolveServiceABaseUrl(): string {
   // Default: use same hostname as the frontend page to avoid localhost/127.0.0.1 cookie mismatch.
   const protocol = window.location.protocol === "https:" ? "https:" : "http:";
   const hostname = window.location.hostname || "127.0.0.1";
-  return `${protocol}//${hostname}:8002`;
+  return `${protocol}//${hostname}`;
 }
 
 const SERVICE_A_BASE_URL = resolveServiceABaseUrl();

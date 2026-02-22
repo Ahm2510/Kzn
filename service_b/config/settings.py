@@ -10,6 +10,36 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 
+def _get_cors_origins() -> List[str]:
+    """Compute CORS_ORIGINS based on environment."""
+    env = os.getenv("ENVIRONMENT", "development")
+    cors_origins_env = os.getenv("CORS_ORIGINS", "")
+    
+    if cors_origins_env:
+        return [
+            origin.strip() 
+            for origin in cors_origins_env.split(",")
+            if origin.strip()
+        ]
+    elif env == "development":
+        # Only use localhost defaults in development mode
+        return [
+            "http://localhost:3000",
+            "http://localhost:5500",
+            "http://localhost:8080",
+            "http://localhost:8081",
+            "http://localhost:5173",
+            "http://127.0.0.1:5500",
+            "http://127.0.0.1:8080",
+            "http://127.0.0.1:8081",
+            "http://127.0.0.1:56991",
+            "http://127.0.0.1:8001"
+        ]
+    else:
+        # Production/Docker: require explicit CORS_ORIGINS
+        return []
+
+
 class Settings(BaseModel):
     # ------------------------------------------------------------------
     # Service identity
@@ -49,15 +79,9 @@ class Settings(BaseModel):
     # ------------------------------------------------------------------
     # Security settings
     # ------------------------------------------------------------------
-    # CORS origins (comma-separated in env, defaults to localhost for dev)
-    CORS_ORIGINS: List[str] = [
-        origin.strip() 
-        for origin in os.getenv(
-            "CORS_ORIGINS",
-            "http://localhost:3000,http://localhost:5500,http://localhost:8080,http://localhost:8081,http://localhost:5173,http://127.0.0.1:5500,http://127.0.0.1:8080,http://127.0.0.1:8081,http://127.0.0.1:56991,http://127.0.0.1:8001"
-        ).split(",")
-        if origin.strip()
-    ]
+    # CORS origins (comma-separated in env)
+    # Defaults to localhost for development, but must be set explicitly in production/Docker
+    CORS_ORIGINS: List[str] = _get_cors_origins()
     
     # Rate limiting (requests per minute)
     RATE_LIMIT: str = os.getenv("RATE_LIMIT", "100/minute")

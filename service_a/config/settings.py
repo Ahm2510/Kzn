@@ -145,17 +145,24 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "rest_framework.schemas.openapi.AutoSchema",
 }
 
+# CORS settings for frontend
+ENVIRONMENT = os.environ.get('ENVIRONMENT', 'development')
+
 # Service B (Insight Engine) configuration
-SERVICE_B_URL = os.environ.get('SERVICE_B_URL', 'http://localhost:8000')
+# In Docker, SERVICE_B_URL must be set to http://service_b:8000
+# Fallback to localhost only for local development (non-Docker)
+SERVICE_B_URL = os.environ.get('SERVICE_B_URL')
+if not SERVICE_B_URL:
+    if ENVIRONMENT == 'development':
+        SERVICE_B_URL = 'http://localhost:8000'
+    else:
+        raise RuntimeError('SERVICE_B_URL must be set in production/Docker environment')
 SERVICE_B_TIMEOUT = int(os.environ.get('SERVICE_B_TIMEOUT', '300'))  # 5 minutes
 SERVICE_B_SECRET = os.environ.get('SERVICE_B_SECRET', '')  # Must match Service B INTERNAL_SECRET
 
 # File upload settings
 MEDIA_ROOT = BASE_DIR / 'uploads'
 MEDIA_URL = '/uploads/'
-
-# CORS settings for frontend
-ENVIRONMENT = os.environ.get('ENVIRONMENT', 'development')
 
 if ENVIRONMENT == 'development':
     CORS_ALLOW_ALL_ORIGINS = True
@@ -203,11 +210,11 @@ if ENVIRONMENT == 'production':
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.environ.get('DB_NAME', ''),
-            'USER': os.environ.get('DB_USER', ''),
-            'PASSWORD': os.environ.get('DB_PASSWORD', ''),
-            'HOST': os.environ.get('DB_HOST', ''),
-            'PORT': os.environ.get('DB_PORT', ''),
+            'NAME': os.environ.get('DB_NAME', os.environ.get('POSTGRES_DB', 'kaizen')),
+            'USER': os.environ.get('DB_USER', os.environ.get('POSTGRES_USER', 'kaizen')),
+            'PASSWORD': os.environ.get('DB_PASSWORD', os.environ.get('POSTGRES_PASSWORD', 'change_me')),
+            'HOST': os.environ.get('DB_HOST', 'postgres'),
+            'PORT': os.environ.get('DB_PORT', '5432'),
         }
     }
 
