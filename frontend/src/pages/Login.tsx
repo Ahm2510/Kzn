@@ -214,7 +214,7 @@ export default function Login() {
                   focusedField === "email" ? "text-primary" : "text-foreground"
                 )}
               >
-                Email address
+                Email
               </label>
               <div className="relative">
                 <Input
