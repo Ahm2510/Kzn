@@ -3,7 +3,7 @@
  * Handles CSRF tokens, session cookies, and typed requests.
  */
 
-const BASE_URL = import.meta.env.VITE_SERVICE_A_URL || "http://127.0.0.1:8000";
+const BASE_URL = "/api"
 
 let csrfToken: string | null = null;
 
