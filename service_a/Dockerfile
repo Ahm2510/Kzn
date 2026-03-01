@@ -16,4 +16,4 @@ COPY . .
 
 EXPOSE 8002
 
-CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py collectstatic --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8002 --workers 3"]
+CMD ["sh", "-c", "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8002 --workers 3"]

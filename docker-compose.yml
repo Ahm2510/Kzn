@@ -15,8 +15,6 @@ services:
       retries: 20
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    networks:
-      - internal
 
   service_b:
     build:
@@ -29,16 +27,14 @@ services:
       RATE_LIMIT_ENABLED: "true"
     expose:
       - "8000"
-    networks:
-      - internal
 
   service_a:
     build:
       context: ./service_a
     restart: always
     environment:
-      ENVIRONMENT: ${ENVIRONMENT:-production}
-      DEBUG: "false"
+      ENVIRONMENT: development
+      DEBUG: "true"
       SECRET_KEY: ${SECRET_KEY:-}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
 
@@ -56,13 +52,17 @@ services:
       CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
     expose:
       - "8002"
+
+    networks:
+      default:
+        aliases:
+          - service_a
+
     depends_on:
       postgres:
         condition: service_healthy
       service_b:
         condition: service_started
-    networks:
-      - internal
 
   nginx:
     build:
@@ -74,12 +74,8 @@ services:
       - "443:443"
     depends_on:
       - service_a
-    networks:
-      - internal
 
-networks:
-  internal:
-    driver: bridge
 
 volumes:
   postgres_data:
+

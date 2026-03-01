@@ -8,7 +8,7 @@ const BASE_URL = "/api"
 let csrfToken: string | null = null;
 
 async function fetchCsrfToken(): Promise<string> {
-  const res = await fetch(`${BASE_URL}/api/auth/csrf/`, {
+  const res = await fetch(`${BASE_URL}/auth/csrf/`, {
     credentials: "include",
   });
   if (!res.ok) throw new Error("Failed to fetch CSRF token");
@@ -95,11 +95,11 @@ export interface LoginResponse {
 
 export const authApi = {
   login: (email: string, password: string) =>
-    api<LoginResponse>("/api/auth/login/", { method: "POST", body: { email, password } }),
+    api<LoginResponse>("/auth/login/", { method: "POST", body: { email, password } }),
 
-  logout: () => api("/api/auth/logout/", { method: "POST" }),
+  logout: () => api("/auth/logout/", { method: "POST" }),
 
-  me: () => api<{ user: DjangoUser }>("/api/auth/me/"),
+  me: () => api<{ user: DjangoUser }>("/auth/me/"),
 };
 
 // ── Projects ──
@@ -113,10 +113,10 @@ export interface Project {
 }
 
 export const projectsApi = {
-  list: () => api<Project[]>("/api/projects/"),
-  create: (name: string) => api<Project>("/api/projects/", { method: "POST", body: { name } }),
-  get: (id: number) => api<Project>(`/api/projects/${id}/`),
-  delete: (id: number) => api(`/api/projects/${id}/`, { method: "DELETE" }),
+  list: () => api<Project[]>("/projects/"),
+  create: (name: string) => api<Project>("/projects/", { method: "POST", body: { name } }),
+  get: (id: number) => api<Project>(`/projects/${id}/`),
+  delete: (id: number) => api(`/projects/${id}/`, { method: "DELETE" }),
 };
 
 // ── Analysis Runs ──
@@ -162,9 +162,9 @@ export interface InsightReport {
 }
 
 export const analysisApi = {
-  list: () => api<AnalysisRun[]>("/api/analysis-runs/"),
+  list: () => api<AnalysisRun[]>("/analysis-runs/"),
 
-  get: (id: number) => api<AnalysisRun>(`/api/analysis-runs/${id}/`),
+  get: (id: number) => api<AnalysisRun>(`/analysis-runs/${id}/`),
 
   create: (projectId: number, currentFile: File, baselineFile?: File | null, cleaningOptions?: Record<string, boolean>, metricSchema?: string) => {
     const fd = new FormData();
@@ -173,10 +173,10 @@ export const analysisApi = {
     if (baselineFile) fd.append("baseline_file", baselineFile);
     if (cleaningOptions) fd.append("cleaning_options", JSON.stringify(cleaningOptions));
     if (metricSchema) fd.append("metric_schema", metricSchema);
-    return api<AnalysisRun>("/api/analysis-runs/", { method: "POST", formData: fd });
+    return api<AnalysisRun>("/analysis-runs/", { method: "POST", formData: fd });
   },
 
-  delete: (id: number) => api(`/api/analysis-runs/${id}/`, { method: "DELETE" }),
+  delete: (id: number) => api(`/analysis-runs/${id}/`, { method: "DELETE" }),
 
-  downloadPdf: (id: number) => api<Blob>(`/api/analysis-runs/${id}/pdf/`),
+  downloadPdf: (id: number) => api<Blob>(`/analysis-runs/${id}/pdf/`),
 };
