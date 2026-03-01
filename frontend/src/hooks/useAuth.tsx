@@ -1,11 +1,12 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
-
-import * as serviceA from "@/api/serviceA";
+import { authApi, DjangoUser, setCsrfToken, clearCsrfToken } from "@/lib/api";
 
 export type UserRole = "admin" | "user";
 
 interface User {
+  id: number;
   email: string;
+  username: string;
   role: UserRole;
 }
 
@@ -20,74 +21,55 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function toUser(u: DjangoUser): User {
+  return {
+    id: u.id,
+    email: u.email,
+    username: u.username,
+    role: u.is_staff ? "admin" : "user",
+  };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const logout = useCallback(() => {
-    setUser(null);
-    sessionStorage.removeItem("kaizen_user");
-  }, []);
-
+  // On mount, check if we have an active session
   useEffect(() => {
-    let cancelled = false;
-
-    // On initial load, verify server-side session via /api/auth/me/.
-    // sessionStorage is only a UI cache; it is NOT the source of truth.
-    (async () => {
-      try {
-        const me = await serviceA.getCurrentUser();
-        if (cancelled) return;
-        const userData: User = {
-          email: me.email,
-          role: me.is_staff ? "admin" : "user",
-        };
-        setUser(userData);
-        sessionStorage.setItem("kaizen_user", JSON.stringify(userData));
-      } catch {
-        if (cancelled) return;
-        setUser(null);
-        sessionStorage.removeItem("kaizen_user");
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
+    authApi
+      .me()
+      .then(({ user: u }) => setUser(toUser(u)))
+      .catch(() => setUser(null))
+      .finally(() => setIsLoading(false));
   }, []);
 
-  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    setIsLoading(true);
-    try {
-      const result = await serviceA.login(email, password);
-      const me = result.user;
-      const userData: User = {
-        email: me.email,
-        role: me.is_staff ? "admin" : "user",
-      };
-      setUser(userData);
-      sessionStorage.setItem("kaizen_user", JSON.stringify(userData));
-      setIsLoading(false);
-      return { success: true };
-    } catch (e) {
-      setIsLoading(false);
-      const err = e as { status?: number; bodyText?: string };
-      if (err?.status === 401) return { success: false, error: "Invalid credentials." };
-      if (err?.status === 400) return { success: false, error: "Email and password are required." };
-      if (err?.status === 403) return { success: false, error: "Not authorized." };
-      return { success: false, error: "Authentication failed." };
-    }
-  };
+  const login = useCallback(
+    async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+      setIsLoading(true);
+      try {
+        const res = await authApi.login(email, password);
+        setCsrfToken(res.csrfToken);
+        setUser(toUser(res.user));
+        return { success: true };
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Authentication failed.";
+        return { success: false, error: message };
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [],
+  );
 
-  const logoutServer = useCallback(async () => {
+  const logout = useCallback(async () => {
     try {
-      await serviceA.logout();
-    } finally {
-      logout();
+      await authApi.logout();
+    } catch {
+      // ignore
     }
-  }, [logout]);
+    clearCsrfToken();
+    setUser(null);
+  }, []);
 
   return (
     <AuthContext.Provider
@@ -96,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!user,
         isAdmin: user?.role === "admin",
         login,
-        logout: logoutServer,
+        logout,
         isLoading,
       }}
     >

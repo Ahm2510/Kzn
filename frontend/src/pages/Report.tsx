@@ -1,126 +1,43 @@
-import { useEffect, useMemo, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Download, FileText, Clock, Database, Lightbulb } from "lucide-react";
-import { useLocation, useNavigate } from "react-router-dom";
-
-import * as serviceA from "@/api/serviceA";
-
-// Types for backend data
-interface ReportData {
-  title: string;
-  generatedAt: string;
-  primaryDataset: string;
-  comparisonPeriod: string | null;
-  insightCount: number;
-  reportUrl: string | null;
-  version: string;
-}
-
-// State type
-type ReportState = 
-  | { status: "loading" }
-  | { status: "empty" }
-  | { status: "error"; message: string }
-  | { status: "success"; data: ReportData };
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLatestCompletedRun, useAnalysisRun } from "@/hooks/useAnalysis";
+import { analysisApi } from "@/lib/api";
 
 export default function Report() {
   const navigate = useNavigate();
-  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const runIdParam = searchParams.get("id");
 
-  const runId = useMemo(() => {
-    const q = new URLSearchParams(location.search);
-    const raw = q.get("id");
-    if (!raw) return null;
-    const n = Number(raw);
-    return Number.isFinite(n) ? n : null;
-  }, [location.search]);
+  // If an ID is provided via query string, show that run; otherwise show the latest
+  const { data: specificRun, isLoading: loadingSpecific } = useAnalysisRun(
+    runIdParam ? Number(runIdParam) : null,
+  );
+  const { data: latestRun, isLoading: loadingLatest } = useLatestCompletedRun();
 
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const run = runIdParam ? specificRun : latestRun;
+  const isLoading = runIdParam ? loadingSpecific : loadingLatest;
 
-  const [state, setState] = useState<ReportState>({ status: "loading" });
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!runId) {
-      setState({ status: "empty" });
-      return;
+  const handleDownloadPdf = async () => {
+    if (!run) return;
+    try {
+      const blob = await analysisApi.downloadPdf(run.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `analysis_report_${run.id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // TODO: toast error
     }
-
-    (async () => {
-      setState({ status: "loading" });
-      try {
-        const run = await serviceA.getAnalysisRun(runId);
-        if (cancelled) return;
-
-        if (run.status !== "completed") {
-          setState({
-            status: "success",
-            data: {
-              title: `Report for run #${run.id}`,
-              generatedAt: new Date(run.updated_at).toLocaleString(),
-              primaryDataset: run.current_file_path,
-              comparisonPeriod: run.baseline_file_path,
-              insightCount: 0,
-              reportUrl: null,
-              version: "0.1.0",
-            },
-          });
-          return;
-        }
-
-        const report = run.insight_report as any;
-        const insightCount = Array.isArray(report?.insights) ? report.insights.length : 0;
-
-        setState({
-          status: "success",
-          data: {
-            title: `Report for run #${run.id}`,
-            generatedAt: new Date(run.updated_at).toLocaleString(),
-            primaryDataset: run.current_file_path,
-            comparisonPeriod: run.baseline_file_path,
-            insightCount,
-            reportUrl: null,
-            version: "0.1.0",
-          },
-        });
-      } catch (e) {
-        if (cancelled) return;
-        const err = e as { status?: number };
-        if (err?.status === 404) {
-          setState({ status: "empty" });
-        } else if (err?.status === 403) {
-          setState({ status: "error", message: "Not authenticated. Please login again." });
-        } else {
-          setState({ status: "error", message: "Unable to load report." });
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [runId]);
-
-  useEffect(() => {
-    return () => {
-      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
-    };
-  }, [pdfUrl]);
-
-  const handleDownload = async () => {
-    if (!runId) return;
-    const blob = await serviceA.downloadAnalysisPdf(runId);
-    const url = URL.createObjectURL(blob);
-    setPdfUrl(url);
-    window.open(url, "_blank");
   };
 
-  // Loading state
-  if (state.status === "loading") {
+  if (isLoading) {
     return (
       <AppLayout>
         <div className="page-container animate-fade-in">
@@ -134,7 +51,6 @@ export default function Report() {
                 <Skeleton className="h-11 w-36" />
               </div>
             </section>
-
             <section className="section-spacing">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <Skeleton className="h-24 rounded-lg" />
@@ -142,37 +58,13 @@ export default function Report() {
                 <Skeleton className="h-24 rounded-lg" />
               </div>
             </section>
-
-            <section className="section-spacing">
-              <Skeleton className="h-[500px] w-full rounded-lg" />
-            </section>
           </div>
         </div>
       </AppLayout>
     );
   }
 
-  // Error state
-  if (state.status === "error") {
-    return (
-      <AppLayout>
-        <EmptyState
-          icon={FileText}
-          title="Unable to load report"
-          description={state.message || "An error occurred while loading the report."}
-          action={
-            <Button variant="outline" onClick={() => window.location.reload()}>
-              Try again
-            </Button>
-          }
-          className="h-[calc(100vh-3.5rem)]"
-        />
-      </AppLayout>
-    );
-  }
-
-  // Empty state - no report generated
-  if (state.status === "empty") {
+  if (!run || run.status !== "completed") {
     return (
       <AppLayout>
         <EmptyState
@@ -191,76 +83,55 @@ export default function Report() {
     );
   }
 
-  // Success state
-  const { data } = state;
+  const hasPdf = !!run.pdf_file_path;
+  const insightCount = run.insight_report?.insights?.length ?? 0;
+  const generatedAt = new Date(run.created_at).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
   return (
     <AppLayout>
       <div className="page-container animate-fade-in">
         <div className="max-w-4xl">
-          {/* Report header */}
           <section className="section-spacing">
             <div className="flex items-start justify-between gap-6">
               <div>
                 <h2 className="font-display text-2xl lg:text-3xl font-semibold text-foreground mb-3">
-                  {data.title}
+                  Analysis Report #{run.id}
                 </h2>
-                <p className="text-muted-foreground">
-                  Generated {data.generatedAt}
-                </p>
+                <p className="text-muted-foreground">Generated {generatedAt}</p>
               </div>
-              <Button 
-                className="font-medium h-11"
-                disabled={!runId}
-                onClick={handleDownload}
-              >
+              <Button className="font-medium h-11" disabled={!hasPdf} onClick={handleDownloadPdf}>
                 <Download className="w-4 h-4 mr-2" />
                 Download PDF
               </Button>
             </div>
           </section>
 
-          {/* Report metadata */}
           <section className="section-spacing">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <MetricCard
-                label="Primary dataset"
-                value={data.primaryDataset}
-              />
-              {data.comparisonPeriod && (
-                <MetricCard
-                  label="Comparison period"
-                  value={data.comparisonPeriod}
-                />
-              )}
-              <MetricCard
-                label="Insights included"
-                value={data.insightCount.toString()}
-              />
+              <MetricCard label="Status" value={run.status} />
+              <MetricCard label="Insights" value={String(insightCount)} />
+              <MetricCard label="Comparison" value={run.baseline_file_path ? "Yes" : "N/A"} />
             </div>
           </section>
 
-          {/* PDF Preview placeholder */}
-          {pdfUrl ? (
+          {hasPdf ? (
             <section className="section-spacing">
               <div className="bg-card border border-border rounded-lg overflow-hidden shadow-sm">
                 <div className="bg-muted/20 border-b border-border px-6 py-4 flex items-center gap-3">
                   <FileText className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground font-mono">
-                    Report Preview
-                  </span>
+                  <span className="text-sm text-muted-foreground font-mono">Report Preview</span>
                 </div>
                 <div className="p-10 lg:p-14 bg-background min-h-[400px] flex items-center justify-center">
                   <div className="text-center">
                     <FileText className="w-12 h-12 text-muted-foreground/40 mx-auto mb-4" />
-                    <p className="text-muted-foreground">
-                      Report preview will be displayed here
-                    </p>
-                    <Button 
-                      variant="outline" 
-                      className="mt-4"
-                      onClick={() => window.open(pdfUrl, "_blank")}
-                    >
+                    <p className="text-muted-foreground">PDF report is ready for download</p>
+                    <Button variant="outline" className="mt-4" onClick={handleDownloadPdf}>
                       Open full report
                     </Button>
                   </div>
@@ -271,23 +142,20 @@ export default function Report() {
             <section className="section-spacing">
               <div className="bg-muted/30 border border-border rounded-lg p-10 text-center">
                 <FileText className="w-12 h-12 text-muted-foreground/40 mx-auto mb-4" />
-                <p className="text-muted-foreground">
-                  Report is not available yet. If this analysis is still running, check back soon.
-                </p>
+                <p className="text-muted-foreground">PDF report not available for this analysis.</p>
               </div>
             </section>
           )}
 
-          {/* Version info */}
           <section>
             <div className="flex items-center gap-8 text-sm text-muted-foreground/70">
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4" />
-                <span>Generated {data.generatedAt}</span>
+                <span>Generated {generatedAt}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Database className="w-4 h-4" />
-                <span>Version {data.version}</span>
+                <span>Run #{run.id}</span>
               </div>
             </div>
           </section>

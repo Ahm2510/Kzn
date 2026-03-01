@@ -8,4 +8,4 @@
 **/.env
 **/.env.*
 **/node_modules
-frontend/dist
+frontend1/dist

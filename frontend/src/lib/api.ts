@@ -1,0 +1,182 @@
+/**
+ * API client for Django service_a.
+ * Handles CSRF tokens, session cookies, and typed requests.
+ */
+
+const BASE_URL = import.meta.env.VITE_SERVICE_A_URL || "http://127.0.0.1:8000";
+
+let csrfToken: string | null = null;
+
+async function fetchCsrfToken(): Promise<string> {
+  const res = await fetch(`${BASE_URL}/api/auth/csrf/`, {
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error("Failed to fetch CSRF token");
+  const data = await res.json();
+  csrfToken = data.csrfToken;
+  return csrfToken!;
+}
+
+async function getCsrfToken(): Promise<string> {
+  if (csrfToken) return csrfToken;
+  return fetchCsrfToken();
+}
+
+export function clearCsrfToken() {
+  csrfToken = null;
+}
+
+export function setCsrfToken(token: string) {
+  csrfToken = token;
+}
+
+interface RequestOptions {
+  method?: string;
+  body?: unknown;
+  formData?: FormData;
+}
+
+export async function api<T = unknown>(path: string, opts: RequestOptions = {}): Promise<T> {
+  const { method = "GET", body, formData } = opts;
+
+  const headers: Record<string, string> = {};
+
+  if (method !== "GET" && method !== "HEAD") {
+    const token = await getCsrfToken();
+    headers["X-CSRFToken"] = token;
+  }
+
+  if (body && !formData) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers,
+    credentials: "include",
+    body: formData ?? (body ? JSON.stringify(body) : undefined),
+  });
+
+  if (res.status === 204) return undefined as T;
+
+  if (!res.ok) {
+    let errorMsg = `Request failed: ${res.status}`;
+    try {
+      const errData = await res.json();
+      errorMsg = errData.error || errData.detail || errorMsg;
+    } catch {
+      // ignore parse error
+    }
+    throw new Error(errorMsg);
+  }
+
+  // Handle binary responses (PDF)
+  const contentType = res.headers.get("content-type") || "";
+  if (contentType.includes("application/pdf")) {
+    return (await res.blob()) as T;
+  }
+
+  return res.json();
+}
+
+// ── Auth ──
+
+export interface DjangoUser {
+  id: number;
+  email: string;
+  username: string;
+  is_staff: boolean;
+}
+
+export interface LoginResponse {
+  user: DjangoUser;
+  csrfToken: string;
+}
+
+export const authApi = {
+  login: (email: string, password: string) =>
+    api<LoginResponse>("/api/auth/login/", { method: "POST", body: { email, password } }),
+
+  logout: () => api("/api/auth/logout/", { method: "POST" }),
+
+  me: () => api<{ user: DjangoUser }>("/api/auth/me/"),
+};
+
+// ── Projects ──
+
+export interface Project {
+  id: number;
+  name: string;
+  owner: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export const projectsApi = {
+  list: () => api<Project[]>("/api/projects/"),
+  create: (name: string) => api<Project>("/api/projects/", { method: "POST", body: { name } }),
+  get: (id: number) => api<Project>(`/api/projects/${id}/`),
+  delete: (id: number) => api(`/api/projects/${id}/`, { method: "DELETE" }),
+};
+
+// ── Analysis Runs ──
+
+export interface AnalysisRun {
+  id: number;
+  project: number;
+  status: "pending" | "running" | "completed" | "failed";
+  current_file_path: string | null;
+  baseline_file_path: string | null;
+  cleaning_options: Record<string, boolean>;
+  insight_report: InsightReport | null;
+  pdf_file_path: string | null;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InsightReport {
+  executive_summary?: string;
+  trend_direction?: string;
+  stability?: string;
+  efficiency_signal?: string;
+  concentration_risk?: string;
+  insights?: Array<{
+    id: string;
+    title: string;
+    description: string;
+    driver: string;
+    implication: string;
+    action_direction: string;
+    confidence: string;
+    confidence_basis: string;
+    severity: "high" | "medium" | "low";
+  }>;
+  comparison?: {
+    metric_name: string;
+    current_value: string;
+    baseline_value: string;
+    absolute_change: string;
+    percent_change: string;
+  } | null;
+}
+
+export const analysisApi = {
+  list: () => api<AnalysisRun[]>("/api/analysis-runs/"),
+
+  get: (id: number) => api<AnalysisRun>(`/api/analysis-runs/${id}/`),
+
+  create: (projectId: number, currentFile: File, baselineFile?: File | null, cleaningOptions?: Record<string, boolean>, metricSchema?: string) => {
+    const fd = new FormData();
+    fd.append("project_id", String(projectId));
+    fd.append("current_file", currentFile);
+    if (baselineFile) fd.append("baseline_file", baselineFile);
+    if (cleaningOptions) fd.append("cleaning_options", JSON.stringify(cleaningOptions));
+    if (metricSchema) fd.append("metric_schema", metricSchema);
+    return api<AnalysisRun>("/api/analysis-runs/", { method: "POST", formData: fd });
+  },
+
+  delete: (id: number) => api(`/api/analysis-runs/${id}/`, { method: "DELETE" }),
+
+  downloadPdf: (id: number) => api<Blob>(`/api/analysis-runs/${id}/pdf/`),
+};

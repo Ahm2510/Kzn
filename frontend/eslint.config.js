@@ -20,15 +20,7 @@ export default tseslint.config(
     rules: {
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
-      "react-hooks/set-state-in-effect": "off",
-      "react-hooks/purity": "off",
       "@typescript-eslint/no-unused-vars": "off",
-    },
-  },
-  {
-    files: ["src/components/ui/**/*.{ts,tsx}", "src/hooks/**/*.{ts,tsx}"],
-    rules: {
-      "react-refresh/only-export-components": "off",
     },
   },
 );

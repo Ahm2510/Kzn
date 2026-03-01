@@ -1,111 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GitCompare, Database } from "lucide-react";
-import { useLocation, useNavigate } from "react-router-dom";
-
-import * as serviceA from "@/api/serviceA";
-
-// Checklist §8: Only ONE metric — current, baseline, absolute change, percent change
-interface ComparisonData {
-  metricName: string;
-  currentValue: string;
-  baselineValue: string;
-  absoluteChange: string;
-  percentChange: string;
-}
-
-type ComparisonState =
-  | { status: "loading" }
-  | { status: "empty" }
-  | { status: "error"; message: string }
-  | { status: "success"; data: ComparisonData };
+import { useNavigate } from "react-router-dom";
+import { useLatestCompletedRun } from "@/hooks/useAnalysis";
 
 export default function Comparison() {
   const navigate = useNavigate();
-  const location = useLocation();
+  const { data: run, isLoading, error } = useLatestCompletedRun();
 
-  const runId = useMemo(() => {
-    const q = new URLSearchParams(location.search);
-    const raw = q.get("id");
-    if (!raw) return null;
-    const n = Number(raw);
-    return Number.isFinite(n) ? n : null;
-  }, [location.search]);
-
-  const [state, setState] = useState<ComparisonState>({ status: "loading" });
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const pickDelta = (report: any): any | null => {
-      if (!report) return null;
-      if (report.metric_delta) return report.metric_delta;
-      if (Array.isArray(report.metric_deltas) && report.metric_deltas.length > 0) return report.metric_deltas[0];
-      if (Array.isArray(report.deltas) && report.deltas.length > 0) return report.deltas[0];
-      return null;
-    };
-
-    (async () => {
-      if (!runId) {
-        setState({ status: "empty" });
-        return;
-      }
-
-      setState({ status: "loading" });
-      try {
-        const run = await serviceA.getAnalysisRun(runId);
-        if (cancelled) return;
-
-        if (!run.baseline_file_path) {
-          setState({ status: "empty" });
-          return;
-        }
-
-        const report = run.insight_report as any;
-        const delta = pickDelta(report);
-        if (!delta) {
-          setState({ status: "error", message: "No comparison metric available." });
-          return;
-        }
-
-        const metricName = String(delta.metric ?? delta.metric_name ?? delta.name ?? "Metric");
-        const currentValue = String(delta.current_value ?? delta.current ?? "");
-        const baselineValue = String(delta.baseline_value ?? delta.baseline ?? "");
-        const absoluteChange = String(delta.absolute_change ?? delta.absolute ?? delta.delta ?? "");
-        const percentChange = String(delta.percent_change ?? delta.percent ?? "");
-
-        setState({
-          status: "success",
-          data: {
-            metricName,
-            currentValue,
-            baselineValue,
-            absoluteChange,
-            percentChange,
-          },
-        });
-      } catch (e) {
-        if (cancelled) return;
-        const err = e as { status?: number };
-        if (err?.status === 403) {
-          setState({ status: "error", message: "Not authenticated. Please login again." });
-        } else {
-          setState({ status: "error", message: "Unable to load comparison data." });
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [runId]);
-
-  // Loading state
-  if (state.status === "loading") {
+  if (isLoading) {
     return (
       <AppLayout>
         <div className="page-container animate-fade-in">
@@ -124,27 +30,23 @@ export default function Comparison() {
     );
   }
 
-  // Error state
-  if (state.status === "error") {
+  if (error) {
     return (
       <AppLayout>
         <EmptyState
           icon={GitCompare}
           title="Unable to load comparison"
-          description={state.message || "An error occurred while loading comparison data."}
-          action={
-            <Button variant="outline" onClick={() => window.location.reload()}>
-              Try again
-            </Button>
-          }
+          description={error.message || "An error occurred while loading comparison data."}
+          action={<Button variant="outline" onClick={() => window.location.reload()}>Try again</Button>}
           className="h-[calc(100vh-3.5rem)]"
         />
       </AppLayout>
     );
   }
 
-  // Empty state — no baseline dataset provided
-  if (state.status === "empty") {
+  const comparison = run?.insight_report?.comparison;
+
+  if (!comparison) {
     return (
       <AppLayout>
         <EmptyState
@@ -163,27 +65,21 @@ export default function Comparison() {
     );
   }
 
-  // Success state — single metric comparison
-  const { data } = state;
-
   return (
     <AppLayout>
       <div className="page-container animate-fade-in">
-        {/* Metric label */}
         <section className="section-spacing">
           <div className="bg-card border border-border rounded-lg p-5 space-y-1">
             <p className="text-xs text-muted-foreground uppercase tracking-wider">Comparing Metric</p>
-            <p className="text-base font-semibold text-foreground">{data.metricName}</p>
+            <p className="text-base font-semibold text-foreground">{comparison.metric_name}</p>
           </div>
         </section>
-
-        {/* Four cards: Current, Baseline, Absolute Change, % Change */}
         <section className="section-spacing">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <MetricCard label="Current" value={data.currentValue} />
-            <MetricCard label="Baseline" value={data.baselineValue} />
-            <MetricCard label="Absolute Change" value={data.absoluteChange} />
-            <MetricCard label="% Change" value={data.percentChange} />
+            <MetricCard label="Current" value={comparison.current_value} />
+            <MetricCard label="Baseline" value={comparison.baseline_value} />
+            <MetricCard label="Absolute Change" value={comparison.absolute_change} />
+            <MetricCard label="% Change" value={comparison.percent_change} />
           </div>
         </section>
       </div>

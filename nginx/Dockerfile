@@ -2,6 +2,7 @@ FROM node:20-alpine AS frontend_build
 
 WORKDIR /app
 
+# Build the primary frontend app
 COPY frontend/package.json frontend/package-lock.json ./frontend/
 RUN cd frontend && npm ci
 
