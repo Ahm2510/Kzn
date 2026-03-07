@@ -65,10 +65,31 @@ export default function Overview() {
 
   const report = run.insight_report;
   const bi = report?.business_insights || null;
+  const hasBI =
+    !!bi &&
+    !!(
+      bi.executive_takeaways ||
+      bi.executive_summary ||
+      bi.trend ||
+      bi.stability ||
+      bi.efficiency ||
+      bi.concentration
+    );
 
   return (
     <AppLayout>
       <div className="page-container animate-fade-in">
+        <section className="section-spacing">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
+              Data Mode
+            </p>
+            <StatusBadge
+              status={hasBI ? "complete" : "idle"}
+              label={hasBI ? "Business Insights Active" : "Legacy Fields"}
+            />
+          </div>
+        </section>
         {bi?.executive_takeaways && Array.isArray(bi.executive_takeaways) && bi.executive_takeaways.length > 0 && (
           <section className="section-spacing">
             <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">Executive Takeaways</h3>
@@ -85,7 +106,9 @@ export default function Overview() {
         <section className="section-spacing">
           <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">Executive Summary</h3>
           <div className="bg-card border border-border rounded-lg p-8">
-            <p className="text-foreground leading-reading text-base">{report.summary || "No summary available."}</p>
+            <p className="text-foreground leading-reading text-base">
+              {report.summary || report.executive_summary || "No summary available."}
+            </p>
           </div>
         </section>
 
@@ -94,19 +117,19 @@ export default function Overview() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-card border border-border rounded-lg p-5 space-y-2">
               <p className="text-xs text-muted-foreground">Trend Direction</p>
-              <StatusBadge status="complete" label={bi?.trend?.direction || "—"} />
+              <StatusBadge status="complete" label={bi?.trend?.direction || report.trend_direction || "—"} />
             </div>
             <div className="bg-card border border-border rounded-lg p-5 space-y-2">
               <p className="text-xs text-muted-foreground">Stability</p>
-              <StatusBadge status="complete" label={bi?.stability?.category || "—"} />
+              <StatusBadge status="complete" label={bi?.stability?.category || report.stability || "—"} />
             </div>
             <div className="bg-card border border-border rounded-lg p-5 space-y-2">
               <p className="text-xs text-muted-foreground">Efficiency Signal</p>
-              <StatusBadge status="complete" label={bi?.efficiency?.signal || "—"} />
+              <StatusBadge status="complete" label={bi?.efficiency?.signal || report.efficiency_signal || "—"} />
             </div>
             <div className="bg-card border border-border rounded-lg p-5 space-y-2">
               <p className="text-xs text-muted-foreground">Concentration Risk</p>
-              <StatusBadge status="complete" label={bi?.concentration?.risk_level || "—"} />
+              <StatusBadge status="complete" label={bi?.concentration?.risk_level || report.concentration_risk || "—"} />
             </div>
           </div>
         </section>

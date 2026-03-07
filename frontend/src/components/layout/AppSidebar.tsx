@@ -47,7 +47,7 @@ export function AppSidebar() {
       <div className="h-14 flex items-center px-4 border-b border-sidebar-border">
         <Link to="/" className="flex items-center gap-2 group">
           <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold shrink-0">
-            K
+            K.
           </div>
           {!collapsed && (
             <span className="font-display font-semibold text-sidebar-foreground tracking-tight">
