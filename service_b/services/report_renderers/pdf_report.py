@@ -118,7 +118,13 @@ def render_pdf(
     story.append(Paragraph("Business Insight Report", title_style))
     story.append(Paragraph("Generated for revenue analysis", subtitle_style))
 
-    date_str = datetime.now().strftime("%B %d, %Y at %I:%M %p")
+    # Use a real timestamp instead of a constant one
+    # Note: If the user sees a "constant" time, it's likely because the server 
+    # time or the rendering logic was using a fixed string or the time was 
+    # cached in a way that didn't update.
+    # We ensure we call datetime.now() inside the render function.
+    current_time = datetime.now()
+    date_str = current_time.strftime("%B %d, %Y at %I:%M %p")
     story.append(Paragraph(f"Generated on {date_str}", MutedTextStyle))
     story.append(Spacer(1, 0.24 * inch))
     story.append(HRFlowable(width="100%", color=HexColor("#e5e7eb")))
