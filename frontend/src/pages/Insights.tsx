@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Lightbulb, Database } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useLatestCompletedRun } from "@/hooks/useAnalysis";
+import { extractInsights } from "@/utils/insights";
 
 export default function Insights() {
   const navigate = useNavigate();
@@ -42,7 +43,7 @@ export default function Insights() {
     );
   }
 
-  const insights = run?.insight_report?.insights;
+  const insights = extractInsights(run?.insight_report || {});
 
   if (!insights || insights.length === 0) {
     return (
@@ -71,11 +72,11 @@ export default function Insights() {
             {insights.length} insight{insights.length !== 1 ? "s" : ""} generated
           </p>
           <div className="space-y-4">
-            {insights.map((insight) => (
+            {insights.map((insight, index) => (
               <InsightCard
-                key={insight.id}
-                title={insight.title}
-                description={insight.description}
+                key={insight.code || index}
+                title={insight.title || 'Untitled Insight'}
+                description={insight.description || ''}
                 driver={insight.driver}
                 implication={insight.implication}
                 actionDirection={insight.action_direction}

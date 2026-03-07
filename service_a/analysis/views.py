@@ -66,9 +66,16 @@ def _run_analysis_background(analysis_run_id, current_file_path, baseline_file_p
 
         if pdf_saved:
             analysis_run.pdf_file_path = str(local_pdf_path.absolute())
-
+        
         analysis_run.status = 'completed'
-        analysis_run.insight_report = result.get('report')
+        base_report = result.get('report') or {}
+        bi = result.get('business_insights')
+        if bi:
+            merged_report = dict(base_report)
+            merged_report['business_insights'] = bi
+            analysis_run.insight_report = merged_report
+        else:
+            analysis_run.insight_report = base_report
         analysis_run.save()
 
     except Exception as e:

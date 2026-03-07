@@ -136,11 +136,60 @@ export interface AnalysisRun {
 }
 
 export interface InsightReport {
+  summary?: string;
   executive_summary?: string;
   trend_direction?: string;
   stability?: string;
   efficiency_signal?: string;
   concentration_risk?: string;
+  business_insights?: {
+    executive_takeaways?: string[];
+    scope?: {
+      analyzed?: string[];
+      not_analyzed?: string[];
+    };
+    trend?: {
+      direction?: string;
+      description?: string;
+      confidence?: string;
+      driver?: string;
+      implication?: string;
+      action_direction?: string;
+      confidence_basis?: string;
+    };
+    stability?: {
+      category?: string;
+      coefficient_of_variation?: number;
+      description?: string;
+      driver?: string;
+      implication?: string;
+      action_direction?: string;
+      confidence?: string;
+      confidence_basis?: string;
+    };
+    efficiency?: {
+      signal?: string;
+      description?: string;
+      change_percent?: number;
+      driver?: string;
+      implication?: string;
+      action_direction?: string;
+      confidence?: string;
+      confidence_basis?: string;
+    };
+    concentration?: {
+      top_10_percent_contribution?: number;
+      risk_level?: string;
+      description?: string;
+      driver?: string;
+      implication?: string;
+      action_direction?: string;
+      confidence?: string;
+      confidence_basis?: string;
+    };
+    executive_summary?: string;
+    meta?: Record<string, any>;
+  };
   insights?: Array<{
     id: string;
     title: string;
