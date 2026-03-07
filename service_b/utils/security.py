@@ -20,7 +20,7 @@ async def require_internal_auth(
 ) -> bool:
     """
     Dependency to require internal endpoint authentication.
-    
+
     Checks for X-Internal-Secret header matching INTERNAL_SECRET env var.
     Can be bypassed in dev by setting ALLOW_INTERNAL_PUBLIC=true.
 
@@ -28,7 +28,7 @@ async def require_internal_auth(
         Service B is an internal service and is not user-facing.
         Authentication for internal endpoints is enforced via X-Internal-Secret.
         User authentication and authorization are handled by Service A.
-    
+
     Usage:
         @router.get("/internal/endpoint")
         async def internal_endpoint(auth: bool = Depends(require_internal_auth)):
@@ -37,27 +37,27 @@ async def require_internal_auth(
     # Allow public access in dev if explicitly enabled
     if settings.ALLOW_INTERNAL_PUBLIC and settings.ENVIRONMENT == "development":
         return True
-    
+
     # Require INTERNAL_SECRET to be configured
     if not settings.INTERNAL_SECRET:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal authentication not configured. Set INTERNAL_SECRET env var.",
         )
-    
+
     # Validate secret
     if not x_internal_secret:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing internal secret",
         )
-    
+
     if str(x_internal_secret).strip() != str(settings.INTERNAL_SECRET).strip():
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Invalid internal secret",
         )
-    
+
     return True
 
 
@@ -95,7 +95,7 @@ def verify_token(token: Optional[str]) -> Dict[str, Any]:
             "workspace_id": workspace_id,
             "is_authenticated": True,
         }
-    
+
     # Fallback to using the token as user_id
     return {
         "user_id": token,

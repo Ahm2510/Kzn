@@ -190,7 +190,11 @@ if ENVIRONMENT == 'development':
     CSRF_TRUSTED_ORIGINS = [
         'http://localhost:*',
         'http://127.0.0.1:*',
+        "http://157.245.107.106"
     ]
+
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
 else:
     _csrf_origins = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
     CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in _csrf_origins.split(',') if origin.strip()]
