@@ -73,6 +73,13 @@ export default function Comparison() {
             <p className="text-xs text-muted-foreground uppercase tracking-wider">Comparing Metric</p>
             <p className="text-base font-semibold text-foreground">{comparison.metric_name}</p>
           </div>
+          {/* Test button - always visible when comparison exists */}
+          <div className="mt-4">
+            <Button onClick={() => navigate("/datasets")}>
+              <Database className="w-4 h-4 mr-2" />
+              Upload datasets
+            </Button>
+          </div>
         </section>
         <section className="section-spacing">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

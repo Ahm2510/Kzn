@@ -17,7 +17,7 @@ def render_pdf(
     business_insights: Optional[Dict[str, Any]] = None,
 ) -> None:
     """
-    Render a professional PDF report from an InsightReport.
+    Render a professional executive PDF report from an InsightReport.
     Visual-only layout; inputs, outputs and call pattern are unchanged.
     """
     doc = SimpleDocTemplate(
@@ -49,8 +49,8 @@ def render_pdf(
     SubtitleStyle = ParagraphStyle(
         "Subtitle",
         parent=styles["Normal"],
-        fontSize=13,
-        leading=16,
+        fontSize=11,
+        leading=14,
         spaceAfter=4,
         textColor=HexColor("#666666"),
         fontName="Helvetica",
@@ -88,6 +88,16 @@ def render_pdf(
         fontName="Helvetica",
     )
 
+    SummaryStyle = ParagraphStyle(
+        "Summary",
+        parent=styles["Normal"],
+        fontSize=12,
+        leading=18,
+        spaceAfter=12,
+        textColor=HexColor("#1a1a1a"),
+        fontName="Helvetica",
+    )
+
     MutedTextStyle = ParagraphStyle(
         "MutedText",
         parent=styles["Normal"],
@@ -97,15 +107,7 @@ def render_pdf(
         fontName="Helvetica-Oblique",
     )
 
-    BulletStyle = ParagraphStyle(
-        "Bullet",
-        parent=BodyStyle,
-        leftIndent=12,
-        bulletIndent=-12,
-        spaceAfter=3,
-    )
-
-    # Legacy compatibility
+    # Legacy compatibility mappings
     title_style = TitleStyle
     subtitle_style = SubtitleStyle
     section_heading_style = HeadingStyle
@@ -113,16 +115,11 @@ def render_pdf(
     small_muted_style = MutedTextStyle
 
     # ------------------------------------------------------------------
-    # Header
+    # Section 1 — Header
     # ------------------------------------------------------------------
     story.append(Paragraph("Business Insight Report", title_style))
     story.append(Paragraph("Generated for revenue analysis", subtitle_style))
 
-    # Use a real timestamp instead of a constant one
-    # Note: If the user sees a "constant" time, it's likely because the server 
-    # time or the rendering logic was using a fixed string or the time was 
-    # cached in a way that didn't update.
-    # We ensure we call datetime.now() inside the render function.
     current_time = datetime.now()
     date_str = current_time.strftime("%B %d, %Y at %I:%M %p")
     story.append(Paragraph(f"Generated on {date_str}", MutedTextStyle))
@@ -131,7 +128,7 @@ def render_pdf(
     story.append(Spacer(1, 0.18 * inch))
 
     # ------------------------------------------------------------------
-    # Executive Takeaways + Scope (if business_insights present)
+    # Section 2 — Executive Takeaways (if business_insights present)
     # ------------------------------------------------------------------
     if business_insights:
         try:
@@ -146,6 +143,7 @@ def render_pdf(
                     "ExecBullet",
                     parent=body_style,
                     leftIndent=10,
+                    leading=16,
                 )
                 for bullet in executive_takeaways[:6]:
                     if bullet:
@@ -154,39 +152,20 @@ def render_pdf(
                 story.append(Spacer(1, 0.24 * inch))
                 story.append(HRFlowable(width="100%", color=HexColor("#e5e7eb")))
                 story.append(Spacer(1, 0.18 * inch))
-
-            scope = business_insights.get("scope")
-            if scope and isinstance(scope, dict):
-                analyzed = scope.get("analyzed", [])
-                not_analyzed = scope.get("not_analyzed", [])
-                if analyzed or not_analyzed:
-                    scope_style = ParagraphStyle(
-                        "ScopeStyle",
-                        parent=small_muted_style,
-                        leading=12,
-                    )
-                    scope_text = ""
-                    if analyzed:
-                        scope_text += f"<b>Analyzed:</b> {', '.join(analyzed)}. "
-                    if not_analyzed:
-                        scope_text += f"<b>Not analyzed:</b> {', '.join(not_analyzed)}."
-                    story.append(Paragraph(scope_text, scope_style))
-                    story.append(Spacer(1, 0.24 * inch))
         except Exception:
-            # Defensive - never fail PDF generation for business insights
             pass
 
     # ------------------------------------------------------------------
-    # Summary section
+    # Section 3 — Summary
     # ------------------------------------------------------------------
     story.append(Paragraph("Summary", section_heading_style))
-    story.append(Paragraph(report.summary, body_style))
+    story.append(Paragraph(report.summary, SummaryStyle))
     story.append(Spacer(1, 0.24 * inch))
     story.append(HRFlowable(width="100%", color=HexColor("#e5e7eb")))
     story.append(Spacer(1, 0.18 * inch))
 
     # ------------------------------------------------------------------
-    # Analysis Scope (static)
+    # Section 4 — Analysis Scope (static text)
     # ------------------------------------------------------------------
     story.append(Paragraph("Analysis Scope", section_heading_style))
     story.append(Paragraph("<b>Analyzed</b>", SubheadingStyle))
@@ -199,7 +178,7 @@ def render_pdf(
     story.append(Spacer(1, 0.18 * inch))
 
     # ------------------------------------------------------------------
-    # Key Metrics section
+    # Section 5 — Key Metrics
     # ------------------------------------------------------------------
     story.append(Paragraph("Key Metrics", HeadingStyle))
 
@@ -207,6 +186,7 @@ def render_pdf(
         try:
             rows = []
             has_baseline = any(getattr(m, "baseline", 0) and getattr(m, "baseline", 0) != 0 for m in report.metric_deltas)
+            
             if not has_baseline:
                 rows.append(["Metric", "Value"])
                 for m in report.metric_deltas:
@@ -221,6 +201,7 @@ def render_pdf(
                         f"${m.baseline:,.2f}",
                         f"{sign}{m.percent_change:.1f}%",
                     ])
+            
             t = Table(rows, hAlign="LEFT")
             t.setStyle(TableStyle([
                 ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
@@ -230,6 +211,7 @@ def render_pdf(
                 ("FONTSIZE", (0, 1), (-1, -1), 11),
                 ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
                 ("LINEBELOW", (0, 0), (-1, 0), 0.5, HexColor("#e5e7eb")),
+                ("GRID", (0, 0), (-1, -1), 0.5, HexColor("#f3f4f6")),
             ]))
             story.append(t)
         except Exception:
@@ -237,65 +219,53 @@ def render_pdf(
                 story.append(Paragraph(f"{m.name.title()}: ${m.current:,.2f}", BodyStyle))
     else:
         story.append(Paragraph("<i>No metrics available.</i>", BodyStyle))
-    story.append(Spacer(1, 0.3 * inch))
+    
     story.append(Spacer(1, 0.24 * inch))
     story.append(HRFlowable(width="100%", color=HexColor("#e5e7eb")))
     story.append(Spacer(1, 0.18 * inch))
 
     # ------------------------------------------------------------------
-    # Insights section
+    # Section 6 — Insights
     # ------------------------------------------------------------------
     story.append(Paragraph("Insights", HeadingStyle))
 
     if report.insights:
         for ins in report.insights:
-            # Severity badge colors
             severity_colors = {
                 "high": "#dc2626",      # Red
                 "medium": "#f59e0b",    # Orange  
-                "low": "#3b82f6",      # Blue
+                "low": "#3b82f6",       # Blue
             }
             severity_color = severity_colors.get(ins.severity.lower(), "#6b7280")
 
-            # Insight header with severity badge
             insight_header = (
                 f"<font name='Helvetica-Bold' size='13' color='{severity_color}'>"
                 f"[{ins.severity.upper()}]</font> "
                 f"<font name='Helvetica-Bold' size='13'>{ins.title}</font>"
             )
             story.append(Paragraph(insight_header, BodyStyle))
-            story.append(Spacer(1, 0.12 * inch))
+            story.append(Spacer(1, 0.06 * inch))
             
-            # Description
-            story.append(Paragraph(ins.description, BodyStyle))
-            story.append(Spacer(1, 0.12 * inch))
+            story.append(Paragraph(f"<b>Observation:</b> {ins.description}", BodyStyle))
             
-            # Enriched fields (if available from business insights overlay)
             if hasattr(ins, 'driver') and ins.driver:
-                story.append(Paragraph(f"<i>Driver:</i> {ins.driver}", MutedTextStyle))
+                story.append(Paragraph(f"<b>Driver:</b> {ins.driver}", BodyStyle))
             if hasattr(ins, 'implication') and ins.implication:
-                story.append(Paragraph(f"<i>Implication:</i> {ins.implication}", MutedTextStyle))
+                story.append(Paragraph(f"<b>Implication:</b> {ins.implication}", BodyStyle))
             if hasattr(ins, 'action_direction') and ins.action_direction:
-                story.append(Paragraph(f"<i>Action Direction:</i> {ins.action_direction}", MutedTextStyle))
-            
-            # Confidence with basis
+                story.append(Paragraph(f"<b>Action Direction:</b> {ins.action_direction}", BodyStyle))
             if hasattr(ins, 'confidence') and ins.confidence:
-                conf_text = f"<i>Confidence:</i> {ins.confidence}"
+                conf_text = f"<b>Confidence:</b> {ins.confidence}"
                 if hasattr(ins, 'confidence_basis') and ins.confidence_basis:
                     conf_text += f" ({ins.confidence_basis})"
-                story.append(Paragraph(conf_text, MutedTextStyle))
+                story.append(Paragraph(conf_text, BodyStyle))
             
-            story.append(Spacer(1, 0.24 * inch))
+            story.append(Spacer(1, 0.18 * inch))
     else:
-        story.append(
-            Paragraph(
-                "<i>No significant insights detected in the analysis.</i>",
-                BodyStyle,
-            )
-        )
+        story.append(Paragraph("<i>No significant insights detected in the analysis.</i>", BodyStyle))
 
     # ------------------------------------------------------------------
-    # Business Insights detailed sections (if present)
+    # Section 7 — Business Interpretation (if business_insights present)
     # ------------------------------------------------------------------
     if business_insights:
         try:
@@ -308,60 +278,25 @@ def render_pdf(
             def render_enriched_insight(name: str, insight: dict) -> None:
                 if not insight:
                     return
-                
-                # Section heading
                 story.append(Paragraph(name, SubheadingStyle))
-                story.append(Spacer(1, 0.12 * inch))
-                
-                # Description
                 if insight.get("description"):
                     story.append(Paragraph(insight["description"], BodyStyle))
-                    story.append(Spacer(1, 0.12 * inch))
-
-                # Two-column layout for Driver | Implication
-                driver = insight.get("driver")
-                implication = insight.get("implication")
-                if driver or implication:
-                    if driver:
-                        story.append(Paragraph(f"<i>Driver:</i> {driver}", MutedTextStyle))
-                    if implication:
-                        story.append(Paragraph(f"<i>Implication:</i> {implication}", MutedTextStyle))
-                    story.append(Spacer(1, 0.12 * inch))
-
-                # Action Direction
-                if insight.get("action_direction"):
-                    story.append(Paragraph(f"<i>Action Direction:</i> {insight['action_direction']}", MutedTextStyle))
-                    story.append(Spacer(1, 0.12 * inch))
-
-                # Confidence with basis
-                confidence = insight.get("confidence")
-                confidence_basis = insight.get("confidence_basis")
-                if confidence:
-                    conf_text = f"<i>Confidence:</i> {confidence}"
-                    if confidence_basis:
-                        conf_text += f" ({confidence_basis})"
-                    story.append(Paragraph(conf_text, MutedTextStyle))
-
-                story.append(Spacer(1, 0.18 * inch))
+                story.append(Spacer(1, 0.12 * inch))
 
             render_enriched_insight("Trend Analysis", business_insights.get("trend"))
-            render_enriched_insight(
-                "Revenue Stability", business_insights.get("stability")
-            )
-            render_enriched_insight(
-                "Revenue Efficiency", business_insights.get("efficiency")
-            )
-            render_enriched_insight(
-                "Revenue Concentration", business_insights.get("concentration")
-            )
+            render_enriched_insight("Revenue Stability", business_insights.get("stability"))
+            render_enriched_insight("Revenue Efficiency", business_insights.get("efficiency"))
+            render_enriched_insight("Revenue Concentration", business_insights.get("concentration"))
 
+            # ------------------------------------------------------------------
+            # Section 8 — Executive Summary (Final)
+            # ------------------------------------------------------------------
             exec_summary = business_insights.get("executive_summary")
             if exec_summary:
-                story.append(Spacer(1, 0.12 * inch))
+                story.append(Spacer(1, 0.24 * inch))
                 story.append(Paragraph("Executive Summary", section_heading_style))
-                story.append(Paragraph(exec_summary, BodyStyle))
+                story.append(Paragraph(exec_summary, SummaryStyle))
         except Exception:
-            # Defensive - never fail PDF generation for business insights
             pass
 
     # Build PDF (IO + layout only; no contract changes)

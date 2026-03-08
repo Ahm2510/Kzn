@@ -5,11 +5,11 @@ export type InsightSeverity = "high" | "medium" | "low";
 interface InsightCardProps {
   title: string;
   description: string;
-  driver?: string;
-  implication?: string;
-  actionDirection?: string;
-  confidence?: string;
-  confidenceBasis?: string;
+  driver: string;
+  implication: string;
+  actionDirection: string;
+  confidence: string;
+  confidenceBasis: string;
   severity: InsightSeverity;
   className?: string;
 }
@@ -41,16 +41,9 @@ export function InsightCard({
           <h4 className="font-display font-semibold text-foreground leading-snug">
             {title}
           </h4>
-          {confidence && (
-            <span className={cn(
-              "shrink-0 text-xs font-mono px-2 py-0.5 rounded",
-              confidence.toUpperCase() === "HIGH" && "bg-destructive/10 text-destructive",
-              confidence.toUpperCase() === "MEDIUM" && "bg-gold/10 text-gold",
-              confidence.toUpperCase() === "LOW" && "bg-primary/10 text-primary"
-            )}>
-              {confidence.toUpperCase()}
-            </span>
-          )}
+          <span className="shrink-0 text-xs font-mono text-muted-foreground bg-muted/50 px-2 py-0.5 rounded">
+            {confidence}
+          </span>
         </div>
 
         {/* Description */}
@@ -58,35 +51,25 @@ export function InsightCard({
           {description}
         </p>
 
-        {/* Structured fields - conditional rendering */}
-        {(driver || implication || actionDirection || confidenceBasis) && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-border/60">
-            {driver && (
-              <div className="text-xs">
-                <span className="text-muted-foreground">Driver: </span>
-                <span className="text-foreground">{driver}</span>
-              </div>
-            )}
-            {implication && (
-              <div className="text-xs">
-                <span className="text-muted-foreground">Implication: </span>
-                <span className="text-foreground">{implication}</span>
-              </div>
-            )}
-            {actionDirection && (
-              <div className="text-xs">
-                <span className="text-muted-foreground">Action: </span>
-                <span className="text-primary font-medium">{actionDirection}</span>
-              </div>
-            )}
-            {confidenceBasis && (
-              <div className="text-xs">
-                <span className="text-muted-foreground">Confidence Basis: </span>
-                <span className="text-foreground">{confidenceBasis}</span>
-              </div>
-            )}
+        {/* Structured fields */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-border/60">
+          <div className="text-xs">
+            <span className="text-muted-foreground">Driver: </span>
+            <span className="text-foreground">{driver}</span>
           </div>
-        )}
+          <div className="text-xs">
+            <span className="text-muted-foreground">Implication: </span>
+            <span className="text-foreground">{implication}</span>
+          </div>
+          <div className="text-xs">
+            <span className="text-muted-foreground">Action: </span>
+            <span className="text-primary font-medium">{actionDirection}</span>
+          </div>
+          <div className="text-xs">
+            <span className="text-muted-foreground">Confidence Basis: </span>
+            <span className="text-foreground">{confidenceBasis}</span>
+          </div>
+        </div>
       </div>
     </div>
   );
