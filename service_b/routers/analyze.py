@@ -112,7 +112,7 @@ def _apply_revenue_fallback(df: pd.DataFrame) -> pd.DataFrame:
     if any(syn in cols_lower for syn in revenue_synonyms):
         return df
 
-    # 2. Look for Quantity and UnitPrice candidates (case-insensitive)
+    # 2. Look for Quantity and UnitPrice candidates
     qty_candidates = ["quantity", "qty", "count", "units"]
     price_candidates = ["unitprice", "price", "unit_price", "rate"]
     
@@ -124,29 +124,17 @@ def _apply_revenue_fallback(df: pd.DataFrame) -> pd.DataFrame:
             # 3. Ensure numeric safety
             qty_series = pd.to_numeric(df[found_qty_col], errors="coerce")
             price_series = pd.to_numeric(df[found_price_col], errors="coerce")
-
-            valid_mask = qty_series.notna() & price_series.notna()
-            invalid_rows = int((~valid_mask).sum())
-
-            if invalid_rows > 0:
-                logger.info(
-                    "Dropping %d rows where revenue fallback could not be computed "
-                    "from %s * %s",
-                    invalid_rows,
-                    found_qty_col,
-                    found_price_col,
-                )
-
-            # 4. Drop rows where multiplication cannot be performed
-            df = df.loc[valid_mask].copy()
-            qty_series = qty_series.loc[valid_mask]
-            price_series = price_series.loc[valid_mask]
-
-            # 5. Compute Revenue (capitalized; later normalized to 'revenue')
+            
+            # 4. Compute Revenue
             df["Revenue"] = qty_series * price_series
+            
+            # 5. Fill NaN with 0 to avoid breaking analysis logic downstream
+            df["Revenue"] = df["Revenue"].fillna(0.0)
+            
+            logger.info(f"Revenue column generated from {found_qty_col} * {found_price_col}")
         except Exception as e:
             logger.error(f"Failed to compute revenue fallback: {str(e)}")
-
+            
     return df
 
 

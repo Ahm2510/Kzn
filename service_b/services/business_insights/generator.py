@@ -214,72 +214,33 @@ class BusinessInsightGenerator:
         )
 
     def generate(
-        self,
-        report: InsightReport,
-        current_df: pd.DataFrame,
-        baseline_df: Optional[pd.DataFrame],
-        revenue_column: str,
-        baseline_revenue_column: Optional[str] = None,
+        self, report: InsightReport, current_df: pd.DataFrame, baseline_df: Optional[pd.DataFrame],
+        revenue_column: str, baseline_revenue_column: Optional[str] = None
     ) -> Optional[BusinessInsights]:
-        """
-        Build additive business insights on top of the base InsightReport.
-        Uses only observed data; never changes the base report schema.
-        """
         try:
-            rev_delta = next(
-                (d for d in report.metric_deltas if d.name.lower() == "revenue"),
-                None,
-            )
-            if not rev_delta:
-                return None
-
+            rev_delta = next((d for d in report.metric_deltas if d.name.lower() == "revenue"), None)
+            if not rev_delta: return None
+            
             n = len(current_df)
             trend = self._generate_trend_insight(rev_delta, baseline_df is not None)
             stability = self._generate_stability_insight(current_df, revenue_column)
-            efficiency = self._generate_efficiency_insight(
-                rev_delta, baseline_df is not None
-            )
-            concentration = self._generate_concentration_insight(
-                current_df, revenue_column
-            )
-
-            if trend:
-                trend = self.enrich_trend_insight(trend, rev_delta, n)
-            if stability:
-                stability = self.enrich_stability_insight(stability, n)
-            if efficiency:
-                efficiency = self.enrich_efficiency_insight(efficiency, n)
-            if concentration:
-                concentration = self.enrich_concentration_insight(concentration, n)
-
-            exec_summary = self._generate_executive_summary(
-                rev_delta, trend, stability, efficiency, concentration
-            )
-            takeaways = self.build_executive_takeaways(
-                rev_delta, trend, stability, efficiency, concentration
-            )
-
-            # Product-level ecommerce insights (additive, text-only)
-            product_bullets = self._build_product_insights(
-                current_df=current_df,
-                baseline_df=baseline_df,
-                revenue_column=revenue_column,
-                baseline_revenue_column=baseline_revenue_column,
-            )
-            if product_bullets:
-                takeaways.extend(product_bullets)
-
+            efficiency = self._generate_efficiency_insight(rev_delta, baseline_df is not None)
+            concentration = self._generate_concentration_insight(current_df, revenue_column)
+            
+            if trend: trend = self.enrich_trend_insight(trend, rev_delta, n)
+            if stability: stability = self.enrich_stability_insight(stability, n)
+            if efficiency: efficiency = self.enrich_efficiency_insight(efficiency, n) # Not enriched in this version
+            if concentration: concentration = self.enrich_concentration_insight(concentration, n)
+            
+            exec_summary = self._generate_executive_summary(rev_delta, trend, stability, efficiency, concentration)
+            takeaways = self.build_executive_takeaways(rev_delta, trend, stability, efficiency, concentration)
+            
             return BusinessInsights(
-                executive_takeaways=takeaways,
-                scope=self.build_scope_block(),
-                trend=trend,
-                stability=stability,
-                efficiency=efficiency,
-                concentration=concentration,
-                executive_summary=exec_summary,
+                executive_takeaways=takeaways, scope=self.build_scope_block(),
+                trend=trend, stability=stability, efficiency=efficiency, concentration=concentration,
+                executive_summary=exec_summary
             )
-        except Exception:
-            return None
+        except Exception: return None
 
     def _generate_trend_insight(self, delta: MetricDelta, has_baseline: bool) -> Optional[TrendInsight]:
         if not has_baseline or delta.baseline == 0: return None
@@ -318,140 +279,8 @@ class BusinessInsightGenerator:
         else: risk, desc = "low", f"Stability: revenue is well-distributed (top 10% = {contrib:.1f}%)."
         return ConcentrationInsight(top_10_percent_contribution=round(contrib, 2), risk_level=risk, description=desc)
 
-    def _generate_executive_summary(
-        self,
-        delta: MetricDelta,
-        t: Optional[TrendInsight],
-        s: Optional[StabilityInsight],
-        e: Optional[EfficiencyInsight],
-        c: Optional[ConcentrationInsight],
-    ) -> Optional[str]:
-        parts = [
-            f"Revenue changed {delta.percent_change:+.1f}% to ${delta.current:,.0f}."
-            if delta.baseline > 0
-            else f"Revenue: ${delta.current:,.0f}."
-        ]
-        if c and c.top_10_percent_contribution > 60:
-            parts.append(
-                f"Concentration risk detected: top 10% drives {c.top_10_percent_contribution:.0f}% of revenue."
-            )
-        if s and s.coefficient_of_variation > 0.7:
-            parts.append("Volatility anomaly detected in transaction distribution.")
+    def _generate_executive_summary(self, delta: MetricDelta, t: Optional[TrendInsight], s: Optional[StabilityInsight], e: Optional[EfficiencyInsight], c: Optional[ConcentrationInsight]) -> Optional[str]:
+        parts = [f"Revenue changed {delta.percent_change:+.1f}% to ${delta.current:,.0f}." if delta.baseline > 0 else f"Revenue: ${delta.current:,.0f}."]
+        if c and c.top_10_percent_contribution > 60: parts.append(f"Concentration risk detected: top 10% drives {c.top_10_percent_contribution:.0f}% of revenue.")
+        if s and s.coefficient_of_variation > 0.7: parts.append("Volatility anomaly detected in transaction distribution.")
         return " ".join(parts)
-
-    # ------------------------------------------------------------------
-    # Product-level ecommerce insights (text-only, no schema changes)
-    # ------------------------------------------------------------------
-
-    def _detect_product_column(self, df: pd.DataFrame) -> Optional[str]:
-        """
-        Detect a product-like column using common ecommerce synonyms.
-        """
-        candidates = ["product", "product_name", "item", "sku", "description"]
-        cols_lower = {col.lower().strip(): col for col in df.columns}
-        for cand in candidates:
-            if cand in cols_lower:
-                return cols_lower[cand]
-        return None
-
-    def _build_product_insights(
-        self,
-        current_df: pd.DataFrame,
-        baseline_df: Optional[pd.DataFrame],
-        revenue_column: str,
-        baseline_revenue_column: Optional[str],
-    ) -> List[str]:
-        """
-        Build textual ecommerce insights when a product column is present.
-        Uses only aggregate sums; never changes response schema.
-        """
-        bullets: List[str] = []
-
-        product_col = self._detect_product_column(current_df)
-        if not product_col:
-            return bullets
-
-        # Current period product revenue
-        current_vals = pd.to_numeric(
-            current_df[revenue_column], errors="coerce"
-        ).fillna(0)
-        if current_vals.sum() <= 0:
-            return bullets
-
-        product_rev = (
-            current_df.assign(_rev=current_vals)
-            .groupby(product_col, dropna=False)["_rev"]
-            .sum()
-            .sort_values(ascending=False)
-        )
-        total_rev = float(product_rev.sum())
-        if total_rev <= 0:
-            return bullets
-
-        # Top-performing product
-        top_product = product_rev.head(1)
-        if not top_product.empty:
-            name = str(top_product.index[0])
-            share = float(top_product.iloc[0]) / total_rev * 100.0
-            bullets.append(
-                f"Top product '{name}' contributes {share:.0f}% of current-period revenue."
-            )
-
-        # Top-3 concentration
-        if len(product_rev) >= 3:
-            top3_share = float(product_rev.head(3).sum()) / total_rev * 100.0
-            bullets.append(
-                f"Revenue is concentrated among the top three products, which account for {top3_share:.0f}% of revenue."
-            )
-
-        # Underperforming tail
-        if len(product_rev) >= 10:
-            cutoff = max(1, int(len(product_rev) * 0.2))
-            tail_share = float(product_rev.tail(cutoff).sum()) / total_rev * 100.0
-            if tail_share < 5.0:
-                bullets.append(
-                    f"The bottom 20% of products generate only {tail_share:.1f}% of revenue."
-                )
-
-        # Baseline comparison per product (if available)
-        if (
-            baseline_df is not None
-            and baseline_revenue_column is not None
-            and product_col in baseline_df.columns
-        ):
-            base_vals = pd.to_numeric(
-                baseline_df[baseline_revenue_column], errors="coerce"
-            ).fillna(0)
-            base_by_product = (
-                baseline_df.assign(_rev=base_vals)
-                .groupby(product_col, dropna=False)["_rev"]
-                .sum()
-            )
-
-            aligned = pd.DataFrame(
-                {
-                    "current": product_rev,
-                    "baseline": base_by_product,
-                }
-            ).fillna(0.0)
-
-            if not aligned.empty and (aligned["baseline"] > 0).any():
-                aligned["abs_change"] = aligned["current"] - aligned["baseline"]
-                aligned["pct_change"] = (
-                    aligned["abs_change"]
-                    / aligned["baseline"].replace(0, np.nan)
-                    * 100.0
-                )
-
-                improved = aligned[aligned["pct_change"] > 0].sort_values(
-                    "pct_change", ascending=False
-                )
-                top_improved = improved.head(1)
-                if not top_improved.empty:
-                    name = str(top_improved.index[0])
-                    pct = float(top_improved["pct_change"].iloc[0])
-                    bullets.append(
-                        f"Product '{name}' shows the strongest growth, with revenue up {pct:.0f}% vs baseline."
-                    )
-
-        return bullets
