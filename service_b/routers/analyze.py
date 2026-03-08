@@ -99,6 +99,45 @@ def _validate_dataframe(df: pd.DataFrame, file_label: str) -> None:
         )
 
 
+def _apply_revenue_fallback(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    SAFE Revenue Fallback:
+    If no revenue-like column exists, compute Revenue = Quantity * UnitPrice
+    if both columns are present.
+    """
+    # 1. Check if revenue-like column already exists (case-insensitive)
+    revenue_synonyms = ["revenue", "sales", "amount", "total", "total_price", "order_value", "gmv"]
+    cols_lower = {col.lower().strip(): col for col in df.columns}
+    
+    if any(syn in cols_lower for syn in revenue_synonyms):
+        return df
+
+    # 2. Look for Quantity and UnitPrice candidates
+    qty_candidates = ["quantity", "qty", "count", "units"]
+    price_candidates = ["unitprice", "price", "unit_price", "rate"]
+    
+    found_qty_col = next((cols_lower[c] for c in qty_candidates if c in cols_lower), None)
+    found_price_col = next((cols_lower[c] for c in price_candidates if c in cols_lower), None)
+    
+    if found_qty_col and found_price_col:
+        try:
+            # 3. Ensure numeric safety
+            qty_series = pd.to_numeric(df[found_qty_col], errors="coerce")
+            price_series = pd.to_numeric(df[found_price_col], errors="coerce")
+            
+            # 4. Compute Revenue
+            df["Revenue"] = qty_series * price_series
+            
+            # 5. Fill NaN with 0 to avoid breaking analysis logic downstream
+            df["Revenue"] = df["Revenue"].fillna(0.0)
+            
+            logger.info(f"Revenue column generated from {found_qty_col} * {found_price_col}")
+        except Exception as e:
+            logger.error(f"Failed to compute revenue fallback: {str(e)}")
+            
+    return df
+
+
 @router.post("/analyze")
 @limiter.limit(settings.ANALYZE_LIMIT)
 async def analyze(
@@ -125,6 +164,9 @@ async def analyze(
             if len(current_df) > MAX_ANALYSIS_ROWS:
                 logger.info(f"Current dataset contains {len(current_df)} rows. Sampling down to {MAX_ANALYSIS_ROWS} for analysis.")
                 current_df = current_df.sample(MAX_ANALYSIS_ROWS, random_state=42)
+            
+            # SAFE REVENUE FALLBACK: Compute Revenue if not present
+            current_df = _apply_revenue_fallback(current_df)
         except Exception:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -154,6 +196,9 @@ async def analyze(
                 if len(baseline_df) > MAX_ANALYSIS_ROWS:
                     logger.info(f"Baseline dataset contains {len(baseline_df)} rows. Sampling down to {MAX_ANALYSIS_ROWS} for analysis.")
                     baseline_df = baseline_df.sample(MAX_ANALYSIS_ROWS, random_state=42)
+                
+                # SAFE REVENUE FALLBACK: Compute Revenue if not present
+                baseline_df = _apply_revenue_fallback(baseline_df)
             except Exception:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
