@@ -18,12 +18,17 @@ from services.insight_engine.column_detector import detect_revenue_column
 from services.preprocessing import preprocess_with_options
 from services.schema_selector import select_metric_column
 
+import logging
+
 router = APIRouter()
 service = InsightV15Service()
 business_insight_generator = BusinessInsightGenerator()
+logger = logging.getLogger(__name__)
 
 # Rate limiter instance (uses app.state.limiter)
 limiter = Limiter(key_func=get_remote_address, enabled=settings.RATE_LIMIT_ENABLED)
+
+MAX_ANALYSIS_ROWS = 200000
 
 
 def _validate_upload_file(file: UploadFile, file_label: str) -> None:
@@ -82,11 +87,8 @@ def _validate_dataframe(df: pd.DataFrame, file_label: str) -> None:
     """
     # Check row count
     if len(df) > settings.MAX_ROWS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"The {file_label} file exceeds the maximum allowed row count of {settings.MAX_ROWS:,}. "
-                   f"Please reduce the data size."
-        )
+        # Instead of failing, we now sample down to MAX_ANALYSIS_ROWS
+        pass
     
     # Check for at least one numeric column (revenue-like)
     numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
@@ -118,6 +120,11 @@ async def analyze(
         # Parse current dataset
         try:
             current_df = pd.read_csv(current_file.file)
+            
+            # SAFE DATASET SIZE LIMIT: Sample if dataset is too large
+            if len(current_df) > MAX_ANALYSIS_ROWS:
+                logger.info(f"Current dataset contains {len(current_df)} rows. Sampling down to {MAX_ANALYSIS_ROWS} for analysis.")
+                current_df = current_df.sample(MAX_ANALYSIS_ROWS, random_state=42)
         except Exception:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -142,6 +149,11 @@ async def analyze(
             
             try:
                 baseline_df = pd.read_csv(baseline_file.file)
+                
+                # SAFE DATASET SIZE LIMIT: Sample if dataset is too large
+                if len(baseline_df) > MAX_ANALYSIS_ROWS:
+                    logger.info(f"Baseline dataset contains {len(baseline_df)} rows. Sampling down to {MAX_ANALYSIS_ROWS} for analysis.")
+                    baseline_df = baseline_df.sample(MAX_ANALYSIS_ROWS, random_state=42)
             except Exception:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
