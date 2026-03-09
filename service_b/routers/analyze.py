@@ -31,6 +31,22 @@ limiter = Limiter(key_func=get_remote_address, enabled=settings.RATE_LIMIT_ENABL
 MAX_ANALYSIS_ROWS = 200000
 
 
+def _read_csv_safe(file_obj) -> pd.DataFrame:
+    """
+    Read CSV with encoding fallback: UTF-8 → latin-1 → cp1252.
+    Handles files with special characters (e.g. £, €, accented names).
+    """
+    for encoding in ["utf-8", "latin-1", "cp1252"]:
+        try:
+            file_obj.seek(0)
+            return pd.read_csv(file_obj, encoding=encoding)
+        except (UnicodeDecodeError, UnicodeError):
+            continue
+    # Last resort: ignore bad bytes
+    file_obj.seek(0)
+    return pd.read_csv(file_obj, encoding="utf-8", encoding_errors="ignore")
+
+
 def _validate_upload_file(file: UploadFile, file_label: str) -> None:
     """
     Validate uploaded file for security and size constraints.
@@ -168,7 +184,7 @@ async def analyze(
         
         # Parse current dataset
         try:
-            current_df = pd.read_csv(current_file.file)
+            current_df = _read_csv_safe(current_file.file)
             
             # SAFE DATASET SIZE LIMIT: Sample if dataset is too large
             if len(current_df) > MAX_ANALYSIS_ROWS:
@@ -200,7 +216,7 @@ async def analyze(
             _validate_upload_file(baseline_file, "baseline dataset")
             
             try:
-                baseline_df = pd.read_csv(baseline_file.file)
+                baseline_df = _read_csv_safe(baseline_file.file)
                 
                 # SAFE DATASET SIZE LIMIT: Sample if dataset is too large
                 if len(baseline_df) > MAX_ANALYSIS_ROWS:
@@ -246,8 +262,9 @@ async def analyze(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=str(e)
             )
-        except Exception:
-            # Unexpected errors - return generic message
+        except Exception as e:
+            # Unexpected errors - log actual error for debugging
+            logger.error(f"Analysis pipeline error: {type(e).__name__}: {e}", exc_info=True)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="An unexpected error occurred while processing your request. Please try again or contact support."
@@ -258,8 +275,9 @@ async def analyze(
             with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
                 render_pdf(report, f.name)
                 pdf_path = f.name
-        except Exception:
+        except Exception as e:
             # PDF generation failure
+            logger.error(f"PDF generation error: {type(e).__name__}: {e}", exc_info=True)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="An error occurred while generating the PDF report. Please try again."

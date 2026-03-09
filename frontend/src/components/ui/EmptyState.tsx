@@ -86,8 +86,10 @@ export function EmptyState({
         {action && (
           <div className="relative">
             {/* Subtle glow behind button */}
-            <div className="absolute inset-0 bg-primary/20 blur-xl rounded-lg opacity-0 group-hover:opacity-100 transition-opacity" />
-            {action}
+            <div className="absolute inset-0 bg-primary/20 blur-xl rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+            <div className="relative z-10">
+              {action}
+            </div>
           </div>
         )}
       </div>

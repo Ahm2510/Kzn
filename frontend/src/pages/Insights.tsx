@@ -71,9 +71,9 @@ export default function Insights() {
             {insights.length} insight{insights.length !== 1 ? "s" : ""} generated
           </p>
           <div className="space-y-4">
-            {insights.map((insight) => (
+            {insights.map((insight, idx) => (
               <InsightCard
-                key={insight.id}
+                key={insight.code ?? insight.id ?? idx}
                 title={insight.title}
                 description={insight.description}
                 driver={insight.driver}
