@@ -67,7 +67,7 @@ export function EmptyState({
       </div>
 
       {/* Content with animation */}
-      <div className="relative z-10 animate-slide-up-fade">
+      <div className="relative z-10 animate-slide-up-fade group">
         <div className="relative mb-6">
           {/* Glowing ring behind icon */}
           <div className="absolute inset-0 w-16 h-16 mx-auto rounded-full bg-primary/10 blur-xl animate-pulse-subtle" />
@@ -86,14 +86,16 @@ export function EmptyState({
         {action && (
           <div className="relative">
             {/* Subtle glow behind button */}
-            <div className="absolute inset-0 bg-primary/20 blur-xl rounded-lg opacity-0 group-hover:opacity-100 transition-opacity" />
-            {action}
+            <div className="absolute inset-0 bg-primary/20 blur-xl rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+            <div className="relative z-10">
+              {action}
+            </div>
           </div>
         )}
       </div>
 
       {/* Decorative dots pattern */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2">
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 pointer-events-none">
         <div className="w-1 h-1 rounded-full bg-muted-foreground/20 animate-pulse-subtle" style={{ animationDelay: '0s' }} />
         <div className="w-1 h-1 rounded-full bg-muted-foreground/30 animate-pulse-subtle" style={{ animationDelay: '0.5s' }} />
         <div className="w-1 h-1 rounded-full bg-muted-foreground/20 animate-pulse-subtle" style={{ animationDelay: '1s' }} />
