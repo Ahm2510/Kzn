@@ -195,6 +195,30 @@ class BusinessInsightGenerator:
             driver=driver, implication=implication, action_direction=action, confidence=conf, confidence_basis=basis
         )
 
+    def enrich_efficiency_insight(self, efficiency: EfficiencyInsight, n: int) -> EfficiencyInsight:
+        pct = efficiency.change_percent or 0.0
+        
+        if efficiency.signal == "efficiency_improved":
+            driver = f"Yield expansion: average revenue per transaction increased, indicating improved monetization across {n} records."
+            implication = f"The {abs(pct):.1f}% efficiency gain suggests stronger pricing power or favorable product mix shift."
+            action = "Identify which segments drive the efficiency gain and replicate across underperforming areas."
+        elif efficiency.signal == "efficiency_declined":
+            driver = f"Yield compression: average revenue per transaction declined, suggesting pricing pressure or mix deterioration."
+            implication = f"The {abs(pct):.1f}% efficiency loss may indicate discounting, lower-margin product shift, or customer downgrade."
+            action = "Review pricing strategy and product mix changes to identify root cause of yield decline."
+        else:
+            driver = f"Revenue yield per transaction is stable across {n} records, showing consistent monetization."
+            implication = "Stable efficiency indicates no significant changes in pricing or product mix impact."
+            action = "Maintain current strategy; monitor for early signs of efficiency drift."
+        
+        conf, basis = self._compute_confidence(n, pct=pct)
+        return EfficiencyInsight(
+            signal=efficiency.signal, description=efficiency.description,
+            change_percent=efficiency.change_percent,
+            driver=driver, implication=implication, action_direction=action,
+            confidence=conf, confidence_basis=basis
+        )
+
     def enrich_concentration_insight(self, concentration: ConcentrationInsight, n: int) -> ConcentrationInsight:
         contrib = concentration.top_10_percent_contribution
         

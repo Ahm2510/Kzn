@@ -106,15 +106,21 @@ def _apply_revenue_fallback(df: pd.DataFrame) -> pd.DataFrame:
     if both columns are present.
     """
     # 1. Check if revenue-like column already exists (case-insensitive)
-    revenue_synonyms = ["revenue", "sales", "amount", "total", "total_price", "order_value", "gmv"]
+    revenue_synonyms = [
+        "revenue", "sales", "amount", "total", "total_price", "order_value",
+        "gmv", "turnover", "gross_revenue", "net_revenue", "total_revenue",
+        "total_sales", "sales_revenue", "income", "total_income", "earnings",
+        "total_amount", "total_value", "gmv_value", "booking_amount",
+        "transaction_value",
+    ]
     cols_lower = {col.lower().strip(): col for col in df.columns}
     
     if any(syn in cols_lower for syn in revenue_synonyms):
         return df
 
     # 2. Look for Quantity and UnitPrice candidates
-    qty_candidates = ["quantity", "qty", "count", "units"]
-    price_candidates = ["unitprice", "price", "unit_price", "rate"]
+    qty_candidates = ["quantity", "qty", "count", "units", "unit_count", "volume"]
+    price_candidates = ["unitprice", "price", "unit_price", "rate", "unit_cost", "item_price"]
     
     found_qty_col = next((cols_lower[c] for c in qty_candidates if c in cols_lower), None)
     found_price_col = next((cols_lower[c] for c in price_candidates if c in cols_lower), None)
@@ -128,8 +134,12 @@ def _apply_revenue_fallback(df: pd.DataFrame) -> pd.DataFrame:
             # 4. Compute Revenue
             df["Revenue"] = qty_series * price_series
             
-            # 5. Fill NaN with 0 to avoid breaking analysis logic downstream
-            df["Revenue"] = df["Revenue"].fillna(0.0)
+            # 5. Drop rows where multiplication failed (NaN) to avoid skewing analysis
+            before_count = len(df)
+            df = df.dropna(subset=["Revenue"])
+            dropped = before_count - len(df)
+            if dropped > 0:
+                logger.info(f"Dropped {dropped} rows with invalid Revenue computation")
             
             logger.info(f"Revenue column generated from {found_qty_col} * {found_price_col}")
         except Exception as e:
