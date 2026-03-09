@@ -164,9 +164,9 @@ SERVICE_B_SECRET = os.environ.get('SERVICE_B_SECRET', '')  # Must match Service 
 MEDIA_ROOT = BASE_DIR / 'uploads'
 MEDIA_URL = '/uploads/'
 
-# Allow large dataset uploads (streaming) — None disables the limit
-DATA_UPLOAD_MAX_MEMORY_SIZE = None
-FILE_UPLOAD_MAX_MEMORY_SIZE = None
+# Allow large dataset uploads — 200MB in bytes
+DATA_UPLOAD_MAX_MEMORY_SIZE = 209715200   # 200 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 209715200   # 200 MB
 
 if ENVIRONMENT == 'development':
     CORS_ALLOW_ALL_ORIGINS = True
