@@ -31,6 +31,22 @@ limiter = Limiter(key_func=get_remote_address, enabled=settings.RATE_LIMIT_ENABL
 MAX_ANALYSIS_ROWS = 200000
 
 
+def _read_csv_safe(file_obj) -> pd.DataFrame:
+    """
+    Read CSV with encoding fallback: UTF-8 → latin-1 → cp1252.
+    Handles files with special characters (e.g. £, €, accented names).
+    """
+    for encoding in ["utf-8", "latin-1", "cp1252"]:
+        try:
+            file_obj.seek(0)
+            return pd.read_csv(file_obj, encoding=encoding)
+        except (UnicodeDecodeError, UnicodeError):
+            continue
+    # Last resort: ignore bad bytes
+    file_obj.seek(0)
+    return pd.read_csv(file_obj, encoding="utf-8", encoding_errors="ignore")
+
+
 def _validate_upload_file(file: UploadFile, file_label: str) -> None:
     """
     Validate uploaded file for security and size constraints.
@@ -106,15 +122,21 @@ def _apply_revenue_fallback(df: pd.DataFrame) -> pd.DataFrame:
     if both columns are present.
     """
     # 1. Check if revenue-like column already exists (case-insensitive)
-    revenue_synonyms = ["revenue", "sales", "amount", "total", "total_price", "order_value", "gmv"]
+    revenue_synonyms = [
+        "revenue", "sales", "amount", "total", "total_price", "order_value",
+        "gmv", "turnover", "gross_revenue", "net_revenue", "total_revenue",
+        "total_sales", "sales_revenue", "income", "total_income", "earnings",
+        "total_amount", "total_value", "gmv_value", "booking_amount",
+        "transaction_value",
+    ]
     cols_lower = {col.lower().strip(): col for col in df.columns}
     
     if any(syn in cols_lower for syn in revenue_synonyms):
         return df
 
     # 2. Look for Quantity and UnitPrice candidates
-    qty_candidates = ["quantity", "qty", "count", "units"]
-    price_candidates = ["unitprice", "price", "unit_price", "rate"]
+    qty_candidates = ["quantity", "qty", "count", "units", "unit_count", "volume"]
+    price_candidates = ["unitprice", "price", "unit_price", "rate", "unit_cost", "item_price"]
     
     found_qty_col = next((cols_lower[c] for c in qty_candidates if c in cols_lower), None)
     found_price_col = next((cols_lower[c] for c in price_candidates if c in cols_lower), None)
@@ -128,8 +150,12 @@ def _apply_revenue_fallback(df: pd.DataFrame) -> pd.DataFrame:
             # 4. Compute Revenue
             df["Revenue"] = qty_series * price_series
             
-            # 5. Fill NaN with 0 to avoid breaking analysis logic downstream
-            df["Revenue"] = df["Revenue"].fillna(0.0)
+            # 5. Drop rows where multiplication failed (NaN) to avoid skewing analysis
+            before_count = len(df)
+            df = df.dropna(subset=["Revenue"])
+            dropped = before_count - len(df)
+            if dropped > 0:
+                logger.info(f"Dropped {dropped} rows with invalid Revenue computation")
             
             logger.info(f"Revenue column generated from {found_qty_col} * {found_price_col}")
         except Exception as e:
@@ -158,20 +184,20 @@ async def analyze(
         
         # Parse current dataset
         try:
-            current_df = pd.read_csv(current_file.file)
-            
-            # SAFE DATASET SIZE LIMIT: Sample if dataset is too large
-            if len(current_df) > MAX_ANALYSIS_ROWS:
-                logger.info(f"Current dataset contains {len(current_df)} rows. Sampling down to {MAX_ANALYSIS_ROWS} for analysis.")
-                current_df = current_df.sample(MAX_ANALYSIS_ROWS, random_state=42)
-            
-            # SAFE REVENUE FALLBACK: Compute Revenue if not present
-            current_df = _apply_revenue_fallback(current_df)
+            current_df = _read_csv_safe(current_file.file)
         except Exception:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Unable to read the current dataset file. Please ensure it is a valid CSV file."
             )
+        
+        # SAFE DATASET SIZE LIMIT: Sample if dataset is too large
+        if len(current_df) > MAX_ANALYSIS_ROWS:
+            logger.info(f"Current dataset contains {len(current_df)} rows. Sampling down to {MAX_ANALYSIS_ROWS} for analysis.")
+            current_df = current_df.sample(MAX_ANALYSIS_ROWS, random_state=42)
+        
+        # SAFE REVENUE FALLBACK: Compute Revenue if not present
+        current_df = _apply_revenue_fallback(current_df)
         
         # Validate current dataframe
         _validate_dataframe(current_df, "current dataset")
@@ -190,20 +216,20 @@ async def analyze(
             _validate_upload_file(baseline_file, "baseline dataset")
             
             try:
-                baseline_df = pd.read_csv(baseline_file.file)
-                
-                # SAFE DATASET SIZE LIMIT: Sample if dataset is too large
-                if len(baseline_df) > MAX_ANALYSIS_ROWS:
-                    logger.info(f"Baseline dataset contains {len(baseline_df)} rows. Sampling down to {MAX_ANALYSIS_ROWS} for analysis.")
-                    baseline_df = baseline_df.sample(MAX_ANALYSIS_ROWS, random_state=42)
-                
-                # SAFE REVENUE FALLBACK: Compute Revenue if not present
-                baseline_df = _apply_revenue_fallback(baseline_df)
+                baseline_df = _read_csv_safe(baseline_file.file)
             except Exception:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Unable to read the baseline dataset file. Please ensure it is a valid CSV file."
                 )
+            
+            # SAFE DATASET SIZE LIMIT: Sample if dataset is too large
+            if len(baseline_df) > MAX_ANALYSIS_ROWS:
+                logger.info(f"Baseline dataset contains {len(baseline_df)} rows. Sampling down to {MAX_ANALYSIS_ROWS} for analysis.")
+                baseline_df = baseline_df.sample(MAX_ANALYSIS_ROWS, random_state=42)
+            
+            # SAFE REVENUE FALLBACK: Compute Revenue if not present
+            baseline_df = _apply_revenue_fallback(baseline_df)
             
             # Validate baseline dataframe
             _validate_dataframe(baseline_df, "baseline dataset")
@@ -236,8 +262,9 @@ async def analyze(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=str(e)
             )
-        except Exception:
-            # Unexpected errors - return generic message
+        except Exception as e:
+            # Unexpected errors - log actual error for debugging
+            logger.error(f"Analysis pipeline error: {type(e).__name__}: {e}", exc_info=True)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="An unexpected error occurred while processing your request. Please try again or contact support."
@@ -248,8 +275,9 @@ async def analyze(
             with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
                 render_pdf(report, f.name)
                 pdf_path = f.name
-        except Exception:
+        except Exception as e:
             # PDF generation failure
+            logger.error(f"PDF generation error: {type(e).__name__}: {e}", exc_info=True)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="An error occurred while generating the PDF report. Please try again."

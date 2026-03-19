@@ -28,16 +28,20 @@ REVENUE_SYNONYMS = {
     "total_income": 0.90,
     "earnings": 0.85,
     
-    # Medium confidence - might be revenue
-    "amount": 0.60,
-    "total_amount": 0.70,
+    # Revenue-adjacent (commonly used in ecommerce/transactional datasets)
+    "amount": 0.82,
+    "total_amount": 0.88,
+    "total": 0.80,
+    "total_price": 0.90,
+    "order_value": 0.92,
+    "gmv": 0.88,
     "value": 0.55,
-    "total_value": 0.65,
+    "total_value": 0.82,
     
-    # Low confidence - unlikely to be revenue (below threshold)
-    "gmv_value": 0.40,
-    "booking_amount": 0.40,
-    "transaction_value": 0.50,
+    # Lower confidence - context dependent
+    "gmv_value": 0.85,
+    "booking_amount": 0.82,
+    "transaction_value": 0.85,
 }
 
 # Minimum confidence threshold for semantic matching

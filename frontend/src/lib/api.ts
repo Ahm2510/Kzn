@@ -191,14 +191,15 @@ export interface InsightReport {
     meta?: Record<string, any>;
   };
   insights?: Array<{
-    id: string;
+    code?: string;
     title: string;
     description: string;
-    driver: string;
-    implication: string;
-    action_direction: string;
-    confidence: string;
-    confidence_basis: string;
+    affected_metric?: string;
+    driver?: string;
+    implication?: string;
+    action_direction?: string;
+    confidence?: string;
+    confidence_basis?: string;
     severity: "high" | "medium" | "low";
   }>;
   comparison?: {

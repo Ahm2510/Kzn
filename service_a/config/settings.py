@@ -164,6 +164,11 @@ SERVICE_B_SECRET = os.environ.get('SERVICE_B_SECRET', '')  # Must match Service 
 MEDIA_ROOT = BASE_DIR / 'uploads'
 MEDIA_URL = '/uploads/'
 
+# Allow large dataset uploads — nginx enforces the 200M body limit;
+# Django should not impose a secondary cap.
+DATA_UPLOAD_MAX_MEMORY_SIZE = None   # unlimited (nginx guards)
+FILE_UPLOAD_MAX_MEMORY_SIZE = None   # unlimited (nginx guards)
+
 if ENVIRONMENT == 'development':
     CORS_ALLOW_ALL_ORIGINS = True
     CORS_ALLOW_CREDENTIALS = True

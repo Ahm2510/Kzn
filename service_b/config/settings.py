@@ -101,7 +101,7 @@ class Settings(BaseModel):
     SUPPORTED_FILE_EXTENSIONS: List[str] = [".csv", ".xlsx", ".xls", ".parquet", ".json"]
     MAX_ROWS: int = int(os.getenv("MAX_ROWS", "200000"))  # 200k default
     MAX_COLUMNS: int = int(os.getenv("MAX_COLUMNS", "1000"))
-    MAX_UPLOAD_MB: int = int(os.getenv("MAX_UPLOAD_MB", "10"))  # 10MB default
+    MAX_UPLOAD_MB: int = int(os.getenv("MAX_UPLOAD_MB", "200"))  # 200MB default
     ALLOWED_WORKSPACES: Optional[List[str]] = None
     CELERY_BROKER_URL: Optional[str] = None
     REDIS_URL: Optional[str] = None

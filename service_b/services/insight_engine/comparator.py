@@ -26,7 +26,7 @@ def compute_metric_delta(
     if baseline_column is None:
         baseline_column = column
     
-    current_value = current_df[column].sum()
+    current_value = pd.to_numeric(current_df[column], errors="coerce").sum()
     
     # Defensive check: handle None or empty baseline
     if baseline_df is None or (isinstance(baseline_df, pd.DataFrame) and baseline_df.empty):
@@ -34,7 +34,7 @@ def compute_metric_delta(
         absolute = current_value
         percent = 0.0  # No comparison available
     else:
-        baseline_value = baseline_df[baseline_column].sum()
+        baseline_value = pd.to_numeric(baseline_df[baseline_column], errors="coerce").sum()
         absolute = current_value - baseline_value
         percent = (
             (absolute / baseline_value) * 100 if baseline_value != 0 else 0.0

@@ -187,6 +187,20 @@ def render_pdf(
                 f"{ins.description}"
             )
             story.append(Paragraph(insight_text, insights_style))
+
+            # Render enrichment fields if present
+            if ins.driver:
+                story.append(Paragraph(f"<i>Driver:</i> {ins.driver}", small_muted_style))
+            if ins.implication:
+                story.append(Paragraph(f"<i>Implication:</i> {ins.implication}", small_muted_style))
+            if ins.action_direction:
+                story.append(Paragraph(f"<i>Action:</i> {ins.action_direction}", small_muted_style))
+            if ins.confidence:
+                conf_text = f"Confidence: {ins.confidence}"
+                if ins.confidence_basis:
+                    conf_text += f" ({ins.confidence_basis})"
+                story.append(Paragraph(conf_text, small_muted_style))
+
             story.append(Spacer(1, 0.18 * inch))
     else:
         story.append(

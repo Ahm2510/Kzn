@@ -1,1 +1,24 @@
 **/__pycache__/
+*.pyc
+
+# Secrets — NEVER commit
+.env
+.env.*
+!.env.production
+
+# SSL certificates
+certbot/
+
+# Node
+node_modules/
+frontend/dist/
+
+# Data
+*.sqlite3
+service_b/data/
+service_a/uploads/
+service_a/staticfiles/
+
+# IDE
+.vscode/
+.idea/
