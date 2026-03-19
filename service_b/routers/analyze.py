@@ -270,21 +270,9 @@ async def analyze(
                 detail="An unexpected error occurred while processing your request. Please try again or contact support."
             )
 
-        # Generate PDF report
-        try:
-            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
-                render_pdf(report, f.name)
-                pdf_path = f.name
-        except Exception as e:
-            # PDF generation failure
-            logger.error(f"PDF generation error: {type(e).__name__}: {e}", exc_info=True)
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="An error occurred while generating the PDF report. Please try again."
-            )
-
-        # Generate business insights (additive layer - never fails main request
-        # for default usage; explicit metric_schema errors surface as 400s)
+        # Generate business insights BEFORE PDF so the PDF includes them.
+        # (additive layer - never fails main request for default usage;
+        # explicit metric_schema errors surface as 400s)
         business_insights = None
         try:
             # Re-preprocess for business insights (matches what service.run does)
@@ -358,6 +346,19 @@ async def analyze(
         except Exception:
             # Business insights are optional - never fail main request
             pass
+
+        # Generate PDF report (now includes business insights if available)
+        try:
+            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
+                render_pdf(report, f.name, business_insights=business_insights)
+                pdf_path = f.name
+        except Exception as e:
+            # PDF generation failure
+            logger.error(f"PDF generation error: {type(e).__name__}: {e}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="An error occurred while generating the PDF report. Please try again."
+            )
 
         # Encode PDF as base64 for cross-service transfer (no shared filesystem needed)
         pdf_base64 = None
