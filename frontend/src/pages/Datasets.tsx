@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { DatasetUploadBox } from "@/components/ui/DatasetUploadBox";
 import { ToggleOption } from "@/components/ui/ToggleOption";
@@ -55,9 +55,11 @@ export default function Datasets() {
   };
 
   // Navigate when run completes
-  if (activeRun?.status === "completed") {
-    navigate("/");
-  }
+  useEffect(() => {
+    if (activeRun?.status === "completed") {
+      navigate("/");
+    }
+  }, [activeRun?.status, navigate]);
 
   const errorMessage =
     createAnalysis.error?.message ||
