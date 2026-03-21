@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #!/usr/bin/env bash
 # ==============================================================
 # Kaizen Production Deployment Script
@@ -264,3 +265,20 @@ echo "   Rebuild:      $COMPOSE build --no-cache && $COMPOSE up -d"
 echo "   SSL renew:    docker run --rm -v \$(pwd)/certbot/conf:/etc/letsencrypt -v \$(pwd)/certbot/www:/var/www/certbot certbot/certbot renew"
 echo "   SSL cron:     0 3 * * 0 cd $(pwd) && docker run --rm -v \$(pwd)/certbot/conf:/etc/letsencrypt -v \$(pwd)/certbot/www:/var/www/certbot certbot/certbot renew && $COMPOSE restart nginx"
 echo ""
+=======
+#!/bin/bash
+set -e
+
+echo "Pulling latest code from GitHub..."
+git fetch origin
+git reset --hard origin/main
+
+echo "Stopping containers..."
+docker-compose down
+
+echo "Building and starting containers..."
+docker-compose up --build -d
+
+echo "Deployment finished!"
+docker ps
+>>>>>>> bf6d9b2864724c9e7c20b4555310c1ba3ad2014e

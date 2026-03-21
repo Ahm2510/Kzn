@@ -79,9 +79,16 @@ services:
     ports:
       - "80:80"
       - "443:443"
+<<<<<<< HEAD
     volumes:
       - ./certbot/www:/var/www/certbot:ro
       - ./certbot/conf:/etc/letsencrypt:ro
+=======
+
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+
+>>>>>>> bf6d9b2864724c9e7c20b4555310c1ba3ad2014e
     depends_on:
       - service_a
 

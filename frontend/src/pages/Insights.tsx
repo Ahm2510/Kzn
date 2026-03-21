@@ -73,7 +73,11 @@ export default function Insights() {
           <div className="space-y-4">
             {insights.map((insight, idx) => (
               <InsightCard
+<<<<<<< HEAD
                 key={insight.code ?? idx}
+=======
+                key={insight.code ?? insight.id ?? idx}
+>>>>>>> bf6d9b2864724c9e7c20b4555310c1ba3ad2014e
                 title={insight.title}
                 description={insight.description}
                 driver={insight.driver}

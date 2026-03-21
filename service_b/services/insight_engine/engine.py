@@ -89,8 +89,13 @@ class InsightEngine:
                 insight = rule(current_df, current_col)
                 if insight:
                     insights.append(insight)
+<<<<<<< HEAD
             except Exception as e:
                 logger.debug(f"Optional insight rule {rule.__name__} failed: {e}")
+=======
+            except Exception:
+                pass  # Defensive: never fail main pipeline for optional insights
+>>>>>>> bf6d9b2864724c9e7c20b4555310c1ba3ad2014e
 
         # Product-level ecommerce insights (only if product column detected)
         for rule in [top_product_rule, product_concentration_rule,
@@ -99,8 +104,13 @@ class InsightEngine:
                 insight = rule(current_df, current_col)
                 if insight:
                     insights.append(insight)
+<<<<<<< HEAD
             except Exception as e:
                 logger.debug(f"Optional product insight rule {rule.__name__} failed: {e}")
+=======
+            except Exception:
+                pass
+>>>>>>> bf6d9b2864724c9e7c20b4555310c1ba3ad2014e
 
         # Product baseline comparison (returns a list)
         try:
@@ -108,8 +118,13 @@ class InsightEngine:
                 current_df, baseline_df, current_col, baseline_col,
             )
             insights.extend(product_insights)
+<<<<<<< HEAD
         except Exception as e:
             logger.debug(f"Product baseline comparison failed: {e}")
+=======
+        except Exception:
+            pass
+>>>>>>> bf6d9b2864724c9e7c20b4555310c1ba3ad2014e
 
         summary = generate_summary(metric_deltas, insights)
 

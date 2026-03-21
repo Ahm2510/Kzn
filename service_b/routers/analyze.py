@@ -185,6 +185,17 @@ async def analyze(
         # Parse current dataset
         try:
             current_df = _read_csv_safe(current_file.file)
+<<<<<<< HEAD
+=======
+            
+            # SAFE DATASET SIZE LIMIT: Sample if dataset is too large
+            if len(current_df) > MAX_ANALYSIS_ROWS:
+                logger.info(f"Current dataset contains {len(current_df)} rows. Sampling down to {MAX_ANALYSIS_ROWS} for analysis.")
+                current_df = current_df.sample(MAX_ANALYSIS_ROWS, random_state=42)
+            
+            # SAFE REVENUE FALLBACK: Compute Revenue if not present
+            current_df = _apply_revenue_fallback(current_df)
+>>>>>>> bf6d9b2864724c9e7c20b4555310c1ba3ad2014e
         except Exception:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -217,6 +228,17 @@ async def analyze(
             
             try:
                 baseline_df = _read_csv_safe(baseline_file.file)
+<<<<<<< HEAD
+=======
+                
+                # SAFE DATASET SIZE LIMIT: Sample if dataset is too large
+                if len(baseline_df) > MAX_ANALYSIS_ROWS:
+                    logger.info(f"Baseline dataset contains {len(baseline_df)} rows. Sampling down to {MAX_ANALYSIS_ROWS} for analysis.")
+                    baseline_df = baseline_df.sample(MAX_ANALYSIS_ROWS, random_state=42)
+                
+                # SAFE REVENUE FALLBACK: Compute Revenue if not present
+                baseline_df = _apply_revenue_fallback(baseline_df)
+>>>>>>> bf6d9b2864724c9e7c20b4555310c1ba3ad2014e
             except Exception:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -270,9 +292,27 @@ async def analyze(
                 detail="An unexpected error occurred while processing your request. Please try again or contact support."
             )
 
+<<<<<<< HEAD
         # Generate business insights BEFORE PDF so the PDF includes them.
         # (additive layer - never fails main request for default usage;
         # explicit metric_schema errors surface as 400s)
+=======
+        # Generate PDF report
+        try:
+            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
+                render_pdf(report, f.name)
+                pdf_path = f.name
+        except Exception as e:
+            # PDF generation failure
+            logger.error(f"PDF generation error: {type(e).__name__}: {e}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="An error occurred while generating the PDF report. Please try again."
+            )
+
+        # Generate business insights (additive layer - never fails main request
+        # for default usage; explicit metric_schema errors surface as 400s)
+>>>>>>> bf6d9b2864724c9e7c20b4555310c1ba3ad2014e
         business_insights = None
         try:
             # Re-preprocess for business insights (matches what service.run does)
