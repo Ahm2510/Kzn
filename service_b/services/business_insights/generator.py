@@ -197,11 +197,7 @@ class BusinessInsightGenerator:
 
     def enrich_efficiency_insight(self, efficiency: EfficiencyInsight, n: int) -> EfficiencyInsight:
         pct = efficiency.change_percent or 0.0
-<<<<<<< HEAD
 
-=======
-        
->>>>>>> bf6d9b2864724c9e7c20b4555310c1ba3ad2014e
         if efficiency.signal == "efficiency_improved":
             driver = f"Yield expansion: average revenue per transaction increased, indicating improved monetization across {n} records."
             implication = f"The {abs(pct):.1f}% efficiency gain suggests stronger pricing power or favorable product mix shift."
@@ -214,11 +210,7 @@ class BusinessInsightGenerator:
             driver = f"Revenue yield per transaction is stable across {n} records, showing consistent monetization."
             implication = "Stable efficiency indicates no significant changes in pricing or product mix impact."
             action = "Maintain current strategy; monitor for early signs of efficiency drift."
-<<<<<<< HEAD
 
-=======
-        
->>>>>>> bf6d9b2864724c9e7c20b4555310c1ba3ad2014e
         conf, basis = self._compute_confidence(n, pct=pct)
         return EfficiencyInsight(
             signal=efficiency.signal, description=efficiency.description,
