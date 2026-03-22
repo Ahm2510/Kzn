@@ -29,31 +29,37 @@ services:
       RATE_LIMIT_ENABLED: "true"
     ports:
       - "8000:8000"
+      CORS_ORIGINS: "http://service_a:8002"
 
   service_a:
     build:
       context: ./service_a
     restart: always
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py collectstatic --noinput &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8002 --workers 3 --timeout 300"
     environment:
-      ENVIRONMENT: development
-      DEBUG: "true"
-      SECRET_KEY: "super-secret-key-123"
-      ALLOWED_HOSTS: "app.kaizenx.in"
-      CSRF_TRUSTED_ORIGINS: "https://app.kaizenx.in"
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DEBUG: ${DEBUG:-false}
+      SECRET_KEY: ${SECRET_KEY:-}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-app.kaizenx.in,localhost,127.0.0.1}
       DB_HOST: postgres
       DB_PORT: "5432"
       DB_NAME: ${POSTGRES_DB:-kaizen}
       DB_USER: ${POSTGRES_USER:-kaizen}
-      DB_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
 
       SERVICE_B_URL: http://service_b:8000
       SERVICE_B_TIMEOUT: ${SERVICE_B_TIMEOUT:-300}
       SERVICE_B_SECRET: ${INTERNAL_SECRET:-change_this}
 
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
-      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://app.kaizenx.in}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-https://app.kaizenx.in}
     expose:
       - "8002"
+    volumes:
+      - upload_data:/app/uploads
 
     networks:
       default:
@@ -74,14 +80,15 @@ services:
     ports:
       - "80:80"
       - "443:443"
-
     volumes:
-      - /etc/letsencrypt:/etc/letsencrypt:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./certbot/www:/var/www/certbot:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+
     depends_on:
       - service_a
 
 
 volumes:
   postgres_data:
+  upload_data:
 

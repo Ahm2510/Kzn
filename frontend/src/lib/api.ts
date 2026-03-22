@@ -8,7 +8,7 @@ const BASE_URL = "/api"
 let csrfToken: string | null = null;
 
 async function fetchCsrfToken(): Promise<string> {
-  const res = await fetch(`${BASE_URL}/api/auth/csrf/`, {
+  const res = await fetch(`${BASE_URL}/auth/csrf/`, {
     credentials: "include",
   });
   if (!res.ok) throw new Error("Failed to fetch CSRF token");
@@ -95,11 +95,11 @@ export interface LoginResponse {
 
 export const authApi = {
   login: (email: string, password: string) =>
-    api<LoginResponse>("/api/auth/login/", { method: "POST", body: { email, password } }),
+    api<LoginResponse>("/auth/login/", { method: "POST", body: { email, password } }),
 
-  logout: () => api("/api/auth/logout/", { method: "POST" }),
+  logout: () => api("/auth/logout/", { method: "POST" }),
 
-  me: () => api<{ user: DjangoUser }>("/api/auth/me/"),
+  me: () => api<{ user: DjangoUser }>("/auth/me/"),
 };
 
 // ── Projects ──
@@ -191,7 +191,6 @@ export interface InsightReport {
     meta?: Record<string, any>;
   };
   insights?: Array<{
-    id?: string;
     code?: string;
     title: string;
     description: string;

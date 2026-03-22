@@ -197,7 +197,7 @@ class BusinessInsightGenerator:
 
     def enrich_efficiency_insight(self, efficiency: EfficiencyInsight, n: int) -> EfficiencyInsight:
         pct = efficiency.change_percent or 0.0
-        
+
         if efficiency.signal == "efficiency_improved":
             driver = f"Yield expansion: average revenue per transaction increased, indicating improved monetization across {n} records."
             implication = f"The {abs(pct):.1f}% efficiency gain suggests stronger pricing power or favorable product mix shift."
@@ -210,7 +210,7 @@ class BusinessInsightGenerator:
             driver = f"Revenue yield per transaction is stable across {n} records, showing consistent monetization."
             implication = "Stable efficiency indicates no significant changes in pricing or product mix impact."
             action = "Maintain current strategy; monitor for early signs of efficiency drift."
-        
+
         conf, basis = self._compute_confidence(n, pct=pct)
         return EfficiencyInsight(
             signal=efficiency.signal, description=efficiency.description,
@@ -277,7 +277,7 @@ class BusinessInsightGenerator:
         return TrendInsight(direction=d, description=desc, confidence="medium")
 
     def _generate_stability_insight(self, df: pd.DataFrame, rev_col: str) -> Optional[StabilityInsight]:
-        vals = df[rev_col].dropna()
+        vals = pd.to_numeric(df[rev_col], errors="coerce").dropna()
         if len(vals) < 2 or vals.mean() == 0: return None
         cv = abs(vals.std() / vals.mean())
         if cv < 0.3: cat, desc = "stable", f"Stability: revenue CV of {cv:.2f} indicates low volatility."
@@ -294,7 +294,7 @@ class BusinessInsightGenerator:
         return EfficiencyInsight(signal=s, description=desc, change_percent=round(pct, 2))
 
     def _generate_concentration_insight(self, df: pd.DataFrame, rev_col: str) -> Optional[ConcentrationInsight]:
-        vals = df[rev_col].dropna()
+        vals = pd.to_numeric(df[rev_col], errors="coerce").dropna()
         if len(vals) < 10 or vals.sum() == 0: return None
         top_10_sum = vals.sort_values(ascending=False).head(max(1, int(len(vals)*0.1))).sum()
         contrib = (top_10_sum / vals.sum()) * 100

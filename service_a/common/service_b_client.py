@@ -61,9 +61,27 @@ class ServiceBClient:
             # We send as individual fields; if parsing fails, service_b will use defaults
             data = {}
             if cleaning_options:
+                # Frontend sends camelCase keys; Service B expects snake_case.
+                # Keep backward compatibility by accepting both.
+                key_map = {
+                    "dropDuplicates": "drop_duplicates",
+                    "drop_duplicates": "drop_duplicates",
+                    "dropMissing": "drop_missing",
+                    "drop_missing": "drop_missing",
+                    "capOutliers": "cap_outliers",
+                    "cap_outliers": "cap_outliers",
+                    "normalizeColumns": "normalize_columns",
+                    "normalize_columns": "normalize_columns",
+                }
+
+                normalized_cleaning_options: Dict[str, Any] = {}
+                for key, value in cleaning_options.items():
+                    mapped_key = key_map.get(key, key)
+                    normalized_cleaning_options[mapped_key] = value
+
                 # Send each cleaning option as a separate form field
                 # FastAPI might parse these into the CleaningOptions model
-                for key, value in cleaning_options.items():
+                for key, value in normalized_cleaning_options.items():
                     if isinstance(value, bool):
                         data[key] = 'true' if value else 'false'
                     else:
