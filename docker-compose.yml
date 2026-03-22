@@ -27,10 +27,10 @@ services:
       INTERNAL_SECRET: ${INTERNAL_SECRET:-change_this}
       ALLOW_INTERNAL_PUBLIC: "false"
       RATE_LIMIT_ENABLED: "true"
-    ports:
-      - "8000:8000"
       CORS_ORIGINS: "http://service_a:8002"
 
+    ports:
+      - "8000:8000"
   service_a:
     build:
       context: ./service_a

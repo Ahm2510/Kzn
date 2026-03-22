@@ -18,6 +18,14 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /root/Kaizen_V1
-            git pull
+
+            echo "📥 Pulling latest code..."
+            git pull origin main
+
+            echo "🛑 Stopping containers..."
             docker-compose down
+
+            echo "🚀 Starting containers..."
             docker-compose up -d --build
+
+            echo "✅ Deployment done"
