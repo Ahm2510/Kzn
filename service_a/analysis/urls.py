@@ -4,6 +4,5 @@ from .views import AnalysisRunViewSet
 
 router = DefaultRouter()
 router.register(r'analysis-runs', AnalysisRunViewSet, basename='analysis-run')
-
 urlpatterns = router.urls
 
