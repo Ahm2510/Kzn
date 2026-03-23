@@ -1,12 +1,13 @@
 import { cn } from "@/lib/utils";
 import { Upload, FileSpreadsheet, X } from "lucide-react";
 import { useState, useRef } from "react";
+import { sampleCsvFirstRows, shouldSampleBeforeUpload } from "@/lib/csvSample";
 
 interface DatasetUploadBoxProps {
   label: string;
   description?: string;
   isOptional?: boolean;
-  onFileSelect?: (file: File) => void;
+  onFileSelect?: (file: File) => void | Promise<void>;
   className?: string;
 }
 
@@ -19,11 +20,27 @@ export function DatasetUploadBox({
 }: DatasetUploadBoxProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleFile = (selectedFile: File) => {
-    setFile(selectedFile);
-    onFileSelect?.(selectedFile);
+  const formatSize = (bytes: number) => {
+    if (bytes >= 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+    if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  };
+
+  const handleFile = async (selectedFile: File) => {
+    setIsProcessing(true);
+    try {
+      let finalFile = selectedFile;
+      if (shouldSampleBeforeUpload(selectedFile)) {
+        finalFile = await sampleCsvFirstRows(selectedFile);
+      }
+      setFile(finalFile);
+      await onFileSelect?.(finalFile);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -71,7 +88,7 @@ export function DatasetUploadBox({
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate transition-colors duration-200 group-hover:text-primary">{file.name}</p>
             <p className="text-xs text-muted-foreground font-mono">
-              {(file.size / 1024).toFixed(1)} KB
+              {formatSize(file.size)}
             </p>
           </div>
           <button
@@ -101,7 +118,7 @@ export function DatasetUploadBox({
             className="hidden"
             onChange={(e) => {
               const selectedFile = e.target.files?.[0];
-              if (selectedFile) handleFile(selectedFile);
+              if (selectedFile) void handleFile(selectedFile);
             }}
           />
           <Upload className={cn(
@@ -110,7 +127,13 @@ export function DatasetUploadBox({
             isDragging && "text-primary scale-110 -translate-y-1 animate-bounce"
           )} />
           <p className="text-muted-foreground transition-colors duration-200 group-hover:text-foreground">
-            Drop CSV file or <span className="text-primary font-medium">browse</span>
+            {isProcessing ? (
+              "Preparing a sampled CSV for analysis..."
+            ) : (
+              <>
+                Drop CSV file or <span className="text-primary font-medium">browse</span>
+              </>
+            )}
           </p>
         </div>
       )}
