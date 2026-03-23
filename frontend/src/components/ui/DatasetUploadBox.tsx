@@ -23,6 +23,8 @@ export function DatasetUploadBox({
   const [isProcessing, setIsProcessing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const samplingNote = "Large CSV files are automatically sampled (first 200,000 rows, size-capped) before upload.";
+
   const formatSize = (bytes: number) => {
     if (bytes >= 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
     if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -81,6 +83,10 @@ export function DatasetUploadBox({
       {description && (
         <p className="text-sm text-muted-foreground">{description}</p>
       )}
+
+      <p className="text-xs text-muted-foreground">
+        {samplingNote}
+      </p>
       
       {file ? (
         <div className="group flex items-center gap-3 bg-card border border-border rounded-lg p-4 transition-all duration-200 hover:border-primary/30 hover:shadow-sm">
