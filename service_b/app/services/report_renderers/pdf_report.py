@@ -19,6 +19,14 @@ _COEFF_VAR_RE = re.compile(
 )
 _N_RE = re.compile(r"\bn\s*[:=]\s*(\d+)\b", flags=re.IGNORECASE)
 
+_KV_STAT_RE = re.compile(
+    r"\b(?:cv|pct|n)\s*[:=]\s*[-+]?\d+(?:\.\d+)?\b", flags=re.IGNORECASE
+)
+_BASIS_NOISE_RE = re.compile(
+    r"\b(?:computed\s+from|based\s+on)\s+\d[\d,]*\s+(?:records|rows)\b",
+    flags=re.IGNORECASE,
+)
+
 
 def _escape(text: str) -> str:
     # ReportLab Paragraph supports a subset of HTML; keep user text safe.
@@ -58,9 +66,165 @@ def _rewrite_stat_language(text: str) -> str:
 
     # Remove raw sample-size callouts from the main narrative.
     out = _N_RE.sub("", out)
+    out = _KV_STAT_RE.sub("", out)
+    out = _BASIS_NOISE_RE.sub("", out)
     out = re.sub(r"\s{2,}", " ", out).strip()
     out = out.replace("()", "").strip()
     return out
+
+
+def _is_generic_action(text: str) -> bool:
+    t = (text or "").strip().lower()
+    if not t:
+        return True
+    generic_markers = [
+        "consider",
+        "explore",
+        "benchmark",
+        "industry benchmarks",
+        "compare against",
+        "develop a strategy",
+        "diversification strategy",
+        "smoothing",
+        "maintain portfolio balance",
+        "allocate resources",
+        "invest in",
+        "monitor",
+        "review",
+    ]
+    return any(m in t for m in generic_markers)
+
+
+def _rewrite_driver_plain_english(text: Optional[str], title: str = "") -> str:
+    raw = (text or "").strip()
+    cleaned = _rewrite_stat_language(raw)
+    cleaned = re.sub(r"\b\d+(?:\.\d+)?\b", "", cleaned).strip()
+    cleaned = re.sub(r"\s{2,}", " ", cleaned)
+
+    combined = f"{title} {raw}".lower()
+    if "volatil" in combined or "cv" in combined:
+        return (
+            "Revenue swings dramatically between transactions — the gap between the smallest and largest orders is extreme, "
+            "so an average can mislead planning and cash-flow decisions."
+        )
+    if "concentration" in combined or "top 10" in combined or "top-10" in combined:
+        return (
+            "A small slice of transactions is carrying a disproportionate share of revenue — you’re dependent on a narrow set of customers, "
+            "products, or big one-off orders."
+        )
+    if "mean" in combined and "median" in combined:
+        return (
+            "A small number of large orders are pulling the average up — typical orders are smaller than the headline average, "
+            "which changes how you should forecast and target growth."
+        )
+    if "drop" in combined or "decline" in combined:
+        return (
+            "Revenue is shrinking versus your baseline — the decline is large enough to indicate a real demand/retention/pricing problem, "
+            "not random noise."
+        )
+    if "growth" in combined or "increase" in combined:
+        return (
+            "Revenue expanded versus your baseline — the lift is being driven by a specific segment or set of orders that you can double down on."
+        )
+
+    return cleaned
+
+
+def _rewrite_action_directional(
+    text: Optional[str],
+    *,
+    title: str = "",
+    description: str = "",
+    driver: str = "",
+    context: str = "",
+) -> str:
+    raw = (text or "").strip()
+    cleaned = _rewrite_stat_language(raw)
+
+    combined = " ".join([title, description, driver, raw, context]).lower()
+
+    if "volatil" in combined or "cv" in combined or "swings" in combined:
+        return (
+            "Pull the top 5% of transactions by value and tag each one as: repeat customer, one-off bulk order, promo/discount spike, or seasonal surge. "
+            "If the spikes are repeat customers, build a retention plan around them; if they’re one-offs, stop planning spend off the average and tighten cash controls; "
+            "if they’re seasonal, pre-plan inventory and marketing to smooth the troughs."
+        )
+
+    if "concentration" in combined or "top 10" in combined or "dependency" in combined:
+        return (
+            "List the customers and products inside the top 10% revenue slice. If fewer than ~20 customers drive most of the revenue, you have a retention emergency — "
+            "assign an owner to protect those accounts with proactive outreach and renewal offers. If it’s product-led, you have a portfolio problem — fix availability, pricing, "
+            "and merchandising on the few SKUs carrying the month, then build a plan to grow the middle of the catalog."
+        )
+
+    if "mean" in combined and "median" in combined:
+        return (
+            "Identify the large-order customers that are pulling the mean above the median, then build a retention and expansion plan specifically for them (reorder nudges, "
+            "account-style support, and targeted bundles). Separately, treat the median order as your ‘typical’ customer and optimize acquisition economics around that number, "
+            "not the inflated average."
+        )
+
+    if "diversif" in combined or "portfolio" in combined:
+        return (
+            "Set a hard guardrail: no single product should exceed ~15% of revenue as you scale. Review product share monthly; if any SKU starts creeping up, "
+            "either grow adjacent products intentionally or cap discounting/stock allocation that’s over-feeding the leader."
+        )
+
+    if "drop" in combined or "decline" in combined:
+        return (
+            "Break the revenue decline into three cut views: (1) top 20 customers, (2) top 20 products, (3) the weeks/days with the biggest drop-off. "
+            "If customers drove it, launch a win-back list and fix churn drivers; if products drove it, check stock-outs, pricing, and listing quality; if timing drove it, "
+            "you’re dealing with seasonality or campaign gaps — plan promotions and cash accordingly."
+        )
+
+    if "growth" in combined or "increase" in combined:
+        return (
+            "Find the exact segment driving growth (customers, products, channel, or week). Then lock it in: keep inventory available for the winning products, "
+            "mirror the campaign/channel that drove demand, and build retention loops so the growth repeats next period instead of disappearing."
+        )
+
+    if _is_generic_action(cleaned):
+        return (
+            "Start with a concrete cut: export the top 50 transactions by revenue and the bottom 50 by revenue. Identify whether the difference is customer type, product mix, "
+            "discounting, geography, or timing. Then pick one lever to pull next week (pricing, inventory, retention, or acquisition) — and measure impact in the next period."
+        )
+
+    return cleaned
+
+
+def _format_confidence(confidence: Optional[str], confidence_basis: Optional[str]) -> str:
+    level = (confidence or "").strip().upper()
+    if level not in {"HIGH", "MEDIUM", "LOW"}:
+        level = "MEDIUM" if level else "MEDIUM"
+
+    basis = _rewrite_stat_language(confidence_basis or "")
+    basis_l = basis.lower()
+    if any(k in basis_l for k in ["full dataset", "no sampling", "full baseline", "entire dataset"]):
+        reason = "calculated across the full dataset with no sampling"
+    elif any(k in basis_l for k in ["sample", "subset"]):
+        reason = "directionally consistent in the data, but based on a subset"
+    else:
+        reason = "supported by a clear, consistent pattern in the data"
+
+    return f"{level} — {reason}."
+
+
+def _extract_total_transactions(report: InsightReport) -> Optional[int]:
+    # Prefer any embedded n= signal that might exist in report.summary or confidence basis.
+    candidates = [getattr(report, "summary", "") or ""]
+    for ins in (report.insights or []):
+        cb = getattr(ins, "confidence_basis", None)
+        if cb:
+            candidates.append(str(cb))
+
+    for text in candidates:
+        match = _N_RE.search(text)
+        if match:
+            try:
+                return int(match.group(1))
+            except Exception:
+                return None
+    return None
 
 
 def _importance_label(severity: str) -> str:
@@ -324,7 +488,40 @@ def render_pdf(
     story.append(Spacer(1, 0.15 * inch))
 
     story.append(Paragraph("Analysis Summary", section_heading_style))
-    story.append(Paragraph(_escape(_rewrite_stat_language(report.summary)), body_style))
+    revenue_delta = None
+    for d in (report.metric_deltas or []):
+        if (d.name or "").lower() == "revenue":
+            revenue_delta = d
+            break
+    total_revenue_value = revenue_delta.current if revenue_delta else None
+    total_transactions_value = _extract_total_transactions(report)
+    products_analyzed_value = None
+    if business_insights and isinstance(business_insights.get("scope"), dict):
+        analyzed = business_insights["scope"].get("analyzed") or []
+        if isinstance(analyzed, list):
+            products_analyzed_value = len(analyzed)
+    insights_generated_value = len(report.insights or [])
+
+    summary_bullets = []
+    if total_revenue_value is not None:
+        summary_bullets.append(f"• <b>Total Revenue:</b> ${total_revenue_value:,.2f}")
+    else:
+        summary_bullets.append("• <b>Total Revenue:</b> —")
+
+    if total_transactions_value is not None:
+        summary_bullets.append(f"• <b>Total Transactions:</b> {total_transactions_value:,d}")
+    else:
+        summary_bullets.append("• <b>Total Transactions:</b> —")
+
+    if products_analyzed_value is not None:
+        summary_bullets.append(f"• <b>Products Analyzed:</b> {products_analyzed_value:,d}")
+    else:
+        summary_bullets.append("• <b>Products Analyzed:</b> —")
+
+    summary_bullets.append(f"• <b>Insights Generated:</b> {insights_generated_value:,d}")
+
+    for b in summary_bullets:
+        story.append(Paragraph(b, body_style))
     story.append(Spacer(1, 0.25 * inch))
 
     # ------------------------------------------------------------------
@@ -386,13 +583,22 @@ def render_pdf(
 
             driver = _rewrite_stat_language(ins.driver or "")
             implication = _ensure_implication(ins.implication, fallback_context)
-            action = _ensure_action(
+            driver_plain = _rewrite_driver_plain_english(ins.driver or "", title=ins.title)
+            action = _rewrite_action_directional(
                 ins.action_direction,
-                "Identify the top 10% of transactions driving the largest share of revenue. Determine whether they are repeat customers, specific products, or seasonal spikes — that answer dictates whether you prioritize retention, availability/pricing, or seasonal planning.",
+                title=ins.title or "",
+                description=ins.description or "",
+                driver=ins.driver or "",
+                context=fallback_context,
             )
 
-            if driver:
-                story.append(Paragraph(f"<i>Driver:</i> {_escape(driver)}", small_muted_style))
+            if driver_plain:
+                story.append(
+                    Paragraph(
+                        f"<i>Driver:</i> {_escape(driver_plain)}",
+                        small_muted_style,
+                    )
+                )
             story.append(Paragraph(f"<i>Implication:</i> {_escape(implication)}", small_muted_style))
             story.append(Paragraph(f"<i>Action:</i> {_escape(action)}", small_muted_style))
 
@@ -401,10 +607,7 @@ def render_pdf(
                 story.append(Paragraph(_escape(_negative_revenue_note()), small_muted_style))
 
             if ins.confidence:
-                conf_text = f"Confidence: {ins.confidence}"
-                if ins.confidence_basis:
-                    # Keep basis, but avoid raw statistical language dominating the report.
-                    conf_text += f" ({_escape(_rewrite_stat_language(ins.confidence_basis))})"
+                conf_text = f"Confidence: {_format_confidence(ins.confidence, getattr(ins, 'confidence_basis', None))}"
                 story.append(Paragraph(conf_text, small_muted_style))
 
             story.append(Spacer(1, 0.18 * inch))
@@ -443,7 +646,7 @@ def render_pdf(
                 if insight.get("driver"):
                     story.append(
                         Paragraph(
-                            f"<i>Driver:</i> {_escape(_rewrite_stat_language(insight['driver']))}",
+                            f"<i>Driver:</i> {_escape(_rewrite_driver_plain_english(insight.get('driver'), title=name))}",
                             detail_style,
                         )
                     )
@@ -457,9 +660,15 @@ def render_pdf(
                     )
 
                 if insight.get("action_direction"):
+                    rewritten_action = _rewrite_action_directional(
+                        insight.get("action_direction"),
+                        title=name,
+                        description=str(insight.get("description") or ""),
+                        driver=str(insight.get("driver") or ""),
+                    )
                     story.append(
                         Paragraph(
-                            f"<i>Action:</i> {_escape(_rewrite_stat_language(insight['action_direction']))}",
+                            f"<i>Action:</i> {_escape(rewritten_action)}",
                             detail_style,
                         )
                     )
@@ -467,9 +676,7 @@ def render_pdf(
                 confidence = insight.get("confidence")
                 confidence_basis = insight.get("confidence_basis")
                 if confidence:
-                    conf_text = f"Confidence: {confidence}"
-                    if confidence_basis:
-                        conf_text += f" ({confidence_basis})"
+                    conf_text = f"Confidence: {_format_confidence(str(confidence), str(confidence_basis) if confidence_basis else None)}"
                     story.append(Paragraph(conf_text, small_style))
 
                 story.append(Spacer(1, 0.15 * inch))
@@ -485,11 +692,7 @@ def render_pdf(
                 "Revenue Concentration", business_insights.get("concentration")
             )
 
-            exec_summary = business_insights.get("executive_summary")
-            if exec_summary:
-                story.append(Spacer(1, 0.1 * inch))
-                story.append(Paragraph("Additional Notes", section_heading_style))
-                story.append(Paragraph(_escape(_rewrite_stat_language(exec_summary)), detail_style))
+            # Intentionally omit any “Additional Notes” section.
         except Exception:
             # Defensive - never fail PDF generation for business insights
             pass
