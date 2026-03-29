@@ -27,6 +27,16 @@ _BASIS_NOISE_RE = re.compile(
     flags=re.IGNORECASE,
 )
 
+_PRODUCTS_ANALYZED_RE = re.compile(
+    r"\b(?:products\s+analyzed|distinct\s+products|unique\s+products|distinct\s+product\s+count|products\s+in\s+the\s+dataset)\b[^\d]*(\d[\d,]*)\b",
+    flags=re.IGNORECASE,
+)
+
+_DISTINCT_PRODUCTS_INLINE_RE = re.compile(
+    r"\b(\d[\d,]*)\s+distinct\s+products\b",
+    flags=re.IGNORECASE,
+)
+
 
 def _escape(text: str) -> str:
     # ReportLab Paragraph supports a subset of HTML; keep user text safe.
@@ -98,8 +108,7 @@ def _is_generic_action(text: str) -> bool:
 def _rewrite_driver_plain_english(text: Optional[str], title: str = "") -> str:
     raw = (text or "").strip()
     cleaned = _rewrite_stat_language(raw)
-    cleaned = re.sub(r"\b\d+(?:\.\d+)?\b", "", cleaned).strip()
-    cleaned = re.sub(r"\s{2,}", " ", cleaned)
+    cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
 
     combined = f"{title} {raw}".lower()
     if "volatil" in combined or "cv" in combined:
@@ -130,6 +139,18 @@ def _rewrite_driver_plain_english(text: Optional[str], title: str = "") -> str:
     return cleaned
 
 
+def _rewrite_exec_takeaway(bullet: str) -> str:
+    b = (bullet or "").strip()
+    if not b:
+        return ""
+    lowered = b.lower()
+    if "cv=" in lowered or "coefficient of variation" in lowered or "volatil" in lowered:
+        return (
+            "Revenue volatility is extremely high — cash flow is unpredictable and forecasting is unreliable without addressing transaction variance."
+        )
+    return _rewrite_stat_language(b)
+
+
 def _rewrite_action_directional(
     text: Optional[str],
     *,
@@ -148,6 +169,12 @@ def _rewrite_action_directional(
             "Pull the top 5% of transactions by value and tag each one as: repeat customer, one-off bulk order, promo/discount spike, or seasonal surge. "
             "If the spikes are repeat customers, build a retention plan around them; if they’re one-offs, stop planning spend off the average and tighten cash controls; "
             "if they’re seasonal, pre-plan inventory and marketing to smooth the troughs."
+        )
+
+    if "product" in combined and "concentration" in combined and ("top 3" in combined or "top three" in combined) and ("4%" in combined or " 4 %" in combined):
+        return (
+            "Your product revenue is well distributed — no single SKU dominates. Protect this as you scale by reviewing product share monthly and avoiding over-investing in "
+            "promoting one product at the expense of the catalog."
         )
 
     if "concentration" in combined or "top 10" in combined or "dependency" in combined:
@@ -222,6 +249,53 @@ def _extract_total_transactions(report: InsightReport) -> Optional[int]:
         if match:
             try:
                 return int(match.group(1))
+            except Exception:
+                return None
+    return None
+
+
+def _extract_distinct_products(report: InsightReport, business_insights: Optional[Dict[str, Any]]) -> Optional[int]:
+    # Prefer any explicit distinct product count already embedded in the analysis outputs.
+    candidates: list[str] = []
+    if getattr(report, "summary", None):
+        candidates.append(str(report.summary))
+
+    for ins in (report.insights or []):
+        for field in [
+            getattr(ins, "description", None),
+            getattr(ins, "driver", None),
+            getattr(ins, "confidence_basis", None),
+        ]:
+            if field:
+                candidates.append(str(field))
+
+    if business_insights:
+        for key in ["executive_summary", "notes", "summary"]:
+            v = business_insights.get(key)
+            if v:
+                candidates.append(str(v))
+
+        scope = business_insights.get("scope")
+        if isinstance(scope, dict):
+            for k in ["products_analyzed", "distinct_products", "unique_products", "product_count"]:
+                v = scope.get(k)
+                if isinstance(v, int):
+                    return v
+                if isinstance(v, str):
+                    candidates.append(v)
+
+    for text in candidates:
+        inline = _DISTINCT_PRODUCTS_INLINE_RE.search(text)
+        if inline:
+            try:
+                return int(inline.group(1).replace(",", ""))
+            except Exception:
+                return None
+
+        match = _PRODUCTS_ANALYZED_RE.search(text)
+        if match:
+            try:
+                return int(match.group(1).replace(",", ""))
             except Exception:
                 return None
     return None
@@ -431,7 +505,7 @@ def render_pdf(
     story.append(Paragraph("Business Insight Report", title_style))
     story.append(Paragraph("Generated for revenue analysis", subtitle_style))
 
-    date_str = datetime.now().strftime("%B %d, %Y at %I:%M %p")
+    date_str = datetime.now().strftime("%B %d, %Y")
     story.append(Paragraph(f"Generated on {date_str}", date_style))
     story.append(Spacer(1, 0.35 * inch))
 
@@ -454,7 +528,7 @@ def render_pdf(
                 )
                 for bullet in executive_takeaways[:6]:
                     if bullet:
-                        story.append(Paragraph(f"• {bullet}", bullet_style))
+                        story.append(Paragraph(f"• {_escape(_rewrite_exec_takeaway(str(bullet)))}", bullet_style))
                         story.append(Spacer(1, 0.05 * inch))
                 story.append(Spacer(1, 0.2 * inch))
 
@@ -495,11 +569,7 @@ def render_pdf(
             break
     total_revenue_value = revenue_delta.current if revenue_delta else None
     total_transactions_value = _extract_total_transactions(report)
-    products_analyzed_value = None
-    if business_insights and isinstance(business_insights.get("scope"), dict):
-        analyzed = business_insights["scope"].get("analyzed") or []
-        if isinstance(analyzed, list):
-            products_analyzed_value = len(analyzed)
+    products_analyzed_value = _extract_distinct_products(report, business_insights)
     insights_generated_value = len(report.insights or [])
 
     summary_bullets = []
