@@ -18,6 +18,9 @@ _COEFF_VAR_RE = re.compile(
     r"\bcoefficient\s+of\s+variation\b", flags=re.IGNORECASE
 )
 _N_RE = re.compile(r"\bn\s*[:=]\s*(\d+)\b", flags=re.IGNORECASE)
+_CV_OF_RE = re.compile(r"\bCV\s+of\s+(\d+(?:\.\d+)?)\b", flags=re.IGNORECASE)
+_OF_PRODUCTS_RE = re.compile(r"\bof\s+(\d[\d,]*)\s+products\b", flags=re.IGNORECASE)
+_TOP3_PCT_RE = re.compile(r"\((\d+(?:\.\d+)?)%\)")
 
 _KV_STAT_RE = re.compile(
     r"\b(?:cv|pct|n)\s*[:=]\s*[-+]?\d+(?:\.\d+)?\b", flags=re.IGNORECASE
@@ -73,6 +76,7 @@ def _rewrite_stat_language(text: str) -> str:
     out = text
     out = _COEFF_VAR_RE.sub("revenue volatility", out)
     out = _rewrite_cv(out)
+    out = _CV_OF_RE.sub(lambda m: _rewrite_cv(f"CV={m.group(1)}"), out)
 
     # Remove raw sample-size callouts from the main narrative.
     out = _N_RE.sub("", out)
@@ -116,9 +120,20 @@ def _rewrite_driver_plain_english(text: Optional[str], title: str = "") -> str:
             "Revenue swings dramatically between transactions — the gap between the smallest and largest orders is extreme, "
             "so an average can mislead planning and cash-flow decisions."
         )
+    if "top 3" in combined and "products" in combined:
+        # Product concentration — parse real numbers from driver string if present
+        prod_match = _OF_PRODUCTS_RE.search(raw)
+        pct_match = _TOP3_PCT_RE.search(raw)
+        prod_count = prod_match.group(1) if prod_match else "thousands of"
+        top3_pct = pct_match.group(1) if pct_match else "a small fraction"
+        return (
+            f"Revenue is spread across {prod_count} products with no single SKU dominating — "
+            f"the top 3 products combined drive only {top3_pct}% of total revenue, "
+            "indicating a healthy and distributed product portfolio."
+        )
     if "concentration" in combined or "top 10" in combined or "top-10" in combined:
         return (
-            "A small slice of transactions is carrying a disproportionate share of revenue — you’re dependent on a narrow set of customers, "
+            "A small slice of transactions is carrying a disproportionate share of revenue — you're dependent on a narrow set of customers, "
             "products, or big one-off orders."
         )
     if "mean" in combined and "median" in combined:
@@ -580,8 +595,6 @@ def render_pdf(
 
     if total_transactions_value is not None:
         summary_bullets.append(f"• <b>Total Transactions:</b> {total_transactions_value:,d}")
-    else:
-        summary_bullets.append("• <b>Total Transactions:</b> —")
 
     if products_analyzed_value is not None:
         summary_bullets.append(f"• <b>Products Analyzed:</b> {products_analyzed_value:,d}")
@@ -643,7 +656,13 @@ def render_pdf(
             story.append(Paragraph(title_line, insights_style))
             story.append(Paragraph(f"<i>Why it matters:</i> {_escape(importance)}", small_muted_style))
 
-            desc = _rewrite_stat_language(ins.description)
+            if getattr(ins, "code", "") == "REVENUE_VOLATILITY":
+                desc = (
+                    "Revenue swings dramatically across transactions — the gap between typical orders and peak orders is extreme, "
+                    "making the average transaction value unreliable as a planning number."
+                )
+            else:
+                desc = _rewrite_stat_language(ins.description)
             story.append(Paragraph(_escape(desc), insights_style))
 
             # Render enrichment fields if present
@@ -711,7 +730,15 @@ def render_pdf(
                 story.append(Paragraph(f"<b>{name}</b>", detail_style))
 
                 if insight.get("description"):
-                    story.append(Paragraph(_escape(_rewrite_stat_language(insight["description"])) , detail_style))
+                    raw_desc = str(insight["description"])
+                    if name == "Revenue Stability" and any(k in raw_desc.lower() for k in ["volatil", "cv", "anomaly"]):
+                        rendered_desc = (
+                            "Revenue swings are extreme — cash flow is unpredictable and "
+                            "planning off averages will mislead decision-making."
+                        )
+                    else:
+                        rendered_desc = _rewrite_stat_language(raw_desc)
+                    story.append(Paragraph(_escape(rendered_desc), detail_style))
 
                 if insight.get("driver"):
                     story.append(
