@@ -566,6 +566,10 @@ def render_pdf(
         toc_sections.append("Revenue Stability Index")
     if business_insights and business_insights.get("inventory_health_score"):
         toc_sections.append("Inventory Health Score")
+    if business_insights and business_insights.get("early_warning_alerts"):
+        ewa_data = business_insights["early_warning_alerts"]
+        if isinstance(ewa_data, dict) and ewa_data.get("alert_count", 0) > 0:
+            toc_sections.append("Early Warning Alerts")
     toc_sections.append("Insights")
     if business_insights:
         toc_sections.append("Business Interpretation")
@@ -820,6 +824,58 @@ def render_pdf(
             story.append(Spacer(1, 0.25 * inch))
         except Exception:
             pass  # Never fail PDF generation for IHS
+ 
+    # ------------------------------------------------------------------
+    # Early Warning Alerts section (if available and non-empty)
+    # ------------------------------------------------------------------
+    if business_insights and business_insights.get("early_warning_alerts"):
+        try:
+            ewa = business_insights["early_warning_alerts"]
+            ewa_alerts = ewa.get("alerts") or []
+            if ewa_alerts:
+                story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
+                story.append(Paragraph("Early Warning Alerts", section_heading_style))
+ 
+                sev_label_map = {
+                    "critical": "\u26d4 CRITICAL",
+                    "high": "\u26a0 HIGH",
+                    "medium": "\u25b2 MEDIUM",
+                    "low": "\u2139 LOW",
+                }
+ 
+                for alert in ewa_alerts:
+                    sev = alert.get("severity", "low")
+                    sev_display = sev_label_map.get(sev, sev.upper())
+                    title = alert.get("title", "")
+                    desc = alert.get("description", "")
+                    driver = alert.get("driver", "")
+                    action = alert.get("action_direction", "")
+                    confidence = alert.get("confidence", "")
+ 
+                    story.append(
+                        Paragraph(
+                            f"<b>[{_escape(sev_display)}]</b> {_escape(str(title))}",
+                            body_style,
+                        )
+                    )
+                    if desc:
+                        story.append(Paragraph(_escape(str(desc)), small_muted_style))
+                    if driver:
+                        story.append(Paragraph(f"<i>Driver:</i> {_escape(str(driver))}", small_muted_style))
+                    if action:
+                        story.append(Paragraph(f"<i>Action:</i> {_escape(str(action))}", small_muted_style))
+                    if confidence:
+                        story.append(
+                            Paragraph(
+                                f"Confidence: {str(confidence).upper()}",
+                                small_muted_style,
+                            )
+                        )
+                    story.append(Spacer(1, 0.15 * inch))
+ 
+                story.append(Spacer(1, 0.1 * inch))
+        except Exception:
+            pass  # Never fail PDF generation for EWA
 
     # ------------------------------------------------------------------
     # Insights section

@@ -240,6 +240,79 @@ export default function Overview() {
           </section>
         )}
 
+        {bi?.early_warning_alerts &&
+          bi.early_warning_alerts.alerts &&
+          bi.early_warning_alerts.alerts.length > 0 && (
+          <section className="section-spacing">
+            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
+              Early Warning Alerts
+              {bi.early_warning_alerts.has_critical && (
+                <span className="ml-2 text-red-500 font-bold text-[10px] bg-red-500/10 border border-red-500/20 rounded px-1.5 py-0.5">
+                  CRITICAL
+                </span>
+              )}
+              {!bi.early_warning_alerts.has_critical && bi.early_warning_alerts.has_high && (
+                <span className="ml-2 text-amber-500 font-bold text-[10px] bg-amber-500/10 border border-amber-500/20 rounded px-1.5 py-0.5">
+                  HIGH
+                </span>
+              )}
+            </h3>
+            <div className="space-y-3">
+              {bi.early_warning_alerts.alerts.map((alert, idx) => {
+                const sevColors: Record<string, string> = {
+                  critical: "border-red-500/40 bg-red-500/5",
+                  high: "border-amber-500/40 bg-amber-500/5",
+                  medium: "border-yellow-500/30 bg-yellow-500/5",
+                  low: "border-border bg-card",
+                };
+                const sevTextColors: Record<string, string> = {
+                  critical: "text-red-500",
+                  high: "text-amber-500",
+                  medium: "text-yellow-600",
+                  low: "text-muted-foreground",
+                };
+                const borderClass = sevColors[alert.severity] || sevColors.low;
+                const textClass = sevTextColors[alert.severity] || sevTextColors.low;
+ 
+                return (
+                  <div
+                    key={alert.alert_code + idx}
+                    className={`border rounded-lg p-4 space-y-2 ${borderClass}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] font-bold font-mono uppercase ${textClass}`}>
+                        {alert.severity}
+                      </span>
+                      <span className="text-sm font-medium text-foreground">
+                        {alert.title}
+                      </span>
+                    </div>
+                    <p className="text-xs text-foreground/80 leading-relaxed">
+                      {alert.description}
+                    </p>
+                    {alert.driver && (
+                      <p className="text-xs text-muted-foreground">
+                        <span className="font-medium">Driver:</span> {alert.driver}
+                      </p>
+                    )}
+                    {alert.action_direction && (
+                      <p className="text-xs text-primary">
+                        <span className="font-medium">Action:</span> {alert.action_direction}
+                      </p>
+                    )}
+                    {alert.confidence && (
+                      <p className="text-[10px] text-muted-foreground font-mono">
+                        Confidence: {alert.confidence.toUpperCase()}
+                        {alert.confidence_basis && <span> — {alert.confidence_basis}</span>}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+ 
         {/* Business Insight Detail Sections */}
         {hasBI && (
           <section className="section-spacing space-y-6">

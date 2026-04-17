@@ -213,6 +213,23 @@ export interface InsightReport {
       has_stock_data?: boolean;
       watchlist?: string[];
     };
+    early_warning_alerts?: {
+      alerts?: Array<{
+        alert_code: string;
+        severity: "critical" | "high" | "medium" | "low";
+        title: string;
+        description: string;
+        driver?: string;
+        implication?: string;
+        action_direction?: string;
+        confidence?: string;
+        confidence_basis?: string;
+        metric_ref?: string;
+      }>;
+      alert_count?: number;
+      has_critical?: boolean;
+      has_high?: boolean;
+    };
     products_to_watch?: string[];
     meta?: Record<string, any>;
   };

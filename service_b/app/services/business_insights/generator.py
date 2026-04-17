@@ -19,6 +19,7 @@ from app.schemas.insight.report import InsightReport
 from app.schemas.insight.metrics import MetricDelta
 from app.services.revenue_stability import RevenueStabilityResult, compute_revenue_stability_index
 from app.services.inventory_health import InventoryHealthResult, compute_inventory_health_score
+from app.services.early_warnings import EarlyWarningResult, compute_early_warnings
 
 
 class TrendInsight(BaseModel):
@@ -92,6 +93,7 @@ class BusinessInsights(BaseModel):
     products_to_watch: Optional[List[str]] = None
     revenue_stability_index: Optional[RevenueStabilityResult] = None
     inventory_health_score: Optional[InventoryHealthResult] = None
+    early_warning_alerts: Optional[EarlyWarningResult] = None
     # Metadata
     meta: Optional[Dict[str, Any]] = None
 
@@ -281,6 +283,18 @@ class BusinessInsightGenerator:
             # Inventory Health Score (additive — returns None on failure)
             ihs_result = compute_inventory_health_score(current_df)
 
+            # Early Warning Alerts (meta-layer — reads from already-computed insights)
+            # Build a temporary dict of computed insights so EWA can evaluate rules
+            _pre_bi = BusinessInsights(
+                executive_takeaways=takeaways, scope=self.build_scope_block(),
+                trend=trend, stability=stability, efficiency=efficiency, concentration=concentration,
+                executive_summary=exec_summary,
+                products_to_watch=products_to_watch,
+                revenue_stability_index=rsi_result,
+                inventory_health_score=ihs_result,
+            )
+            ewa_result = compute_early_warnings(_pre_bi.dict(), current_df)
+
             return BusinessInsights(
                 executive_takeaways=takeaways, scope=self.build_scope_block(),
                 trend=trend, stability=stability, efficiency=efficiency, concentration=concentration,
@@ -288,6 +302,7 @@ class BusinessInsightGenerator:
                 products_to_watch=products_to_watch,
                 revenue_stability_index=rsi_result,
                 inventory_health_score=ihs_result,
+                early_warning_alerts=ewa_result,
             )
         except Exception: return None
 
