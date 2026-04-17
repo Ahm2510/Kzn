@@ -133,6 +133,121 @@ export default function Overview() {
             </div>
           </div>
         </section>
+
+        {bi?.revenue_stability_index && (
+          <section className="section-spacing">
+            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
+              Revenue Stability Index
+            </h3>
+            <div className="bg-card border border-border rounded-lg p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-3xl font-display font-bold text-foreground">
+                    {Math.round(bi.revenue_stability_index.score)}
+                  </span>
+                  <span className="text-sm text-muted-foreground ml-1">/100</span>
+                </div>
+                <StatusBadge status="complete" label={bi.revenue_stability_index.label} />
+              </div>
+              <p className="text-sm text-foreground leading-relaxed">
+                {bi.revenue_stability_index.explanation}
+              </p>
+              {bi.revenue_stability_index.contributing_factors &&
+                bi.revenue_stability_index.contributing_factors.length > 0 && (
+                  <div className="space-y-1 pt-2 border-t border-border/60">
+                    {bi.revenue_stability_index.contributing_factors.map(
+                      (f: string, i: number) => (
+                        <p key={i} className="text-xs text-muted-foreground">
+                          - {f}
+                        </p>
+                      )
+                    )}
+                  </div>
+                )}
+              {bi.revenue_stability_index.warning && (
+                <p className="text-xs text-amber-500 bg-amber-500/5 border border-amber-500/20 rounded px-3 py-2">
+                  ⚠ {bi.revenue_stability_index.warning}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Confidence:{" "}
+                <span className="font-mono">
+                  {(bi.revenue_stability_index.confidence ?? "").toUpperCase()}
+                </span>
+              </p>
+            </div>
+          </section>
+        )}
+
+        {/* Business Insight Detail Sections */}
+        {hasBI && (
+          <section className="section-spacing space-y-6">
+            {[
+              { label: "Trend Analysis", data: bi?.trend },
+              { label: "Revenue Stability", data: bi?.stability },
+              { label: "Revenue Efficiency", data: bi?.efficiency },
+              { label: "Revenue Concentration", data: bi?.concentration },
+            ]
+              .filter((s) => s.data && (s.data.driver || s.data.implication || s.data.action_direction))
+              .map((section) => (
+                <div key={section.label} className="bg-card border border-border rounded-lg p-6 space-y-3">
+                  <h4 className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
+                    {section.label}
+                  </h4>
+                  {section.data?.description && (
+                    <p className="text-sm text-foreground leading-relaxed">{section.data.description}</p>
+                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-border/60">
+                    {section.data?.driver && (
+                      <div className="text-xs">
+                        <span className="text-muted-foreground">Driver: </span>
+                        <span className="text-foreground">{section.data.driver}</span>
+                      </div>
+                    )}
+                    {section.data?.implication && (
+                      <div className="text-xs">
+                        <span className="text-muted-foreground">Implication: </span>
+                        <span className="text-foreground">{section.data.implication}</span>
+                      </div>
+                    )}
+                    {section.data?.action_direction && (
+                      <div className="text-xs">
+                        <span className="text-muted-foreground">Action: </span>
+                        <span className="text-primary font-medium">{section.data.action_direction}</span>
+                      </div>
+                    )}
+                  </div>
+                  {section.data?.confidence && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Confidence: <span className="font-mono">{String(section.data.confidence).toUpperCase()}</span>
+                      {section.data.confidence_basis && (
+                        <span> — {section.data.confidence_basis}</span>
+                      )}
+                    </p>
+                  )}
+                </div>
+              ))}
+          </section>
+        )}
+
+        {/* Products to Watch */}
+        {bi?.products_to_watch && Array.isArray(bi.products_to_watch) && bi.products_to_watch.length > 0 && (
+          <section className="section-spacing">
+            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
+              Products to Watch
+            </h3>
+            <div className="bg-card border border-border rounded-lg p-6">
+              <ul className="list-disc pl-5 space-y-1">
+                {bi.products_to_watch.map((p: string, idx: number) => (
+                  <li key={idx} className="text-sm text-foreground">{p}</li>
+                ))}
+              </ul>
+              <p className="text-xs text-muted-foreground mt-3">
+                These products are underperforming relative to the portfolio — consider reviewing pricing, availability, or positioning.
+              </p>
+            </div>
+          </section>
+        )}
       </div>
     </AppLayout>
   );

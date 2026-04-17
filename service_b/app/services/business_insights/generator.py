@@ -17,6 +17,7 @@ from pydantic import BaseModel
 
 from app.schemas.insight.report import InsightReport
 from app.schemas.insight.metrics import MetricDelta
+from app.services.revenue_stability import RevenueStabilityResult, compute_revenue_stability_index
 
 
 class TrendInsight(BaseModel):
@@ -87,6 +88,8 @@ class BusinessInsights(BaseModel):
     efficiency: Optional[EfficiencyInsight] = None
     concentration: Optional[ConcentrationInsight] = None
     executive_summary: Optional[str] = None
+    products_to_watch: Optional[List[str]] = None
+    revenue_stability_index: Optional[RevenueStabilityResult] = None
     # Metadata
     meta: Optional[Dict[str, Any]] = None
 
@@ -144,6 +147,9 @@ class BusinessInsightGenerator:
         if efficiency and efficiency.signal == "efficiency_improved":
             pct = efficiency.change_percent or 0
             takeaways.append(f"Efficiency gain: revenue yield per transaction up {pct:.0f}%.")
+
+        if not takeaways:
+            takeaways.append("Insufficient data for full pattern analysis — insights reflect available signals only.")
 
         if len(takeaways) < 4 and delta.current > 0:
             takeaways.append(f"Revenue stability: total period revenue recorded at ${delta.current:,.0f}.")
@@ -256,13 +262,26 @@ class BusinessInsightGenerator:
             if efficiency: efficiency = self.enrich_efficiency_insight(efficiency, n) # Not enriched in this version
             if concentration: concentration = self.enrich_concentration_insight(concentration, n)
             
-            exec_summary = self._generate_executive_summary(rev_delta, trend, stability, efficiency, concentration)
+            exec_summary = self._generate_executive_summary(rev_delta, trend, stability, efficiency, concentration, current_df)
             takeaways = self.build_executive_takeaways(rev_delta, trend, stability, efficiency, concentration)
             
+            # B1. PRODUCTS-TO-WATCH FLAG
+            products_to_watch = self._generate_products_to_watch(current_df)
+
+            # Revenue Stability Index (additive — returns None on failure)
+            rsi_result = compute_revenue_stability_index(
+                current_df=current_df,
+                revenue_column=revenue_column,
+                baseline_df=baseline_df,
+                baseline_revenue_column=baseline_revenue_column,
+            )
+
             return BusinessInsights(
                 executive_takeaways=takeaways, scope=self.build_scope_block(),
                 trend=trend, stability=stability, efficiency=efficiency, concentration=concentration,
-                executive_summary=exec_summary
+                executive_summary=exec_summary,
+                products_to_watch=products_to_watch,
+                revenue_stability_index=rsi_result,
             )
         except Exception: return None
 
@@ -303,8 +322,62 @@ class BusinessInsightGenerator:
         else: risk, desc = "low", f"Stability: revenue is well-distributed (top 10% = {contrib:.1f}%)."
         return ConcentrationInsight(top_10_percent_contribution=round(contrib, 2), risk_level=risk, description=desc)
 
-    def _generate_executive_summary(self, delta: MetricDelta, t: Optional[TrendInsight], s: Optional[StabilityInsight], e: Optional[EfficiencyInsight], c: Optional[ConcentrationInsight]) -> Optional[str]:
+    def _generate_executive_summary(self, delta: MetricDelta, t: Optional[TrendInsight], s: Optional[StabilityInsight], e: Optional[EfficiencyInsight], c: Optional[ConcentrationInsight], df: pd.DataFrame) -> Optional[str]:
         parts = [f"Revenue changed {delta.percent_change:+.1f}% to ${delta.current:,.0f}." if delta.baseline > 0 else f"Revenue: ${delta.current:,.0f}."]
-        if c and c.top_10_percent_contribution > 60: parts.append(f"Concentration risk detected: top 10% drives {c.top_10_percent_contribution:.0f}% of revenue.")
-        if s and s.coefficient_of_variation > 0.7: parts.append("Volatility anomaly detected in transaction distribution.")
+        
+        # B2. MOM COMMENTARY ENRICHMENT
+        if s and s.coefficient_of_variation:
+            if s.coefficient_of_variation > 0.7:
+                parts.append("High volatility detected in transaction distribution, indicating unpredictable cash flow patterns.")
+            else:
+                parts.append("Revenue distribution remains relatively stable, supporting more predictable forecasting.")
+        
+        if c and c.top_10_percent_contribution > 40:
+            parts.append(f"Concentration risk identified: top 10% of activity drives {c.top_10_percent_contribution:.0f}% of revenue, creating a dependency on high-value contributors.")
+
+        products_to_watch = self._generate_products_to_watch(df)
+        if products_to_watch:
+            parts.append(f"Underperforming products identified: {', '.join(products_to_watch)} require potential review of pricing or positioning.")
+
+        parts.append("Focus on stabilizing the top revenue contributors while optimizing underperforming segments to improve overall yield.")
+        
         return " ".join(parts)
+
+    def _generate_products_to_watch(self, df: pd.DataFrame) -> Optional[List[str]]:
+        try:
+            from app.services.insight_engine.column_detector import detect_revenue_column
+            
+            # Detect product column
+            product_col_candidates = ["product", "product_name", "item", "sku", "description", "product_id", "item_name", "product_category", "category"]
+            cols_lower = {col.lower().strip(): col for col in df.columns}
+            product_col = next((cols_lower[c] for c in product_col_candidates if c in cols_lower), None)
+            
+            # Detect revenue column
+            rev_col, _, _ = detect_revenue_column(df)
+            
+            if not product_col or not rev_col:
+                return None
+                
+            # Group by product, sum revenue
+            grouped = df.assign(__rev=pd.to_numeric(df[rev_col], errors='coerce')).groupby(product_col)["__rev"].sum().dropna()
+            grouped = grouped[grouped > 0].sort_values()
+            
+            if grouped.empty:
+                return None
+                
+            # Bottom 20% by revenue share
+            total_rev = grouped.sum()
+            threshold = total_rev * 0.20
+            
+            underperformers = []
+            cumulative_rev = 0
+            for prod, rev in grouped.items():
+                if cumulative_rev + rev <= threshold:
+                    underperformers.append(str(prod))
+                    cumulative_rev += rev
+                else:
+                    break
+                    
+            return underperformers[:5] if underperformers else None
+        except Exception:
+            return None

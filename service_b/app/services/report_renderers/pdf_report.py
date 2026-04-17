@@ -5,9 +5,10 @@ import re
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import inch
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.colors import HexColor
+from reportlab.pdfgen.canvas import Canvas
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
+from reportlab.lib.enums import TA_LEFT
 
 from app.schemas.insight.report import InsightReport
 
@@ -444,6 +445,35 @@ def _build_executive_paragraph(
     return " ".join(expanded)
 
 
+class PageNumCanvas(Canvas):
+    """
+    Custom canvas to add page numbers during the build process.
+    """
+
+    def __init__(self, *args, **kwargs):
+        Canvas.__init__(self, *args, **kwargs)
+        self.pages = []
+
+    def showPage(self):
+        self.pages.append(dict(self.__dict__))
+        self._startPage()
+
+    def save(self):
+        page_count = len(self.pages)
+        for page in self.pages:
+            self.__dict__.update(page)
+            if page_count > 1:
+                self.draw_page_number(page_count)
+            Canvas.showPage(self)
+        Canvas.save(self)
+
+    def draw_page_number(self, page_count):
+        self.setFont("Helvetica", 8)
+        self.drawRightString(
+            A4[0] - 0.75 * inch, 0.5 * inch, f"Page {self._pageNumber} of {page_count}"
+        )
+
+
 def render_pdf(
     report: InsightReport,
     output_path: str,
@@ -524,6 +554,25 @@ def render_pdf(
     story.append(Paragraph(f"Generated on {date_str}", date_style))
     story.append(Spacer(1, 0.35 * inch))
 
+    # C3. TABLE OF CONTENTS
+    toc_style = ParagraphStyle(
+        "TOC",
+        parent=small_muted_style,
+        leading=14,
+        leftIndent=8,
+    )
+    toc_sections = ["Executive Takeaways", "Executive Summary", "Analysis Summary", "Key Metrics"]
+    if business_insights and business_insights.get("revenue_stability_index"):
+        toc_sections.append("Revenue Stability Index")
+    toc_sections.append("Insights")
+    if business_insights:
+        toc_sections.append("Business Interpretation")
+
+    story.append(Paragraph("<b>Contents</b>", toc_style))
+    for i, sec in enumerate(toc_sections, 1):
+        story.append(Paragraph(f"  {i}. {sec}", toc_style))
+    story.append(Spacer(1, 0.25 * inch))
+
     # ------------------------------------------------------------------
     # Executive Takeaways + Scope (if business_insights present)
     # ------------------------------------------------------------------
@@ -535,6 +584,7 @@ def render_pdf(
                 and isinstance(executive_takeaways, list)
                 and len(executive_takeaways) > 0
             ):
+                story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
                 story.append(Paragraph("Executive Takeaways", section_heading_style))
                 bullet_style = ParagraphStyle(
                     "ExecBullet",
@@ -571,11 +621,13 @@ def render_pdf(
     # ------------------------------------------------------------------
     # Executive Summary section (always)
     # ------------------------------------------------------------------
+    story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
     story.append(Paragraph("Executive Summary", section_heading_style))
     exec_paragraph = _build_executive_paragraph(report, business_insights)
     story.append(Paragraph(_escape(exec_paragraph), body_style))
     story.append(Spacer(1, 0.15 * inch))
 
+    story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
     story.append(Paragraph("Analysis Summary", section_heading_style))
     revenue_delta = None
     for d in (report.metric_deltas or []):
@@ -607,9 +659,28 @@ def render_pdf(
         story.append(Paragraph(b, body_style))
     story.append(Spacer(1, 0.25 * inch))
 
+    # C5. DATA QUALITY SUMMARY IN PDF
+    if business_insights and business_insights.get("data_quality"):
+        dq = business_insights["data_quality"]
+        story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
+        story.append(Paragraph("Data Quality Summary", section_heading_style))
+        dq_bullets = []
+        if dq.get("rows_before") is not None and dq.get("rows_after") is not None:
+            dq_bullets.append(f"• Rows after cleaning: {dq['rows_after']:,} (from {dq['rows_before']:,})")
+        if dq.get("duplicate_rows_dropped"):
+            dq_bullets.append(f"• Duplicate rows removed: {dq['duplicate_rows_dropped']:,}")
+        if dq.get("null_rows_dropped"):
+            dq_bullets.append(f"• Null rows removed: {dq['null_rows_dropped']:,}")
+        if dq.get("columns_renamed"):
+            dq_bullets.append(f"• Columns canonicalized: {', '.join(dq['columns_renamed'])}")
+        for b in dq_bullets:
+            story.append(Paragraph(b, body_style))
+        story.append(Spacer(1, 0.2 * inch))
+
     # ------------------------------------------------------------------
     # Key Metrics section
     # ------------------------------------------------------------------
+    story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
     story.append(Paragraph("Key Metrics", section_heading_style))
 
     metrics_style = body_style
@@ -641,8 +712,54 @@ def render_pdf(
     story.append(Spacer(1, 0.25 * inch))
 
     # ------------------------------------------------------------------
+    # Revenue Stability Index section (if available)
+    # ------------------------------------------------------------------
+    if business_insights and business_insights.get("revenue_stability_index"):
+        try:
+            rsi = business_insights["revenue_stability_index"]
+            score_val = rsi.get("score")
+            label_val = rsi.get("label", "")
+            explanation_val = rsi.get("explanation", "")
+            factors = rsi.get("contributing_factors") or []
+            warning_val = rsi.get("warning")
+            confidence_val = rsi.get("confidence", "")
+
+            story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
+            story.append(Paragraph("Revenue Stability Index", section_heading_style))
+
+            if score_val is not None:
+                story.append(
+                    Paragraph(
+                        f"<b>{score_val:.0f}/100</b> — {_escape(str(label_val))}",
+                        body_style,
+                    )
+                )
+
+            if explanation_val:
+                story.append(Paragraph(_escape(str(explanation_val)), body_style))
+
+            for factor in factors:
+                story.append(Paragraph(f"• {_escape(str(factor))}", small_muted_style))
+
+            if warning_val:
+                story.append(Paragraph(f"\u26a0 {_escape(str(warning_val))}", small_muted_style))
+
+            if confidence_val:
+                story.append(
+                    Paragraph(
+                        f"Confidence: {str(confidence_val).upper()}",
+                        small_muted_style,
+                    )
+                )
+
+            story.append(Spacer(1, 0.25 * inch))
+        except Exception:
+            pass  # Never fail PDF generation for RSI
+
+    # ------------------------------------------------------------------
     # Insights section
     # ------------------------------------------------------------------
+    story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
     story.append(Paragraph("Insights", section_heading_style))
 
     insights_style = body_style
@@ -717,6 +834,7 @@ def render_pdf(
     if business_insights:
         try:
             story.append(Spacer(1, 0.3 * inch))
+            story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
             story.append(Paragraph("Business Interpretation", section_heading_style))
             story.append(Spacer(1, 0.1 * inch))
 
@@ -794,5 +912,21 @@ def render_pdf(
             # Defensive - never fail PDF generation for business insights
             pass
 
+    # C4. APPENDIX
+    story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
+    story.append(Paragraph("Appendix: Methodology Notes", section_heading_style))
+
+    appendix_text = (
+        "Revenue detection uses semantic column matching across known synonyms (revenue, sales, "
+        "turnover, total_price, gmv, etc.) with confidence thresholds. "
+        "Concentration analysis uses a top-10% percentile cutoff applied to the full transaction dataset. "
+        "Volatility is measured by coefficient of variation (std \u00f7 mean) on the revenue column. "
+        "Efficiency is computed as percent change in average revenue per transaction between periods. "
+        "All figures reflect the dataset provided and no external data was used. "
+        "Results are directional indicators, not audited financial statements."
+    )
+    story.append(Paragraph(_escape(appendix_text), small_muted_style))
+    story.append(Spacer(1, 0.2 * inch))
+
     # Build PDF (IO + layout only; no contract changes)
-    doc.build(story)
+    doc.build(story, canvasmaker=PageNumCanvas)

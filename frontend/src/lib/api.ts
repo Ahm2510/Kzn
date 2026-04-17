@@ -188,6 +188,18 @@ export interface InsightReport {
       confidence_basis?: string;
     };
     executive_summary?: string;
+    revenue_stability_index?: {
+      score: number;
+      label: string;
+      confidence: string;
+      explanation: string;
+      contributing_factors?: string[];
+      warning?: string;
+      coefficient_of_variation?: number;
+      spike_ratio?: number;
+      has_baseline_comparison?: boolean;
+    };
+    products_to_watch?: string[];
     meta?: Record<string, any>;
   };
   insights?: Array<{

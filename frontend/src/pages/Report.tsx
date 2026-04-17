@@ -119,6 +119,36 @@ export default function Report() {
               <MetricCard label="Comparison" value={run.baseline_file_path ? "Yes" : "N/A"} />
             </div>
           </section>
+          
+          {/* Executive Summary & Takeaways */}
+          {run.insight_report?.business_insights?.executive_summary && (
+            <section className="section-spacing">
+              <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
+                Executive Summary
+              </h3>
+              <div className="bg-card border border-border rounded-lg p-8">
+                <p className="text-foreground leading-relaxed text-sm">
+                  {run.insight_report.business_insights.executive_summary}
+                </p>
+              </div>
+            </section>
+          )}
+
+          {run.insight_report?.business_insights?.executive_takeaways &&
+            run.insight_report.business_insights.executive_takeaways.length > 0 && (
+            <section className="section-spacing">
+              <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
+                Key Takeaways
+              </h3>
+              <div className="bg-card border border-border rounded-lg p-6">
+                <ul className="list-disc pl-5 space-y-2">
+                  {run.insight_report.business_insights.executive_takeaways.slice(0, 6).map((t: string, idx: number) => (
+                    <li key={idx} className="text-sm text-foreground">{t}</li>
+                  ))}
+                </ul>
+              </div>
+            </section>
+          )}
 
           {hasPdf ? (
             <section className="section-spacing">

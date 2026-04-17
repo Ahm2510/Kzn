@@ -327,6 +327,14 @@ async def analyze(
                 if bi_result:
                     business_insights = bi_result.dict()
                     
+                    # C5. Inject Data Quality into business_insights
+                    try:
+                        dq = getattr(bi_current_df, "attrs", {}).get("data_quality")
+                        if dq:
+                            business_insights["data_quality"] = dq
+                    except Exception:
+                        pass
+                    
                     # V1.75+ Defensive guard: Payload size check (max 10KB)
                     try:
                         serialized_size = len(json.dumps(business_insights))

@@ -461,21 +461,202 @@ class PreprocessingService:
         )
 
 def preprocess_with_options(df, options):
+    rows_before, cols_before = df.shape
+    columns_renamed = []
+    columns_currency_cleaned = []
+    null_rows_dropped = 0
+    duplicate_rows_dropped = 0
+
+    COLUMN_SYNONYMS = {
+        "qty": "quantity",
+        "unit_qty": "quantity",
+        "order_qty": "quantity",
+        "num_units": "quantity",
+        "units_sold": "quantity",
+        "unitprice": "unit_price",
+        "unit_cost": "unit_price",
+        "itemprice": "unit_price",
+        "item_price": "unit_price",
+        "sellingprice": "unit_price",
+        "selling_price": "unit_price",
+        "price_per_unit": "unit_price",
+        "saleamount": "revenue",
+        "sale_amount": "revenue",
+        "netsales": "revenue",
+        "net_sales": "revenue",
+        "grosssales": "revenue",
+        "gross_sales": "revenue",
+        "ordertotal": "revenue",
+        "order_total": "revenue",
+        "invoicetotal": "revenue",
+        "invoice_total": "revenue",
+        "paymentamount": "revenue",
+        "payment_amount": "revenue",
+        "transactionamount": "revenue",
+        "transaction_amount": "revenue",
+        "orderdate": "date",
+        "order_date": "date",
+        "saledate": "date",
+        "sale_date": "date",
+        "invoicedate": "date",
+        "invoice_date": "date",
+        "purchasedate": "date",
+        "purchase_date": "date",
+        "createdat": "date",
+        "created_at": "date",
+        "datestring": "date",
+        "date_string": "date",
+        "orderid": "order_id",
+        "order_id": "order_id",
+        "transactionid": "order_id",
+        "transaction_id": "order_id",
+        "invoiceid": "order_id",
+        "invoice_id": "order_id",
+        "prodname": "product",
+        "prod_name": "product",
+        "productname": "product",
+        "product_name": "product",
+        "itemname": "product",
+        "item_name": "product",
+        "skuname": "product",
+        "sku_name": "product",
+        "productdesc": "product",
+        "product_desc": "product",
+        "description": "product",
+        "itemdescription": "product",
+        "item_description": "product",
+        "categoryname": "category",
+        "category_name": "category",
+        "prodcategory": "category",
+        "prod_category": "category",
+        "productcategory": "category",
+        "product_category": "category",
+        "customer_name": "customer",
+        "client_name": "customer",
+        "buyer_name": "customer",
+        "cust_id": "customer_id",
+        "client_id": "customer_id",
+        "buyer_id": "customer_id",
+    }
+
     if options.normalize_columns:
-        df.columns = [c.strip().lower() for c in df.columns]
+        try:
+            df.columns = [c.strip().lower() for c in df.columns]
+            
+            # A3. FUZZY COLUMN NAME CANONICALIZATION
+            for old_col, new_col in COLUMN_SYNONYMS.items():
+                if old_col in df.columns and new_col not in df.columns:
+                    df.rename(columns={old_col: new_col}, inplace=True)
+                    columns_renamed.append(f"{old_col} \u2192 {new_col}")
+        except Exception:
+            pass
+
+    # A1 & A2. CURRENCY SYMBOL CLEANING & WHITESPACE STRIPPING
+    try:
+        string_cols = df.select_dtypes(include=["object", "string"]).columns
+        for col in string_cols:
+            try:
+                # A2. Whitespace stripping
+                df[col] = df[col].astype(str).str.strip()
+                
+                # A1. Currency symbol cleaning (Robust Regex)
+                # Matches $, £, €, ₹, ¥, ₩ and other common currency markers, and common separators
+                t = df[col].astype(str).str.strip()
+                t = t.replace(['nan', 'None', 'null', ''], np.nan)
+                
+                # Remove symbols and commas
+                temp_series = t.str.replace(r'[\$£€₹¥₩\s,]', '', regex=True)
+                
+                # Try converting to numeric
+                numeric_series = pd.to_numeric(temp_series, errors='coerce')
+                
+                # Check if we successfully converted a significant portion (not all NaN)
+                if not numeric_series.isna().all():
+                    # Only accept if it doesn't create NEW nulls beyond a small threshold
+                    # (Allowing +1 for potential footer row or header mess)
+                    before_nulls = t.isna().sum()
+                    after_nulls = numeric_series.isna().sum()
+                    
+                    if after_nulls <= before_nulls + 1:
+                        df[col] = numeric_series
+                        columns_currency_cleaned.append(col)
+            except Exception:
+                continue
+    except Exception:
+        pass
+
+    # A4. ROBUST DATE PARSING
+    try:
+        date_candidates = ["date", "order_date", "created_date", "sale_date", "invoice_date"]
+        for col in date_candidates:
+            if col in df.columns:
+                try:
+                    parsed_date = pd.to_datetime(df[col], errors='coerce')
+                    valid_count = parsed_date.notna().sum()
+                    if valid_count > 0 and (valid_count / len(df)) >= 0.5:
+                        df[col] = parsed_date
+                except Exception:
+                    continue
+    except Exception:
+        pass
+
+    # A5. PRODUCT NAME NORMALIZATION
+    try:
+        if "product" in df.columns:
+            df["product"] = df["product"].astype(str).str.strip().str.lower().str.replace(r'\s+', ' ', regex=True)
+    except Exception:
+        pass
 
     if options.drop_duplicates:
-        df = df.drop_duplicates()
+        try:
+            # A6. SAFER DUPLICATE HANDLING
+            initial_rows = len(df)
+            if "order_id" in df.columns:
+                df = df.drop_duplicates(subset=["order_id"], keep="first")
+            elif "transaction_id" in df.columns:
+                df = df.drop_duplicates(subset=["transaction_id"], keep="first")
+            else:
+                df = df.drop_duplicates()
+            duplicate_rows_dropped = initial_rows - len(df)
+        except Exception:
+            # Fallback to existing all-column behavior
+            initial_rows = len(df)
+            df = df.drop_duplicates()
+            duplicate_rows_dropped = initial_rows - len(df)
 
     if options.drop_missing:
-        df = df.dropna()
+        try:
+            initial_rows = len(df)
+            df = df.dropna()
+            null_rows_dropped = initial_rows - len(df)
+        except Exception:
+            pass
 
     if options.cap_outliers:
-        # simple numeric capping (v1.5)
-        numeric_cols = df.select_dtypes(include="number").columns
-        for col in numeric_cols:
-            upper = df[col].quantile(0.99)
-            lower = df[col].quantile(0.01)
-            df[col] = df[col].clip(lower, upper)
+        try:
+            # simple numeric capping (v1.5)
+            numeric_cols = df.select_dtypes(include="number").columns
+            for col in numeric_cols:
+                upper = df[col].quantile(0.99)
+                lower = df[col].quantile(0.01)
+                df[col] = df[col].clip(lower, upper)
+        except Exception:
+            pass
+
+    # A7. DATA QUALITY REPORT GENERATION
+    try:
+        rows_after, cols_after = df.shape
+        df.attrs["data_quality"] = {
+            "rows_before": int(rows_before),
+            "rows_after": int(rows_after),
+            "columns_before": int(cols_before),
+            "columns_after": int(cols_after),
+            "columns_renamed": columns_renamed,
+            "columns_currency_cleaned": columns_currency_cleaned,
+            "null_rows_dropped": int(null_rows_dropped),
+            "duplicate_rows_dropped": int(duplicate_rows_dropped),
+        }
+    except Exception:
+        pass
 
     return df

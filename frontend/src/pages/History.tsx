@@ -96,6 +96,7 @@ export default function History() {
                   <TableHead className="text-xs font-mono font-medium text-muted-foreground py-4">Baseline</TableHead>
                   <TableHead className="text-xs font-mono font-medium text-muted-foreground py-4">Status</TableHead>
                   <TableHead className="text-xs font-mono font-medium text-muted-foreground text-right py-4">Insights</TableHead>
+                  <TableHead className="text-xs font-mono font-medium text-muted-foreground text-right py-4">Takeaways</TableHead>
                   <TableHead className="text-xs font-mono font-medium text-muted-foreground py-4">Created</TableHead>
                   <TableHead className="text-xs font-mono font-medium text-muted-foreground w-16 py-4" />
                 </TableRow>
@@ -108,6 +109,9 @@ export default function History() {
                     <TableCell className="text-muted-foreground py-6">{run.baseline_file_path?.split("/").pop() || "—"}</TableCell>
                     <TableCell className="py-6"><StatusBadge status={mapStatus(run.status)} /></TableCell>
                     <TableCell className="text-right font-mono py-6">{run.insight_report?.insights?.length ?? "—"}</TableCell>
+                    <TableCell className="text-right font-mono py-6">
+                      {run.insight_report?.business_insights?.executive_takeaways?.length ?? "—"}
+                    </TableCell>
                     <TableCell className="text-muted-foreground text-sm py-6">
                       {new Date(run.created_at).toLocaleDateString()}
                     </TableCell>
