@@ -803,10 +803,16 @@ def render_pdf(
                 story.append(Paragraph(f"\u26a0 {_escape(str(ihs_warning))}", small_muted_style))
  
             if ihs_confidence:
+                confidence_text = f"Confidence: {str(ihs_confidence).upper()}"
+                ihs_confidence_reason = ihs.get("confidence_reason")
+                if ihs_confidence_reason:
+                    confidence_text += f" — {_escape(str(ihs_confidence_reason))}"
+                elif ihs_source:
+                    confidence_text += f" — based on {_escape(str(ihs_source))}"
+                
                 story.append(
                     Paragraph(
-                        f"Confidence: {str(ihs_confidence).upper()}"
-                        + (f" — based on {_escape(str(ihs_source))}" if ihs_source else ""),
+                        confidence_text,
                         small_muted_style,
                     )
                 )

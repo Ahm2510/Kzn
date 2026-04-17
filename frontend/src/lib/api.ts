@@ -203,6 +203,7 @@ export interface InsightReport {
       score: number;
       label: string;
       confidence: string;
+      confidence_reason?: string;
       explanation: string;
       contributing_factors?: string[];
       warning?: string;

@@ -230,9 +230,11 @@ export default function Overview() {
                 <span className="font-mono">
                   {(bi.inventory_health_score.confidence ?? "").toUpperCase()}
                 </span>
-                {bi.inventory_health_score.data_source && (
+                {bi.inventory_health_score.confidence_reason ? (
+                  <span> — {bi.inventory_health_score.confidence_reason}</span>
+                ) : bi.inventory_health_score.data_source ? (
                   <span> — based on {bi.inventory_health_score.data_source}</span>
-                )}
+                ) : null}
               </p>
             </div>
           </section>
