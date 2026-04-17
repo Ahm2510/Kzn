@@ -564,6 +564,8 @@ def render_pdf(
     toc_sections = ["Executive Takeaways", "Executive Summary", "Analysis Summary", "Key Metrics"]
     if business_insights and business_insights.get("revenue_stability_index"):
         toc_sections.append("Revenue Stability Index")
+    if business_insights and business_insights.get("inventory_health_score"):
+        toc_sections.append("Inventory Health Score")
     toc_sections.append("Insights")
     if business_insights:
         toc_sections.append("Business Interpretation")
@@ -755,6 +757,63 @@ def render_pdf(
             story.append(Spacer(1, 0.25 * inch))
         except Exception:
             pass  # Never fail PDF generation for RSI
+ 
+    # ------------------------------------------------------------------
+    # Inventory Health Score section (if available)
+    # ------------------------------------------------------------------
+    if business_insights and business_insights.get("inventory_health_score"):
+        try:
+            ihs = business_insights["inventory_health_score"]
+            ihs_score = ihs.get("score")
+            ihs_label = ihs.get("label", "")
+            ihs_explanation = ihs.get("explanation", "")
+            ihs_factors = ihs.get("contributing_factors") or []
+            ihs_warning = ihs.get("warning")
+            ihs_confidence = ihs.get("confidence", "")
+            ihs_source = ihs.get("data_source", "")
+            ihs_watchlist = ihs.get("watchlist") or []
+ 
+            story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
+            story.append(Paragraph("Inventory Health Score", section_heading_style))
+ 
+            if ihs_score is not None:
+                story.append(
+                    Paragraph(
+                        f"<b>{ihs_score:.0f}/100</b> — {_escape(str(ihs_label))}",
+                        body_style,
+                    )
+                )
+ 
+            if ihs_explanation:
+                story.append(Paragraph(_escape(str(ihs_explanation)), body_style))
+ 
+            for factor in ihs_factors:
+                story.append(Paragraph(f"• {_escape(str(factor))}", small_muted_style))
+ 
+            if ihs_watchlist:
+                watchlist_str = ", ".join(str(w) for w in ihs_watchlist)
+                story.append(
+                    Paragraph(
+                        f"<i>SKUs to review:</i> {_escape(watchlist_str)}",
+                        small_muted_style,
+                    )
+                )
+ 
+            if ihs_warning:
+                story.append(Paragraph(f"\u26a0 {_escape(str(ihs_warning))}", small_muted_style))
+ 
+            if ihs_confidence:
+                story.append(
+                    Paragraph(
+                        f"Confidence: {str(ihs_confidence).upper()}"
+                        + (f" — based on {_escape(str(ihs_source))}" if ihs_source else ""),
+                        small_muted_style,
+                    )
+                )
+ 
+            story.append(Spacer(1, 0.25 * inch))
+        except Exception:
+            pass  # Never fail PDF generation for IHS
 
     # ------------------------------------------------------------------
     # Insights section

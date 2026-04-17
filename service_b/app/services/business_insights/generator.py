@@ -18,6 +18,7 @@ from pydantic import BaseModel
 from app.schemas.insight.report import InsightReport
 from app.schemas.insight.metrics import MetricDelta
 from app.services.revenue_stability import RevenueStabilityResult, compute_revenue_stability_index
+from app.services.inventory_health import InventoryHealthResult, compute_inventory_health_score
 
 
 class TrendInsight(BaseModel):
@@ -90,6 +91,7 @@ class BusinessInsights(BaseModel):
     executive_summary: Optional[str] = None
     products_to_watch: Optional[List[str]] = None
     revenue_stability_index: Optional[RevenueStabilityResult] = None
+    inventory_health_score: Optional[InventoryHealthResult] = None
     # Metadata
     meta: Optional[Dict[str, Any]] = None
 
@@ -276,12 +278,16 @@ class BusinessInsightGenerator:
                 baseline_revenue_column=baseline_revenue_column,
             )
 
+            # Inventory Health Score (additive — returns None on failure)
+            ihs_result = compute_inventory_health_score(current_df)
+
             return BusinessInsights(
                 executive_takeaways=takeaways, scope=self.build_scope_block(),
                 trend=trend, stability=stability, efficiency=efficiency, concentration=concentration,
                 executive_summary=exec_summary,
                 products_to_watch=products_to_watch,
                 revenue_stability_index=rsi_result,
+                inventory_health_score=ihs_result,
             )
         except Exception: return None
 

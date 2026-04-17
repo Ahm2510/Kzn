@@ -199,6 +199,19 @@ export interface InsightReport {
       spike_ratio?: number;
       has_baseline_comparison?: boolean;
     };
+    inventory_health_score?: {
+      score: number;
+      label: string;
+      confidence: string;
+      explanation: string;
+      contributing_factors?: string[];
+      warning?: string;
+      data_source?: string;
+      has_product_data?: boolean;
+      has_quantity_data?: boolean;
+      has_stock_data?: boolean;
+      watchlist?: string[];
+    };
     products_to_watch?: string[];
     meta?: Record<string, any>;
   };

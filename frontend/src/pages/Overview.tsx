@@ -179,6 +179,65 @@ export default function Overview() {
           </section>
         )}
 
+        {bi?.inventory_health_score && (
+          <section className="section-spacing">
+            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
+              Inventory Health Score
+            </h3>
+            <div className="bg-card border border-border rounded-lg p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-3xl font-display font-bold text-foreground">
+                    {Math.round(bi.inventory_health_score.score)}
+                  </span>
+                  <span className="text-sm text-muted-foreground ml-1">/100</span>
+                </div>
+                <StatusBadge status="complete" label={bi.inventory_health_score.label} />
+              </div>
+              <p className="text-sm text-foreground leading-relaxed">
+                {bi.inventory_health_score.explanation}
+              </p>
+              {bi.inventory_health_score.contributing_factors &&
+                bi.inventory_health_score.contributing_factors.length > 0 && (
+                  <div className="space-y-1 pt-2 border-t border-border/60">
+                    {bi.inventory_health_score.contributing_factors.map(
+                      (f: string, i: number) => (
+                        <p key={i} className="text-xs text-muted-foreground">
+                          - {f}
+                        </p>
+                      )
+                    )}
+                  </div>
+                )}
+              {bi.inventory_health_score.watchlist &&
+                bi.inventory_health_score.watchlist.length > 0 && (
+                  <div className="pt-2 border-t border-border/60">
+                    <p className="text-xs text-muted-foreground font-medium mb-1">
+                      SKUs to review:
+                    </p>
+                    <p className="text-xs text-foreground">
+                      {bi.inventory_health_score.watchlist.join(", ")}
+                    </p>
+                  </div>
+                )}
+              {bi.inventory_health_score.warning && (
+                <p className="text-xs text-amber-500 bg-amber-500/5 border border-amber-500/20 rounded px-3 py-2">
+                  ⚠ {bi.inventory_health_score.warning}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Confidence:{" "}
+                <span className="font-mono">
+                  {(bi.inventory_health_score.confidence ?? "").toUpperCase()}
+                </span>
+                {bi.inventory_health_score.data_source && (
+                  <span> — based on {bi.inventory_health_score.data_source}</span>
+                )}
+              </p>
+            </div>
+          </section>
+        )}
+
         {/* Business Insight Detail Sections */}
         {hasBI && (
           <section className="section-spacing space-y-6">
