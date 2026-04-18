@@ -574,6 +574,14 @@ def render_pdf(
         clpp_data = business_insights["cohort_product_performance"]
         if isinstance(clpp_data, dict) and clpp_data.get("cohort_count", 0) > 0:
             toc_sections.append("Product Cohort Performance")
+    if business_insights and business_insights.get("customer_segmentation"):
+        csca_data = business_insights["customer_segmentation"]
+        if isinstance(csca_data, dict) and csca_data.get("segment_count", 0) > 0:
+            toc_sections.append("Customer Segmentation")
+    if business_insights and business_insights.get("concentration_risk_dashboard"):
+        crd_data = business_insights["concentration_risk_dashboard"]
+        if isinstance(crd_data, dict) and crd_data.get("dimension_count", 0) > 0:
+            toc_sections.append("Concentration Risk Dashboard")
     toc_sections.append("Insights")
     if business_insights:
         toc_sections.append("Business Interpretation")
@@ -945,6 +953,168 @@ def render_pdf(
                 story.append(Spacer(1, 0.1 * inch))
         except Exception:
             pass  # Never fail PDF generation for CLPP
+ 
+    # ------------------------------------------------------------------
+    # Customer Segmentation section (if available and non-empty)
+    # ------------------------------------------------------------------
+    if business_insights and business_insights.get("customer_segmentation"):
+        try:
+            csca = business_insights["customer_segmentation"]
+            csca_segments = csca.get("segments") or []
+            if csca_segments:
+                story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
+                story.append(Paragraph("Customer Segmentation", section_heading_style))
+ 
+                csca_basis = csca.get("segment_basis", "")
+                total_cust = csca.get("total_customers", 0)
+                if csca_basis:
+                    story.append(
+                        Paragraph(
+                            f"Segmentation method: <b>{_escape(csca_basis.upper())}</b> | "
+                            f"Total customers: <b>{total_cust:,}</b> | "
+                            f"Segments: <b>{len(csca_segments)}</b>",
+                            small_muted_style,
+                        )
+                    )
+                    story.append(Spacer(1, 0.1 * inch))
+ 
+                tier_icon = {
+                    "high_value": "\u2605",
+                    "growing": "\u25b2",
+                    "stable_value": "\u25cf",
+                    "at_risk": "\u26a0",
+                    "declining": "\u25bc",
+                    "insufficient_data": "\u2014",
+                }
+ 
+                for seg in csca_segments:
+                    label = seg.get("segment_label", "")
+                    tier = seg.get("tier", "")
+                    icon = tier_icon.get(tier, "")
+                    rev_share = seg.get("revenue_share_pct", 0)
+                    cust_count = seg.get("customer_count", 0)
+                    growth = seg.get("period_growth_pct")
+                    explanation = seg.get("explanation", "")
+                    confidence = seg.get("confidence", "")
+                    warning = seg.get("warning")
+                    avg_freq = seg.get("avg_order_frequency")
+                    avg_rec = seg.get("avg_recency_days")
+ 
+                    tier_display = tier.replace("_", " ").title()
+                    growth_str = f"{growth:+.1f}%" if growth is not None else "N/A"
+ 
+                    story.append(
+                        Paragraph(
+                            f"{icon} <b>{_escape(str(label))}</b> — {_escape(tier_display)}",
+                            body_style,
+                        )
+                    )
+                    metrics_parts = [
+                        f"{cust_count:,} customers",
+                        f"Rev share: {rev_share:.1f}%",
+                        f"Growth: {growth_str}",
+                    ]
+                    if avg_freq is not None:
+                        metrics_parts.append(f"Avg freq: {avg_freq:.1f}")
+                    if avg_rec is not None:
+                        metrics_parts.append(f"Recency: {avg_rec:.0f}d")
+                    metrics_parts.append(f"Confidence: {str(confidence).upper()}")
+                    story.append(
+                        Paragraph(
+                            " | ".join(metrics_parts),
+                            small_muted_style,
+                        )
+                    )
+                    if explanation:
+                        story.append(Paragraph(_escape(str(explanation)), small_muted_style))
+                    if warning:
+                        story.append(Paragraph(f"\u26a0 {_escape(str(warning))}", small_muted_style))
+                    story.append(Spacer(1, 0.12 * inch))
+ 
+                story.append(Spacer(1, 0.1 * inch))
+        except Exception:
+            pass  # Never fail PDF generation for CSCA
+ 
+    # ------------------------------------------------------------------
+    # Concentration Risk Dashboard section (if available and non-empty)
+    # ------------------------------------------------------------------
+    if business_insights and business_insights.get("concentration_risk_dashboard"):
+        try:
+            crd = business_insights["concentration_risk_dashboard"]
+            crd_dims = crd.get("dimensions") or []
+            if crd_dims:
+                story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
+                story.append(Paragraph("Concentration Risk Dashboard", section_heading_style))
+ 
+                overall_risk = crd.get("overall_risk", "low")
+                overall_score = crd.get("overall_score", 0)
+                story.append(
+                    Paragraph(
+                        f"Overall risk: <b>{_escape(overall_risk.upper())}</b> "
+                        f"(score: {overall_score:.1f}/100) | "
+                        f"Dimensions analyzed: <b>{len(crd_dims)}</b>",
+                        small_muted_style,
+                    )
+                )
+                story.append(Spacer(1, 0.1 * inch))
+ 
+                risk_icon = {
+                    "critical": "\u26d4",
+                    "high": "\u26a0",
+                    "moderate": "\u25b2",
+                    "low": "\u2714",
+                }
+ 
+                for dim in crd_dims:
+                    dim_name = dim.get("dimension", "")
+                    risk = dim.get("risk_level", "low")
+                    icon = risk_icon.get(risk, "")
+                    score = dim.get("composite_score", 0)
+                    hhi = dim.get("hhi", 0)
+                    gini = dim.get("gini", 0)
+                    top_1 = dim.get("top_1_share_pct", 0)
+                    top_5 = dim.get("top_5_share_pct", 0)
+                    explanation = dim.get("explanation", "")
+                    confidence = dim.get("confidence", "")
+                    warning = dim.get("warning")
+                    trend = dim.get("trend")
+                    contributors = dim.get("top_contributors") or []
+ 
+                    story.append(
+                        Paragraph(
+                            f"{icon} <b>{_escape(dim_name.capitalize())} Concentration</b> "
+                            f"— {_escape(risk.upper())} (score: {score:.1f})",
+                            body_style,
+                        )
+                    )
+                    metrics_line = (
+                        f"HHI: {hhi:.0f} | Gini: {gini:.2f} | "
+                        f"Top 1: {top_1:.1f}% | Top 5: {top_5:.1f}%"
+                    )
+                    if trend:
+                        metrics_line += f" | Trend: {trend}"
+                    metrics_line += f" | Confidence: {str(confidence).upper()}"
+                    story.append(Paragraph(metrics_line, small_muted_style))
+ 
+                    if explanation:
+                        story.append(Paragraph(_escape(str(explanation)), small_muted_style))
+ 
+                    if contributors:
+                        contrib_names = [f"{c.get('name', '')} ({c.get('share_pct', 0):.1f}%)" for c in contributors[:3]]
+                        story.append(
+                            Paragraph(
+                                f"Top contributors: {', '.join(contrib_names)}",
+                                small_muted_style,
+                            )
+                        )
+ 
+                    if warning:
+                        story.append(Paragraph(f"\u26a0 {_escape(str(warning))}", small_muted_style))
+                    story.append(Spacer(1, 0.12 * inch))
+ 
+                story.append(Spacer(1, 0.1 * inch))
+        except Exception:
+            pass  # Never fail PDF generation for CRD
  
     # ------------------------------------------------------------------
     # Insights section

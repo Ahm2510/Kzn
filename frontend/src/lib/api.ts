@@ -254,8 +254,71 @@ export interface InsightReport {
       warning?: string | null;
       confidence?: string;
     };
+    customer_segmentation?: {
+      segments?: Array<{
+        segment_label: string;
+        segment_basis: string;
+        tier: string;
+        customer_count: number;
+        total_revenue: number;
+        revenue_share_pct: number;
+        avg_revenue_per_customer: number;
+        avg_order_frequency?: number | null;
+        avg_recency_days?: number | null;
+        period_growth_pct?: number | null;
+        concentration_pct: number;
+        stability: string;
+        confidence: string;
+        explanation: string;
+        warning?: string | null;
+        watchlist?: boolean;
+      }>;
+      segment_count?: number;
+      segment_basis?: string;
+      total_customers?: number;
+      has_at_risk?: boolean;
+      has_declining?: boolean;
+      warning?: string | null;
+      confidence?: string;
+    };
+    concentration_risk_dashboard?: {
+      dimensions?: Array<{
+        dimension: string;
+        dimension_column: string;
+        contributor_count: number;
+        top_1_share_pct: number;
+        top_5_share_pct: number;
+        top_10_share_pct: number;
+        top_20_pct_share: number;
+        hhi: number;
+        gini: number;
+        pareto_ratio: number;
+        composite_score: number;
+        risk_level: "low" | "moderate" | "high" | "critical";
+        top_contributors?: Array<{
+          name: string;
+          revenue: number;
+          share_pct: number;
+        }>;
+        trend?: string | null;
+        hhi_change_pct?: number | null;
+        confidence: string;
+        explanation: string;
+        warning?: string | null;
+        watchlist?: boolean;
+      }>;
+      dimension_count?: number;
+      overall_risk?: string;
+      overall_score?: number;
+      has_critical?: boolean;
+      has_high?: boolean;
+      warning?: string | null;
+      confidence?: string;
+    };
     products_to_watch?: string[];
     meta?: Record<string, any>;
+
+
 
   };
   insights?: Array<{

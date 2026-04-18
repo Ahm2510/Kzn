@@ -400,8 +400,217 @@ export default function Overview() {
           </section>
         )}
  
+        {bi?.customer_segmentation &&
+          bi.customer_segmentation.segments &&
+          bi.customer_segmentation.segments.length > 0 && (
+          <section className="section-spacing">
+            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
+              Customer Segmentation
+              {bi.customer_segmentation.has_at_risk && (
+                <span className="ml-2 text-amber-500 font-bold text-[10px] bg-amber-500/10 border border-amber-500/20 rounded px-1.5 py-0.5">
+                  AT RISK
+                </span>
+              )}
+              {bi.customer_segmentation.has_declining && !bi.customer_segmentation.has_at_risk && (
+                <span className="ml-2 text-red-500 font-bold text-[10px] bg-red-500/10 border border-red-500/20 rounded px-1.5 py-0.5">
+                  DECLINING
+                </span>
+              )}
+            </h3>
+            <div className="flex gap-4 text-xs text-muted-foreground mb-3">
+              {bi.customer_segmentation.segment_basis && (
+                <span>Method: <span className="font-mono">{bi.customer_segmentation.segment_basis.toUpperCase()}</span></span>
+              )}
+              {bi.customer_segmentation.total_customers != null && (
+                <span>Customers: <span className="font-mono">{bi.customer_segmentation.total_customers.toLocaleString()}</span></span>
+              )}
+              <span>Segments: <span className="font-mono">{bi.customer_segmentation.segments.length}</span></span>
+            </div>
+            <div className="space-y-3">
+              {bi.customer_segmentation.segments.map((seg, idx) => {
+                const tierColors: Record<string, string> = {
+                  high_value: "border-emerald-500/40 bg-emerald-500/5",
+                  growing: "border-blue-500/40 bg-blue-500/5",
+                  stable_value: "border-border bg-card",
+                  at_risk: "border-amber-500/40 bg-amber-500/5",
+                  declining: "border-red-500/40 bg-red-500/5",
+                  insufficient_data: "border-border bg-muted/30",
+                };
+                const tierTextColors: Record<string, string> = {
+                  high_value: "text-emerald-600",
+                  growing: "text-blue-600",
+                  stable_value: "text-foreground",
+                  at_risk: "text-amber-600",
+                  declining: "text-red-500",
+                  insufficient_data: "text-muted-foreground",
+                };
+                const borderClass = tierColors[seg.tier] || tierColors.stable_value;
+                const textClass = tierTextColors[seg.tier] || tierTextColors.stable_value;
+ 
+                return (
+                  <div
+                    key={seg.segment_label + idx}
+                    className={`border rounded-lg p-4 space-y-2 ${borderClass}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] font-bold font-mono uppercase ${textClass}`}>
+                          {seg.tier.replace(/_/g, " ")}
+                        </span>
+                        <span className="text-sm font-medium text-foreground">
+                          {seg.segment_label}
+                        </span>
+                      </div>
+                      <span className="text-xs font-mono text-muted-foreground">
+                        {seg.revenue_share_pct.toFixed(1)}% rev
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                      <span>{seg.customer_count.toLocaleString()} customers</span>
+                      {seg.avg_order_frequency != null && (
+                        <span>Freq: {seg.avg_order_frequency.toFixed(1)}</span>
+                      )}
+                      {seg.avg_recency_days != null && (
+                        <span>Recency: {seg.avg_recency_days.toFixed(0)}d</span>
+                      )}
+                      {seg.period_growth_pct != null && (
+                        <span className={seg.period_growth_pct >= 0 ? "text-emerald-600" : "text-red-500"}>
+                          {seg.period_growth_pct >= 0 ? "+" : ""}{seg.period_growth_pct.toFixed(1)}% growth
+                        </span>
+                      )}
+                      <span>Stability: {seg.stability}</span>
+                    </div>
+                    <p className="text-xs text-foreground/80 leading-relaxed">
+                      {seg.explanation}
+                    </p>
+                    {seg.warning && (
+                      <p className="text-xs text-amber-500 bg-amber-500/5 border border-amber-500/20 rounded px-2 py-1">
+                        {seg.warning}
+                      </p>
+                    )}
+                    <p className="text-[10px] text-muted-foreground font-mono">
+                      Confidence: {seg.confidence.toUpperCase()}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+            {bi.customer_segmentation.warning && (
+              <p className="text-xs text-amber-500 mt-3">
+                {bi.customer_segmentation.warning}
+              </p>
+            )}
+          </section>
+        )}
+ 
+        {bi?.concentration_risk_dashboard &&
+          bi.concentration_risk_dashboard.dimensions &&
+          bi.concentration_risk_dashboard.dimensions.length > 0 && (
+          <section className="section-spacing">
+            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
+              Concentration Risk Dashboard
+              {bi.concentration_risk_dashboard.has_critical && (
+                <span className="ml-2 text-red-500 font-bold text-[10px] bg-red-500/10 border border-red-500/20 rounded px-1.5 py-0.5">
+                  CRITICAL
+                </span>
+              )}
+              {!bi.concentration_risk_dashboard.has_critical && bi.concentration_risk_dashboard.has_high && (
+                <span className="ml-2 text-amber-500 font-bold text-[10px] bg-amber-500/10 border border-amber-500/20 rounded px-1.5 py-0.5">
+                  HIGH
+                </span>
+              )}
+            </h3>
+            <div className="flex gap-4 text-xs text-muted-foreground mb-3">
+              <span>Overall: <span className="font-mono font-bold">{bi.concentration_risk_dashboard.overall_risk?.toUpperCase()}</span></span>
+              <span>Score: <span className="font-mono">{bi.concentration_risk_dashboard.overall_score?.toFixed(1)}/100</span></span>
+              <span>Dimensions: <span className="font-mono">{bi.concentration_risk_dashboard.dimensions.length}</span></span>
+            </div>
+            <div className="space-y-3">
+              {bi.concentration_risk_dashboard.dimensions.map((dim, idx) => {
+                const riskColors: Record<string, string> = {
+                  critical: "border-red-500/40 bg-red-500/5",
+                  high: "border-amber-500/40 bg-amber-500/5",
+                  moderate: "border-yellow-500/30 bg-yellow-500/5",
+                  low: "border-emerald-500/30 bg-emerald-500/5",
+                };
+                const riskTextColors: Record<string, string> = {
+                  critical: "text-red-500",
+                  high: "text-amber-500",
+                  moderate: "text-yellow-600",
+                  low: "text-emerald-600",
+                };
+                const borderClass = riskColors[dim.risk_level] || riskColors.low;
+                const textClass = riskTextColors[dim.risk_level] || riskTextColors.low;
+ 
+                return (
+                  <div
+                    key={dim.dimension + idx}
+                    className={`border rounded-lg p-4 space-y-2 ${borderClass}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] font-bold font-mono uppercase ${textClass}`}>
+                          {dim.risk_level}
+                        </span>
+                        <span className="text-sm font-medium text-foreground capitalize">
+                          {dim.dimension} Concentration
+                        </span>
+                      </div>
+                      <span className="text-xs font-mono text-muted-foreground">
+                        {dim.composite_score.toFixed(1)}/100
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                      <span>HHI: {dim.hhi.toFixed(0)}</span>
+                      <span>Gini: {dim.gini.toFixed(2)}</span>
+                      <span>Top 1: {dim.top_1_share_pct.toFixed(1)}%</span>
+                      <span>Top 5: {dim.top_5_share_pct.toFixed(1)}%</span>
+                      <span>{dim.contributor_count} contributors</span>
+                      {dim.trend && (
+                        <span className={dim.trend === "decreasing" ? "text-emerald-600" : dim.trend === "increasing" ? "text-red-500" : "text-muted-foreground"}>
+                          Trend: {dim.trend}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-foreground/80 leading-relaxed">
+                      {dim.explanation}
+                    </p>
+                    {dim.top_contributors && dim.top_contributors.length > 0 && (
+                      <div className="pt-1">
+                        <p className="text-[10px] text-muted-foreground font-medium mb-1">Top contributors:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {dim.top_contributors.slice(0, 5).map((c, ci) => (
+                            <span key={ci} className="text-[10px] font-mono bg-muted/50 border border-border rounded px-1.5 py-0.5">
+                              {c.name.length > 30 ? c.name.slice(0, 30) + "..." : c.name} ({c.share_pct.toFixed(1)}%)
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {dim.warning && (
+                      <p className="text-xs text-amber-500 bg-amber-500/5 border border-amber-500/20 rounded px-2 py-1">
+                        {dim.warning}
+                      </p>
+                    )}
+                    <p className="text-[10px] text-muted-foreground font-mono">
+                      Confidence: {dim.confidence.toUpperCase()}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+            {bi.concentration_risk_dashboard.warning && (
+              <p className="text-xs text-amber-500 mt-3">
+                {bi.concentration_risk_dashboard.warning}
+              </p>
+            )}
+          </section>
+        )}
+ 
         {/* Business Insight Detail Sections */}
         {hasBI && (
+
+
 
           <section className="section-spacing space-y-6">
             {[

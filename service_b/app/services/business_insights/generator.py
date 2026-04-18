@@ -21,6 +21,8 @@ from app.services.revenue_stability import RevenueStabilityResult, compute_reven
 from app.services.inventory_health import InventoryHealthResult, compute_inventory_health_score
 from app.services.early_warnings import EarlyWarningResult, compute_early_warnings
 from app.services.product_cohorts import CohortProductPerformanceResult, compute_cohort_product_performance
+from app.services.customer_segments import CustomerSegmentationResult, compute_customer_segmentation
+from app.services.concentration_risk import ConcentrationRiskDashboardResult, compute_concentration_risk
 
 
 
@@ -97,6 +99,10 @@ class BusinessInsights(BaseModel):
     inventory_health_score: Optional[InventoryHealthResult] = None
     early_warning_alerts: Optional[EarlyWarningResult] = None
     cohort_product_performance: Optional[CohortProductPerformanceResult] = None
+    customer_segmentation: Optional[CustomerSegmentationResult] = None
+    concentration_risk_dashboard: Optional[ConcentrationRiskDashboardResult] = None
+
+
 
     # Metadata
     meta: Optional[Dict[str, Any]] = None
@@ -301,7 +307,13 @@ class BusinessInsightGenerator:
 
             # Cohort-Level Product Performance (additive — returns None on failure)
             clpp_result = compute_cohort_product_performance(current_df, revenue_column)
-
+ 
+            # Customer Segmentation & Cohort Analysis (additive — returns None on failure)
+            csca_result = compute_customer_segmentation(current_df, revenue_column)
+ 
+            # Concentration Risk Dashboard (additive — returns None on failure)
+            crd_result = compute_concentration_risk(current_df, revenue_column)
+ 
             return BusinessInsights(
                 executive_takeaways=takeaways, scope=self.build_scope_block(),
                 trend=trend, stability=stability, efficiency=efficiency, concentration=concentration,
@@ -311,7 +323,10 @@ class BusinessInsightGenerator:
                 inventory_health_score=ihs_result,
                 early_warning_alerts=ewa_result,
                 cohort_product_performance=clpp_result,
+                customer_segmentation=csca_result,
+                concentration_risk_dashboard=crd_result,
             )
+
 
         except Exception: return None
 
