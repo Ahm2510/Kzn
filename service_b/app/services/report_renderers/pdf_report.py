@@ -7,7 +7,7 @@ from reportlab.lib.units import inch
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.colors import HexColor
 from reportlab.pdfgen.canvas import Canvas
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable, Table, TableStyle
 from reportlab.lib.enums import TA_LEFT
 
 from app.schemas.insight.report import InsightReport
@@ -462,16 +462,29 @@ class PageNumCanvas(Canvas):
         page_count = len(self.pages)
         for page in self.pages:
             self.__dict__.update(page)
-            if page_count > 1:
-                self.draw_page_number(page_count)
+            # Always show page numbers for professional reports
+            self.draw_page_number(page_count)
             Canvas.showPage(self)
         Canvas.save(self)
 
     def draw_page_number(self, page_count):
-        self.setFont("Helvetica", 8)
+        self.saveState()
+        # Footer rule line
+        y = 0.45 * inch
+        self.setStrokeColor(HexColor("#E0E0E0"))
+        self.setLineWidth(0.5)
+        self.line(0.75 * inch, y + 10, A4[0] - 0.75 * inch, y + 10)
+        
+        # Left footer: Confidential
+        self.setFont("Helvetica", 7)
+        self.setFillColor(HexColor("#999999"))
+        self.drawString(0.75 * inch, y, "Business Insight Report \u2022 Confidential")
+        
+        # Right footer: Page X of Y
         self.drawRightString(
-            A4[0] - 0.75 * inch, 0.5 * inch, f"Page {self._pageNumber} of {page_count}"
+            A4[0] - 0.75 * inch, y, f"Page {self._pageNumber} of {page_count}"
         )
+        self.restoreState()
 
 
 def render_pdf(
@@ -499,68 +512,129 @@ def render_pdf(
     # ------------------------------------------------------------------
     # Shared styles (visual only)
     # ------------------------------------------------------------------
-    title_style = styles["Heading1"]
-    title_style.alignment = TA_LEFT
-    title_style.fontSize = 18
-    title_style.spaceAfter = 4
+    title_style = ParagraphStyle(
+        "ReportTitle",
+        parent=styles["Heading1"],
+        alignment=TA_LEFT,
+        fontSize=22,
+        textColor=HexColor("#1A1A1A"),
+        spaceAfter=2,
+    )
 
     subtitle_style = ParagraphStyle(
         "Subtitle",
         parent=styles["Normal"],
-        fontSize=10,
-        textColor=HexColor("#666666"),
-        leading=12,
+        fontSize=11,
+        textColor=HexColor("#555555"),
+        leading=14,
     )
 
     date_style = ParagraphStyle(
         "GeneratedOn",
         parent=styles["Normal"],
         fontSize=9,
-        textColor=HexColor("#777777"),
-        leading=11,
+        textColor=HexColor("#999999"),
+        leading=12,
+        spaceAfter=6,
+    )
+
+    major_section_heading_style = ParagraphStyle(
+        "MajorSectionHeading",
+        parent=styles["Heading2"],
+        fontSize=14,
+        textColor=HexColor("#1A1A1A"),
+        spaceBefore=16,
+        spaceAfter=8,
+        fontName="Helvetica-Bold",
     )
 
     section_heading_style = ParagraphStyle(
         "SectionHeading",
         parent=styles["Heading2"],
         fontSize=13,
+        textColor=HexColor("#2C2C2C"),
         leading=16,
-        spaceBefore=10,
-        spaceAfter=4,
+        spaceBefore=14,
+        spaceAfter=6,
     )
 
     body_style = ParagraphStyle(
         "Body",
         parent=styles["BodyText"],
         fontSize=10,
+        leading=15,
+        spaceAfter=3,
+    )
+
+    label_style = ParagraphStyle(
+        "LabelStyle",
+        parent=styles["Normal"],
+        fontSize=9,
+        textColor=HexColor("#555555"),
+        fontName="Helvetica-Bold",
+        leading=12,
+    )
+
+    metric_value_style = ParagraphStyle(
+        "MetricValue",
+        parent=styles["Normal"],
+        fontSize=11,
+        textColor=HexColor("#1A1A1A"),
+        fontName="Helvetica-Bold",
         leading=14,
     )
 
     small_muted_style = ParagraphStyle(
         "SmallMuted",
         parent=styles["Normal"],
-        fontSize=8,
-        leading=10,
-        textColor=HexColor("#888888"),
+        fontSize=8.5,
+        leading=11,
+        textColor=HexColor("#777777"),
     )
+
+    confidential_style = ParagraphStyle(
+        "Confidential",
+        parent=styles["Normal"],
+        fontSize=7.5,
+        textColor=HexColor("#AAAAAA"),
+        fontName="Helvetica-Oblique",
+        leading=9,
+    )
+
+    toc_entry_style = ParagraphStyle(
+        "TOCEntry",
+        parent=styles["Normal"],
+        fontSize=9,
+        leading=14,
+        leftIndent=12,
+        textColor=HexColor("#444444"),
+    )
+
+    # ------------------------------------------------------------------
+    # Helper Constants: HR Tiers
+    # ------------------------------------------------------------------
+    HR_MAJOR = lambda: HRFlowable(width="100%", thickness=1.5, color=HexColor("#CCCCCC"), spaceAfter=10, spaceBefore=16)
+    HR_STANDARD = lambda: HRFlowable(width="100%", thickness=0.75, color=HexColor("#E0E0E0"), spaceAfter=8, spaceBefore=12)
+    HR_MINOR = lambda: HRFlowable(width="100%", thickness=0.3, color=HexColor("#EEEEEE"), spaceAfter=4, spaceBefore=6)
 
     # ------------------------------------------------------------------
     # Header
     # ------------------------------------------------------------------
+    # Thick accent bar at top
+    story.append(HRFlowable(width="100%", thickness=3, color=HexColor("#2C2C2C"), spaceAfter=12, spaceBefore=0))
     story.append(Paragraph("Business Insight Report", title_style))
-    story.append(Paragraph("Generated for revenue analysis", subtitle_style))
+    story.append(Paragraph("Revenue Analysis \u2022 Confidential", subtitle_style))
+    
+    date_str = datetime.now().strftime("%B %d, %Y at %I:%M %p")
+    story.append(Paragraph(f"Report generated: {date_str}", date_style))
+    
+    story.append(HRFlowable(width="100%", thickness=1, color=HexColor("#E5E7EB"), spaceAfter=4, spaceBefore=10))
+    story.append(Spacer(1, 0.2 * inch))
 
-    date_str = datetime.now().strftime("%B %d, %Y")
-    story.append(Paragraph(f"Generated on {date_str}", date_style))
-    story.append(Spacer(1, 0.35 * inch))
+    # Table of Contents
+    story.append(Paragraph("Table of Contents", section_heading_style))
+    story.append(Spacer(1, 0.06 * inch))
 
-    # C3. TABLE OF CONTENTS
-    toc_style = ParagraphStyle(
-        "TOC",
-        parent=small_muted_style,
-        leading=14,
-        leftIndent=8,
-    )
     toc_sections = ["Executive Takeaways"]
     if business_insights and business_insights.get("enhanced_executive_summary"):
         ees_data = business_insights["enhanced_executive_summary"]
@@ -596,11 +670,13 @@ def render_pdf(
     toc_sections.append("Insights")
     if business_insights:
         toc_sections.append("Business Interpretation")
+    toc_sections.append("Appendix: Methodology")
 
-    story.append(Paragraph("<b>Contents</b>", toc_style))
     for i, sec in enumerate(toc_sections, 1):
-        story.append(Paragraph(f"  {i}. {sec}", toc_style))
+        story.append(Paragraph(f"{i}. &nbsp; {_escape(sec)}", toc_entry_style))
+
     story.append(Spacer(1, 0.25 * inch))
+    story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=12, spaceBefore=4))
 
     # ------------------------------------------------------------------
     # Executive Takeaways + Scope (if business_insights present)
@@ -613,8 +689,8 @@ def render_pdf(
                 and isinstance(executive_takeaways, list)
                 and len(executive_takeaways) > 0
             ):
-                story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
-                story.append(Paragraph("Executive Takeaways", section_heading_style))
+                story.append(HR_MAJOR())
+                story.append(Paragraph("Executive Takeaways", major_section_heading_style))
                 bullet_style = ParagraphStyle(
                     "ExecBullet",
                     parent=body_style,
@@ -707,13 +783,13 @@ def render_pdf(
     # ------------------------------------------------------------------
     # Executive Summary section (always)
     # ------------------------------------------------------------------
-    story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
+    story.append(HR_STANDARD())
     story.append(Paragraph("Executive Summary", section_heading_style))
     exec_paragraph = _build_executive_paragraph(report, business_insights)
     story.append(Paragraph(_escape(exec_paragraph), body_style))
     story.append(Spacer(1, 0.15 * inch))
 
-    story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
+    story.append(HR_STANDARD())
     story.append(Paragraph("Analysis Summary", section_heading_style))
     revenue_delta = None
     for d in (report.metric_deltas or []):
@@ -725,24 +801,38 @@ def render_pdf(
     products_analyzed_value = _extract_distinct_products(report, business_insights)
     insights_generated_value = len(report.insights or [])
 
-    summary_bullets = []
-    if total_revenue_value is not None:
-        summary_bullets.append(f"• <b>Total Revenue:</b> ${total_revenue_value:,.2f}")
-    else:
-        summary_bullets.append("• <b>Total Revenue:</b> —")
+    # 2-column table for metrics
+    summary_cells = [
+        [
+            Paragraph("Total Revenue", label_style),
+            Paragraph("Total Transactions", label_style)
+        ],
+        [
+            Paragraph(f"${total_revenue_value:,.2f}" if total_revenue_value is not None else "\u2014", metric_value_style),
+            Paragraph(f"{total_transactions_value:,d}" if total_transactions_value is not None else "\u2014", metric_value_style)
+        ],
+        [
+            Paragraph("Products Analyzed", label_style),
+            Paragraph("Insights Generated", label_style)
+        ],
+        [
+            Paragraph(f"{products_analyzed_value:,d}" if products_analyzed_value is not None else "\u2014", metric_value_style),
+            Paragraph(f"{insights_generated_value:,d}", metric_value_style)
+        ]
+    ]
 
-    if total_transactions_value is not None:
-        summary_bullets.append(f"• <b>Total Transactions:</b> {total_transactions_value:,d}")
-
-    if products_analyzed_value is not None:
-        summary_bullets.append(f"• <b>Products Analyzed:</b> {products_analyzed_value:,d}")
-    else:
-        summary_bullets.append("• <b>Products Analyzed:</b> —")
-
-    summary_bullets.append(f"• <b>Insights Generated:</b> {insights_generated_value:,d}")
-
-    for b in summary_bullets:
-        story.append(Paragraph(b, body_style))
+    summary_table = Table(summary_cells, colWidths=[doc.width/2.0, doc.width/2.0])
+    summary_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (1, 0), HexColor("#F9FAFB")),
+        ('BACKGROUND', (0, 2), (1, 2), HexColor("#F9FAFB")),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('LINEBELOW', (0, 1), (1, 1), 0.5, HexColor("#F3F4F6")),
+    ]))
+    story.append(summary_table)
     story.append(Spacer(1, 0.25 * inch))
 
     # ------------------------------------------------------------------
@@ -751,7 +841,7 @@ def render_pdf(
     if business_insights and business_insights.get("mom_commentary"):
         try:
             mom = business_insights["mom_commentary"]
-            story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
+            story.append(HR_STANDARD())
             story.append(Paragraph("Period Comparison", section_heading_style))
             
             direction = mom.get("direction", "no_baseline")
@@ -806,7 +896,7 @@ def render_pdf(
     # C5. DATA QUALITY SUMMARY IN PDF
     if business_insights and business_insights.get("data_quality"):
         dq = business_insights["data_quality"]
-        story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
+        story.append(HR_STANDARD())
         story.append(Paragraph("Data Quality Summary", section_heading_style))
         dq_bullets = []
         if dq.get("rows_before") is not None and dq.get("rows_after") is not None:
@@ -824,23 +914,35 @@ def render_pdf(
     # ------------------------------------------------------------------
     # Key Metrics section
     # ------------------------------------------------------------------
-    story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
+    story.append(HR_STANDARD())
     story.append(Paragraph("Key Metrics", section_heading_style))
 
-    metrics_style = body_style
-
     if report.metric_deltas:
-        for m in report.metric_deltas:
+        metric_rows = []
+        for i, m in enumerate(report.metric_deltas):
             if m.baseline == 0:
-                metric_text = f"<b>{m.name.title()}:</b> ${m.current:,.2f}"
+                val_text = f"${m.current:,.2f}"
+                comp_text = "N/A (No Baseline)"
             else:
                 sign = "+" if m.percent_change >= 0 else ""
-                metric_text = (
-                    f"<b>{m.name.title()}:</b> ${m.current:,.2f} "
-                    f"({sign}{m.percent_change:.1f}% vs baseline ${m.baseline:,.2f})"
-                )
-            story.append(Paragraph(metric_text, metrics_style))
-            story.append(Spacer(1, 0.1 * inch))
+                val_text = f"${m.current:,.2f}"
+                comp_text = f"{sign}{m.percent_change:.1f}% vs ${m.baseline:,.2f}"
+            
+            metric_rows.append([
+                Paragraph(m.name.title(), body_style),
+                Paragraph(val_text, metric_value_style),
+                Paragraph(comp_text, small_muted_style)
+            ])
+
+        metrics_table = Table(metric_rows, colWidths=[doc.width*0.3, doc.width*0.25, doc.width*0.45])
+        metrics_table.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('LINEBELOW', (0, 0), (-1, -1), 0.25, HexColor("#EEEEEE")),
+        ]))
+        story.append(metrics_table)
+        story.append(Spacer(1, 0.1 * inch))
 
         any_negative_metric = any(
             (getattr(m, "current", 0) is not None and m.current < 0)
@@ -861,14 +963,8 @@ def render_pdf(
     if business_insights and business_insights.get("revenue_stability_index"):
         try:
             rsi = business_insights["revenue_stability_index"]
-            score_val = rsi.get("score")
-            label_val = rsi.get("label", "")
-            explanation_val = rsi.get("explanation", "")
-            factors = rsi.get("contributing_factors") or []
-            warning_val = rsi.get("warning")
-            confidence_val = rsi.get("confidence", "")
-
-            story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
+            # ... (rest stays the same)
+            story.append(HR_STANDARD())
             story.append(Paragraph("Revenue Stability Index", section_heading_style))
 
             if score_val is not None:
@@ -906,16 +1002,8 @@ def render_pdf(
     if business_insights and business_insights.get("inventory_health_score"):
         try:
             ihs = business_insights["inventory_health_score"]
-            ihs_score = ihs.get("score")
-            ihs_label = ihs.get("label", "")
-            ihs_explanation = ihs.get("explanation", "")
-            ihs_factors = ihs.get("contributing_factors") or []
-            ihs_warning = ihs.get("warning")
-            ihs_confidence = ihs.get("confidence", "")
-            ihs_source = ihs.get("data_source", "")
-            ihs_watchlist = ihs.get("watchlist") or []
- 
-            story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
+            # ...
+            story.append(HR_STANDARD())
             story.append(Paragraph("Inventory Health Score", section_heading_style))
  
             if ihs_score is not None:
@@ -971,7 +1059,7 @@ def render_pdf(
             ewa = business_insights["early_warning_alerts"]
             ewa_alerts = ewa.get("alerts") or []
             if ewa_alerts:
-                story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
+                story.append(HR_STANDARD())
                 story.append(Paragraph("Early Warning Alerts", section_heading_style))
  
                 sev_label_map = {
@@ -1023,7 +1111,7 @@ def render_pdf(
             clpp = business_insights["cohort_product_performance"]
             clpp_cohorts = clpp.get("cohorts") or []
             if clpp_cohorts:
-                story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
+                story.append(HR_STANDARD())
                 story.append(Paragraph("Product Cohort Performance", section_heading_style))
  
                 clpp_basis = clpp.get("cohort_basis", "")
@@ -1088,7 +1176,7 @@ def render_pdf(
             csca = business_insights["customer_segmentation"]
             csca_segments = csca.get("segments") or []
             if csca_segments:
-                story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
+                story.append(HR_STANDARD())
                 story.append(Paragraph("Customer Segmentation", section_heading_style))
  
                 csca_basis = csca.get("segment_basis", "")
@@ -1169,7 +1257,7 @@ def render_pdf(
             crd = business_insights["concentration_risk_dashboard"]
             crd_dims = crd.get("dimensions") or []
             if crd_dims:
-                story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
+                story.append(HR_STANDARD())
                 story.append(Paragraph("Concentration Risk Dashboard", section_heading_style))
  
                 overall_risk = crd.get("overall_risk", "low")
@@ -1300,20 +1388,17 @@ def render_pdf(
     # ------------------------------------------------------------------
     # Insights section
     # ------------------------------------------------------------------
-    story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
-    story.append(Paragraph("Insights", section_heading_style))
-
-
-    insights_style = body_style
+    story.append(HR_MAJOR())
+    story.append(Paragraph("Insights", major_section_heading_style))
 
     if report.insights:
         any_negative_insight = False
         for ins in report.insights:
             importance = _importance_label(ins.severity)
+            sev_prefix = f"[{ins.severity.upper()}] " if ins.severity else ""
 
-            title_line = f"<b>{_escape(ins.title)}</b>"
-            story.append(Paragraph(title_line, insights_style))
-            story.append(Paragraph(f"<i>Why it matters:</i> {_escape(importance)}", small_muted_style))
+            story.append(Paragraph(f"<b>{sev_prefix}{_escape(ins.title)}</b>", body_style))
+            story.append(Paragraph(f"<b>Why it matters:</b> {_escape(importance)}", small_muted_style))
 
             if getattr(ins, "code", "") == "REVENUE_VOLATILITY":
                 desc = (
@@ -1322,16 +1407,15 @@ def render_pdf(
                 )
             else:
                 desc = _rewrite_stat_language(ins.description)
-            story.append(Paragraph(_escape(desc), insights_style))
+            story.append(Paragraph(_escape(desc), body_style))
 
             # Render enrichment fields if present
             fallback_context = ""
             if getattr(ins, "affected_metric", None):
                 fallback_context = f"Focus on the drivers behind {ins.affected_metric} first — it is the fastest way to reduce operational uncertainty."
 
-            driver = _rewrite_stat_language(ins.driver or "")
-            implication = _ensure_implication(ins.implication, fallback_context)
             driver_plain = _rewrite_driver_plain_english(ins.driver or "", title=ins.title)
+            implication = _ensure_implication(ins.implication, fallback_context)
             action = _rewrite_action_directional(
                 ins.action_direction,
                 title=ins.title or "",
@@ -1341,14 +1425,10 @@ def render_pdf(
             )
 
             if driver_plain:
-                story.append(
-                    Paragraph(
-                        f"<i>Driver:</i> {_escape(driver_plain)}",
-                        small_muted_style,
-                    )
-                )
-            story.append(Paragraph(f"<i>Implication:</i> {_escape(implication)}", small_muted_style))
-            story.append(Paragraph(f"<i>Action:</i> {_escape(action)}", small_muted_style))
+                story.append(Paragraph(f"<b>Driver:</b> {_escape(driver_plain)}", small_muted_style))
+            
+            story.append(Paragraph(f"<b>Implication:</b> {_escape(implication)}", small_muted_style))
+            story.append(Paragraph(f"<b>Action:</b> {_escape(action)}", small_muted_style))
 
             if _contains_negative_revenue(ins.title, ins.description, ins.driver or "", ins.implication or ""):
                 any_negative_insight = True
@@ -1358,7 +1438,8 @@ def render_pdf(
                 conf_text = f"Confidence: {_format_confidence(ins.confidence, getattr(ins, 'confidence_basis', None))}"
                 story.append(Paragraph(conf_text, small_muted_style))
 
-            story.append(Spacer(1, 0.18 * inch))
+            story.append(HR_MINOR())
+            story.append(Spacer(1, 0.1 * inch))
 
         if any_negative_insight:
             story.append(Spacer(1, 0.05 * inch))
@@ -1375,10 +1456,10 @@ def render_pdf(
     # ------------------------------------------------------------------
     if business_insights:
         try:
-            story.append(Spacer(1, 0.3 * inch))
-            story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
-            story.append(Paragraph("Business Interpretation", section_heading_style))
             story.append(Spacer(1, 0.1 * inch))
+            story.append(HR_MAJOR())
+            story.append(Paragraph("Business Interpretation", major_section_heading_style))
+            story.append(Spacer(1, 0.05 * inch))
 
             detail_style = body_style
 
@@ -1455,19 +1536,28 @@ def render_pdf(
             pass
 
     # C4. APPENDIX
-    story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
-    story.append(Paragraph("Appendix: Methodology Notes", section_heading_style))
+    story.append(HR_MAJOR())
+    story.append(Paragraph("Appendix: Methodology & Disclaimers", major_section_heading_style))
 
-    appendix_text = (
-        "Revenue detection uses semantic column matching across known synonyms (revenue, sales, "
-        "turnover, total_price, gmv, etc.) with confidence thresholds. "
-        "Concentration analysis uses a top-10% percentile cutoff applied to the full transaction dataset. "
-        "Volatility is measured by coefficient of variation (std \u00f7 mean) on the revenue column. "
-        "Efficiency is computed as percent change in average revenue per transaction between periods. "
-        "All figures reflect the dataset provided and no external data was used. "
-        "Results are directional indicators, not audited financial statements."
+    appendix_items = [
+        ("Revenue Detection", "Semantic column matching across synonyms (sales, turnover, gmv) with fuzzy confidence thresholds."),
+        ("Concentration Risk", "Computed using HHI and Gini coefficients applied to transaction-level revenue distribution."),
+        ("Stability Index", "Weighted metric of coefficient of variation (CV) and period-over-period volatility."),
+        ("Product Cohorts", "Dynamic grouping by revenue contribution tiers using Z-score outlier detection."),
+        ("Data Quality", "Automated currency canonicalization, handle missing value imputation, and duplicate detection."),
+    ]
+    
+    for title, desc in appendix_items:
+        story.append(Paragraph(f"<b>{title}:</b> {desc}", small_muted_style))
+        story.append(Spacer(1, 0.05 * inch))
+
+    disclaimer = (
+        "This report is generated for internal business advisory purposes. Figures reflect the dataset "
+        "provided as-is; results are directional indicators and not audited financial statements. "
+        "Confidence scores indicate statistical robustness, not factual certainty."
     )
-    story.append(Paragraph(_escape(appendix_text), small_muted_style))
+    story.append(Spacer(1, 0.1 * inch))
+    story.append(Paragraph(disclaimer, confidential_style))
     story.append(Spacer(1, 0.2 * inch))
 
     # Build PDF (IO + layout only; no contract changes)
