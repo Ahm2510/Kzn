@@ -23,6 +23,7 @@ from app.services.early_warnings import EarlyWarningResult, compute_early_warnin
 from app.services.product_cohorts import CohortProductPerformanceResult, compute_cohort_product_performance
 from app.services.customer_segments import CustomerSegmentationResult, compute_customer_segmentation
 from app.services.concentration_risk import ConcentrationRiskDashboardResult, compute_concentration_risk
+from app.services.executive_summary import EnhancedExecutiveSummaryResult, compute_enhanced_executive_summary
 
 
 
@@ -101,6 +102,8 @@ class BusinessInsights(BaseModel):
     cohort_product_performance: Optional[CohortProductPerformanceResult] = None
     customer_segmentation: Optional[CustomerSegmentationResult] = None
     concentration_risk_dashboard: Optional[ConcentrationRiskDashboardResult] = None
+    enhanced_executive_summary: Optional[EnhancedExecutiveSummaryResult] = None
+
 
 
 
@@ -314,7 +317,9 @@ class BusinessInsightGenerator:
             # Concentration Risk Dashboard (additive — returns None on failure)
             crd_result = compute_concentration_risk(current_df, revenue_column)
  
-            return BusinessInsights(
+            # Enhanced Executive Summary (meta-layer — synthesizes all computed insights)
+            # Create a temporary container so compute_enhanced_executive_summary can read from all sub-results
+            _all_bi = BusinessInsights(
                 executive_takeaways=takeaways, scope=self.build_scope_block(),
                 trend=trend, stability=stability, efficiency=efficiency, concentration=concentration,
                 executive_summary=exec_summary,
@@ -326,6 +331,22 @@ class BusinessInsightGenerator:
                 customer_segmentation=csca_result,
                 concentration_risk_dashboard=crd_result,
             )
+            ees_result = compute_enhanced_executive_summary(_all_bi.dict(), len(current_df))
+ 
+            return BusinessInsights(
+                executive_takeaways=takeaways, scope=self.build_scope_block(),
+                trend=trend, stability=stability, efficiency=efficiency, concentration=concentration,
+                executive_summary=exec_summary,
+                products_to_watch=products_to_watch,
+                revenue_stability_index=rsi_result,
+                inventory_health_score=ihs_result,
+                early_warning_alerts=ewa_result,
+                cohort_product_performance=clpp_result,
+                customer_segmentation=csca_result,
+                concentration_risk_dashboard=crd_result,
+                enhanced_executive_summary=ees_result,
+            )
+
 
 
         except Exception: return None

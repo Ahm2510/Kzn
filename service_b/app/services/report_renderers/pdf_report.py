@@ -561,7 +561,12 @@ def render_pdf(
         leading=14,
         leftIndent=8,
     )
-    toc_sections = ["Executive Takeaways", "Executive Summary", "Analysis Summary", "Key Metrics"]
+    toc_sections = ["Executive Takeaways"]
+    if business_insights and business_insights.get("enhanced_executive_summary"):
+        ees_data = business_insights["enhanced_executive_summary"]
+        if isinstance(ees_data, dict) and ees_data.get("narrative"):
+            toc_sections.append("Enhanced Executive Summary")
+    toc_sections.extend(["Executive Summary", "Analysis Summary", "Key Metrics"])
     if business_insights and business_insights.get("revenue_stability_index"):
         toc_sections.append("Revenue Stability Index")
     if business_insights and business_insights.get("inventory_health_score"):
@@ -635,6 +640,63 @@ def render_pdf(
         except Exception:
             # Defensive - never fail PDF generation for business insights
             pass
+ 
+    # ------------------------------------------------------------------
+    # Enhanced Executive Summary section (if available)
+    # ------------------------------------------------------------------
+    if business_insights and business_insights.get("enhanced_executive_summary"):
+        try:
+            ees = business_insights["enhanced_executive_summary"]
+            narrative = ees.get("narrative", "")
+            if narrative:
+                story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
+                story.append(Paragraph("Enhanced Executive Summary", section_heading_style))
+ 
+                sentiment = ees.get("overall_sentiment", "neutral")
+                confidence = ees.get("confidence", "medium")
+                coverage = ees.get("data_coverage", "limited")
+                story.append(
+                    Paragraph(
+                        f"Outlook: <b>{_escape(sentiment.upper())}</b> | "
+                        f"Confidence: <b>{_escape(confidence.upper())}</b> | "
+                        f"Data coverage: <b>{_escape(coverage.replace('_', ' ').title())}</b>",
+                        small_muted_style,
+                    )
+                )
+                story.append(Spacer(1, 0.08 * inch))
+ 
+                story.append(Paragraph(_escape(narrative), body_style))
+                story.append(Spacer(1, 0.1 * inch))
+ 
+                key_positives = ees.get("key_positives") or []
+                if key_positives:
+                    story.append(Paragraph("<b>Key Strengths</b>", body_style))
+                    for p in key_positives[:4]:
+                        story.append(Paragraph(f"\u2714 {_escape(str(p))}", small_muted_style))
+                    story.append(Spacer(1, 0.08 * inch))
+ 
+                key_risks = ees.get("key_risks") or []
+                if key_risks:
+                    story.append(Paragraph("<b>Key Risks</b>", body_style))
+                    for r in key_risks[:4]:
+                        story.append(Paragraph(f"\u26a0 {_escape(str(r))}", small_muted_style))
+                    story.append(Spacer(1, 0.08 * inch))
+ 
+                watchpoints = ees.get("watchpoints") or []
+                if watchpoints:
+                    story.append(Paragraph("<b>Leadership Watchpoints</b>", body_style))
+                    for w in watchpoints[:4]:
+                        story.append(Paragraph(f"\u25b6 {_escape(str(w))}", small_muted_style))
+                    story.append(Spacer(1, 0.08 * inch))
+ 
+                ees_warning = ees.get("warning")
+                if ees_warning:
+                    story.append(Paragraph(f"\u26a0 {_escape(str(ees_warning))}", small_muted_style))
+ 
+                story.append(Spacer(1, 0.15 * inch))
+        except Exception:
+            pass  # Never fail PDF generation for EES
+
 
     # ------------------------------------------------------------------
     # Executive Summary section (always)

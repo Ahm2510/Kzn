@@ -315,8 +315,24 @@ export interface InsightReport {
       warning?: string | null;
       confidence?: string;
     };
+    enhanced_executive_summary?: {
+      narrative?: string;
+      sections?: Array<{
+        heading: string;
+        content: string;
+        sentiment: string;
+      }>;
+      overall_sentiment?: string;
+      confidence?: string;
+      key_positives?: string[];
+      key_risks?: string[];
+      watchpoints?: string[];
+      data_coverage?: string;
+      warning?: string | null;
+    };
     products_to_watch?: string[];
     meta?: Record<string, any>;
+
 
 
 

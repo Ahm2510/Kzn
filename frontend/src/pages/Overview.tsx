@@ -102,6 +102,80 @@ export default function Overview() {
             </div>
           </section>
         )}
+ 
+        {bi?.enhanced_executive_summary && bi.enhanced_executive_summary.narrative && (
+          <section className="section-spacing">
+            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
+              Enhanced Executive Summary
+            </h3>
+            <div className="bg-card border border-border rounded-lg p-6 space-y-4">
+              <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                {bi.enhanced_executive_summary.overall_sentiment && (
+                  <span>
+                    Outlook:{" "}
+                    <span className={`font-mono font-bold ${
+                      bi.enhanced_executive_summary.overall_sentiment === "positive" ? "text-emerald-600" :
+                      bi.enhanced_executive_summary.overall_sentiment === "negative" ? "text-red-500" :
+                      bi.enhanced_executive_summary.overall_sentiment === "mixed" ? "text-amber-500" :
+                      "text-muted-foreground"
+                    }`}>
+                      {bi.enhanced_executive_summary.overall_sentiment.toUpperCase()}
+                    </span>
+                  </span>
+                )}
+                {bi.enhanced_executive_summary.confidence && (
+                  <span>Confidence: <span className="font-mono">{bi.enhanced_executive_summary.confidence.toUpperCase()}</span></span>
+                )}
+                {bi.enhanced_executive_summary.data_coverage && (
+                  <span>Coverage: <span className="font-mono">{bi.enhanced_executive_summary.data_coverage.replace(/_/g, " ").toUpperCase()}</span></span>
+                )}
+              </div>
+ 
+              <p className="text-sm text-foreground leading-relaxed">
+                {bi.enhanced_executive_summary.narrative}
+              </p>
+ 
+              {bi.enhanced_executive_summary.key_positives && bi.enhanced_executive_summary.key_positives.length > 0 && (
+                <div className="pt-3 border-t border-border/60">
+                  <p className="text-xs font-medium text-emerald-600 mb-2">Key Strengths</p>
+                  <div className="space-y-1">
+                    {bi.enhanced_executive_summary.key_positives.slice(0, 4).map((p, i) => (
+                      <p key={i} className="text-xs text-foreground/80">+ {p}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+ 
+              {bi.enhanced_executive_summary.key_risks && bi.enhanced_executive_summary.key_risks.length > 0 && (
+                <div className="pt-3 border-t border-border/60">
+                  <p className="text-xs font-medium text-red-500 mb-2">Key Risks</p>
+                  <div className="space-y-1">
+                    {bi.enhanced_executive_summary.key_risks.slice(0, 4).map((r, i) => (
+                      <p key={i} className="text-xs text-foreground/80">- {r}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+ 
+              {bi.enhanced_executive_summary.watchpoints && bi.enhanced_executive_summary.watchpoints.length > 0 && (
+                <div className="pt-3 border-t border-border/60">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Leadership Watchpoints</p>
+                  <div className="space-y-1">
+                    {bi.enhanced_executive_summary.watchpoints.slice(0, 4).map((w, i) => (
+                      <p key={i} className="text-xs text-foreground/80">{w}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+ 
+              {bi.enhanced_executive_summary.warning && (
+                <p className="text-xs text-amber-500 bg-amber-500/5 border border-amber-500/20 rounded px-3 py-2">
+                  {bi.enhanced_executive_summary.warning}
+                </p>
+              )}
+            </div>
+          </section>
+        )}
 
         <section className="section-spacing">
           <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">Executive Summary</h3>
