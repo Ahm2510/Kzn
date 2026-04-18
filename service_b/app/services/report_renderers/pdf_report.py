@@ -901,14 +901,44 @@ def render_pdf(
         dq_bullets = []
         if dq.get("rows_before") is not None and dq.get("rows_after") is not None:
             dq_bullets.append(f"• Rows after cleaning: {dq['rows_after']:,} (from {dq['rows_before']:,})")
+        
         if dq.get("duplicate_rows_dropped"):
             dq_bullets.append(f"• Duplicate rows removed: {dq['duplicate_rows_dropped']:,}")
+        
         if dq.get("null_rows_dropped"):
             dq_bullets.append(f"• Null rows removed: {dq['null_rows_dropped']:,}")
+            
+        # New: Schema detection
+        schema = dq.get("schema_detected")
+        if schema:
+            detected = schema.get("detected_columns", {})
+            if detected:
+                fields_found = ", ".join(sorted(detected.keys()))
+                dq_bullets.append(f"• Schema fields detected: {_escape(fields_found)}")
+        
+        # New: Granularity
+        gran = dq.get("granularity")
+        if gran and gran.get("granularity") != "unknown":
+            dq_bullets.append(f"• Data granularity: {_escape(gran['granularity'].replace('_', ' ').title())}")
+        
+        # New: Dates
+        date_cols = dq.get("date_columns_parsed")
+        if date_cols:
+            dq_bullets.append(f"• Date columns parsed: {', '.join(date_cols)}")
+
         if dq.get("columns_renamed"):
             dq_bullets.append(f"• Columns canonicalized: {', '.join(dq['columns_renamed'])}")
+            
         for b in dq_bullets:
             story.append(Paragraph(b, body_style))
+            
+        # New: Warnings
+        warnings = dq.get("warnings")
+        if warnings:
+            story.append(Spacer(1, 0.05 * inch))
+            for w in warnings[:5]:
+                story.append(Paragraph(f"\u26a0 {_escape(str(w))}", small_muted_style))
+                
         story.append(Spacer(1, 0.2 * inch))
 
     # ------------------------------------------------------------------

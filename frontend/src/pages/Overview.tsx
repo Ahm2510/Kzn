@@ -759,6 +759,79 @@ export default function Overview() {
           </section>
         )}
  
+        {bi?.data_quality && (
+          <section className="section-spacing">
+            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
+              Data Quality Summary
+            </h3>
+            <div className="bg-card border border-border rounded-lg p-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Cleaning Result:</span>
+                    <p className="font-medium text-foreground">
+                      {bi.data_quality.rows_after?.toLocaleString()} rows preserved{" "}
+                      <span className="text-xs text-muted-foreground font-normal">
+                        (from {bi.data_quality.rows_before?.toLocaleString()})
+                      </span>
+                    </p>
+                  </div>
+                  
+                  {bi.data_quality.granularity && bi.data_quality.granularity.granularity !== "unknown" && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Granularity:</span>
+                      <p className="font-medium text-foreground capitalize">
+                        {bi.data_quality.granularity.granularity.replace(/_/g, " ")}
+                        <span className="ml-2 text-[10px] font-mono text-muted-foreground">
+                          ({bi.data_quality.granularity.confidence?.toUpperCase()} CONFIDENCE)
+                        </span>
+                      </p>
+                      {bi.data_quality.granularity.explanation && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{bi.data_quality.granularity.explanation}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  {bi.data_quality.schema_detected && bi.data_quality.schema_detected.detected_columns && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Fields Detected:</span>
+                      <div className="flex flex-wrap gap-1.5 mt-1">
+                        {Object.keys(bi.data_quality.schema_detected.detected_columns).sort().map(field => (
+                          <span key={field} className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono text-foreground">
+                            {field.toUpperCase()}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {bi.data_quality.date_columns_parsed && bi.data_quality.date_columns_parsed.length > 0 && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Timeline:</span>
+                      <p className="text-xs text-foreground">
+                        Parsed from: <span className="font-mono">{bi.data_quality.date_columns_parsed.join(", ")}</span>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {(bi.data_quality.warnings && bi.data_quality.warnings.length > 0) && (
+                <div className="pt-3 border-t border-border/60">
+                  <p className="text-[10px] font-bold text-amber-500 uppercase tracking-tight mb-2">Preprocessing Warnings</p>
+                  <div className="space-y-1">
+                    {bi.data_quality.warnings.map((w, i) => (
+                      <p key={i} className="text-xs text-amber-600/90 italic">⚠ {w}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+ 
         {/* Business Insight Detail Sections */}
         {hasBI && (
 

@@ -371,6 +371,38 @@ export interface InsightReport {
       warning?: string | null;
     };
     products_to_watch?: string[];
+    data_quality?: {
+      rows_before?: number;
+      rows_after?: number;
+      columns_before?: number;
+      columns_after?: number;
+      columns_renamed?: string[];
+      columns_currency_cleaned?: string[];
+      date_columns_parsed?: string[];
+      null_rows_dropped?: number;
+      duplicate_rows_dropped?: number;
+      missing_value_summary?: Record<string, { null_count: number; null_pct: number }>;
+      schema_detected?: {
+        has_revenue?: boolean;
+        has_quantity?: boolean;
+        has_product?: boolean;
+        has_customer?: boolean;
+        has_order_id?: boolean;
+        has_date?: boolean;
+        has_category?: boolean;
+        has_sku?: boolean;
+        has_price?: boolean;
+        has_inventory?: boolean;
+        has_country?: boolean;
+        detected_columns?: Record<string, string>;
+      };
+      granularity?: {
+        granularity?: string;
+        confidence?: string;
+        explanation?: string;
+      };
+      warnings?: string[];
+    };
     meta?: Record<string, any>;
 
 

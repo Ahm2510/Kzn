@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, IO, List, Optional, Tuple
 from pathlib import Path
 
+import re
 import numpy as np
 import pandas as pd
 
@@ -460,181 +461,336 @@ class PreprocessingService:
             columns_after=cols_after,
         )
 
-def preprocess_with_options(df, options):
+# ------------------------------------------------------------------
+# Analysis-time Preprocessing Helpers
+# ------------------------------------------------------------------
+
+def _normalize_column_name(name: str) -> str:
+    """Normalize a raw column name to snake_case canonical form."""
+    s = str(name).strip()
+    # Replace common separators with underscore
+    s = re.sub(r'[\s\-\.]+', '_', s)
+    # Remove non-alphanumeric (except underscore)
+    s = re.sub(r'[^a-zA-Z0-9_]', '', s)
+    # Collapse multiple underscores
+    s = re.sub(r'_+', '_', s)
+    # Strip leading/trailing underscores
+    s = s.strip('_')
+    return s.lower()
+
+def _detect_schema(df: pd.DataFrame) -> Dict[str, Any]:
+    """Detect what schema fields are present in the dataset."""
+    cols_lower = {c.lower(): c for c in df.columns}
+    
+    schema = {
+        "has_revenue": False,
+        "has_quantity": False,
+        "has_product": False,
+        "has_customer": False,
+        "has_order_id": False,
+        "has_date": False,
+        "has_category": False,
+        "has_sku": False,
+        "has_price": False,
+        "has_inventory": False,
+        "has_country": False,
+        "detected_columns": {},  # Maps canonical name → actual column name
+    }
+    
+    # Revenue
+    revenue_names = {
+        "revenue", "sales", "amount", "total", "total_price", "order_value", "gmv", 
+        "turnover", "totalprice", "sale_amount", "netsales", "net_amount"
+    }
+    for name in revenue_names:
+        if name in cols_lower:
+            schema["has_revenue"] = True
+            schema["detected_columns"]["revenue"] = cols_lower[name]
+            break
+    
+    # Quantity
+    qty_names = {"quantity", "qty", "units", "unit_count", "volume", "num_units"}
+    for name in qty_names:
+        if name in cols_lower:
+            schema["has_quantity"] = True
+            schema["detected_columns"]["quantity"] = cols_lower[name]
+            break
+    
+    # Product
+    product_names = {"product", "product_name", "item", "item_name", "description", "prod_name"}
+    for name in product_names:
+        if name in cols_lower:
+            schema["has_product"] = True
+            schema["detected_columns"]["product"] = cols_lower[name]
+            break
+    
+    # Customer
+    customer_names = {
+        "customer", "customer_name", "client_name", "buyer_name", "customer_id", 
+        "cust_id", "client_id", "buyer_id"
+    }
+    for name in customer_names:
+        if name in cols_lower:
+            schema["has_customer"] = True
+            schema["detected_columns"]["customer"] = cols_lower[name]
+            break
+    
+    # Order ID
+    order_names = {
+        "order_id", "orderid", "transaction_id", "transactionid", "invoice_id", 
+        "invoiceid", "receipt_id", "ord_id"
+    }
+    for name in order_names:
+        if name in cols_lower:
+            schema["has_order_id"] = True
+            schema["detected_columns"]["order_id"] = cols_lower[name]
+            break
+    
+    # Date (check dtype first, then fallback to names)
+    for col in df.columns:
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
+            schema["has_date"] = True
+            schema["detected_columns"]["date"] = col
+            break
+    
+    if not schema["has_date"]:
+        date_names = {
+            "date", "order_date", "invoice_date", "created_at", "sale_date", 
+            "purchase_date", "transaction_date", "date_string", "timestamp"
+        }
+        for name in date_names:
+            if name in cols_lower:
+                schema["has_date"] = True
+                schema["detected_columns"]["date"] = cols_lower[name]
+                break
+    
+    # Categories & SKUs
+    for name in ["category", "category_name", "product_category"]:
+        if name in cols_lower:
+            schema["has_category"] = True
+            schema["detected_columns"]["category"] = cols_lower[name]
+            break
+            
+    for name in ["sku", "stock_code", "stockcode", "item_code", "product_id"]:
+        if name in cols_lower:
+            schema["has_sku"] = True
+            schema["detected_columns"]["sku"] = cols_lower[name]
+            break
+
+    # Price
+    price_names = {"unit_price", "unitprice", "price", "item_price", "selling_price", "rate"}
+    for name in price_names:
+        if name in cols_lower:
+            schema["has_price"] = True
+            schema["detected_columns"]["price"] = cols_lower[name]
+            break
+
+    # Inventory & Country
+    if any(n in cols_lower for n in ["stock", "stock_level", "inventory", "on_hand"]):
+        schema["has_inventory"] = True
+    
+    if any(n in cols_lower for n in ["country", "region", "geography", "market"]):
+        schema["has_country"] = True
+    
+    return schema
+
+def _detect_granularity(df: pd.DataFrame, schema: Dict[str, Any]) -> Dict[str, Any]:
+    """Detect whether the dataset is order-level, line-item-level, or other."""
+    n_rows = len(df)
+    if n_rows < 1:
+        return {"granularity": "unknown", "confidence": "low", "explanation": "Empty dataset."}
+    
+    granularity = "unknown"
+    confidence = "low"
+    explanation = ""
+    
+    # Check for order_id uniqueness
+    if schema.get("has_order_id"):
+        order_col = schema["detected_columns"].get("order_id")
+        if order_col and order_col in df.columns:
+            n_unique_orders = df[order_col].nunique()
+            ratio = n_unique_orders / n_rows
+            
+            if ratio > 0.98:
+                granularity = "order_level"
+                confidence = "high"
+                explanation = f"Almost every row is a unique order ({n_unique_orders:,} unique IDs in {n_rows:,} rows)."
+            elif ratio > 0.1:
+                granularity = "line_item_level"
+                confidence = "high"
+                explanation = f"Multiple items per order detected ({n_unique_orders:,} unique orders in {n_rows:,} rows)."
+            else:
+                granularity = "aggregated"
+                confidence = "medium"
+                explanation = f"Data appears highly aggregated ({n_unique_orders:,} unique orders in {n_rows:,} rows)."
+    
+    elif schema.get("has_product") and not schema.get("has_customer"):
+        granularity = "product_level"
+        confidence = "medium"
+        explanation = "Data contains products but no order/customer IDs — likely a product summary."
+    
+    elif schema.get("has_customer") and not schema.get("has_order_id"):
+        granularity = "customer_level"
+        confidence = "medium"
+        explanation = "Data contains customers but no order IDs — likely a customer summary."
+    
+    return {
+        "granularity": granularity,
+        "confidence": confidence,
+        "explanation": explanation,
+    }
+
+def preprocess_with_options(df: pd.DataFrame, options: Any) -> pd.DataFrame:
+    """
+    Standard analysis-time preprocessing:
+    1. Normalize column names (snake_case)
+    2. Fuzzy match canonical names
+    3. Currency symbol cleaning
+    4. Robust date parsing
+    5. Product normalization
+    6. Deduplication (order-aware)
+    7. Targeted missing value handling
+    8. Schema/Granularity detection
+    9. Data Quality Report generation
+    """
     rows_before, cols_before = df.shape
     columns_renamed = []
     columns_currency_cleaned = []
+    date_columns_parsed = []
     null_rows_dropped = 0
     duplicate_rows_dropped = 0
-
+    warnings = []
+    
+    # B. Expanded synonyms
     COLUMN_SYNONYMS = {
-        "qty": "quantity",
-        "unit_qty": "quantity",
-        "order_qty": "quantity",
-        "num_units": "quantity",
-        "units_sold": "quantity",
-        "unitprice": "unit_price",
-        "unit_cost": "unit_price",
-        "itemprice": "unit_price",
-        "item_price": "unit_price",
-        "sellingprice": "unit_price",
-        "selling_price": "unit_price",
-        "price_per_unit": "unit_price",
-        "saleamount": "revenue",
-        "sale_amount": "revenue",
-        "netsales": "revenue",
-        "net_sales": "revenue",
-        "grosssales": "revenue",
-        "gross_sales": "revenue",
-        "ordertotal": "revenue",
-        "order_total": "revenue",
-        "invoicetotal": "revenue",
-        "invoice_total": "revenue",
-        "paymentamount": "revenue",
-        "payment_amount": "revenue",
-        "transactionamount": "revenue",
-        "transaction_amount": "revenue",
-        "orderdate": "date",
-        "order_date": "date",
-        "saledate": "date",
-        "sale_date": "date",
-        "invoicedate": "date",
-        "invoice_date": "date",
-        "purchasedate": "date",
-        "purchase_date": "date",
-        "createdat": "date",
-        "created_at": "date",
-        "datestring": "date",
-        "date_string": "date",
-        "orderid": "order_id",
-        "order_id": "order_id",
-        "transactionid": "order_id",
-        "transaction_id": "order_id",
-        "invoiceid": "order_id",
-        "invoice_id": "order_id",
-        "prodname": "product",
-        "prod_name": "product",
-        "productname": "product",
-        "product_name": "product",
-        "itemname": "product",
-        "item_name": "product",
-        "skuname": "product",
-        "sku_name": "product",
-        "productdesc": "product",
-        "product_desc": "product",
-        "description": "product",
-        "itemdescription": "product",
-        "item_description": "product",
-        "categoryname": "category",
-        "category_name": "category",
-        "prodcategory": "category",
-        "prod_category": "category",
-        "productcategory": "category",
-        "product_category": "category",
-        "customer_name": "customer",
-        "client_name": "customer",
-        "buyer_name": "customer",
-        "cust_id": "customer_id",
-        "client_id": "customer_id",
-        "buyer_id": "customer_id",
+        # Quantity
+        "qty": "quantity", "unit_qty": "quantity", "order_qty": "quantity", "units_sold": "quantity",
+        # Price
+        "unitprice": "unit_price", "unit_cost": "unit_price", "selling_price": "unit_price", "rate": "unit_price",
+        # Revenue
+        "totalprice": "revenue", "total_price": "revenue", "sales": "revenue", "amount": "revenue",
+        "sale_amount": "revenue", "netsales": "revenue", "gross_sales": "revenue", "order_total": "revenue",
+        "gmv": "revenue", "turnover": "revenue",
+        # Date
+        "orderdate": "date", "order_date": "date", "saledate": "date", "invoice_date": "date",
+        "created_at": "date", "purchase_date": "date", "timestamp": "date",
+        # IDs
+        "orderid": "order_id", "order_id": "order_id", "transaction_id": "order_id", "invoice_id": "order_id",
+        "skuname": "product", "productdesc": "product", "description": "product", "prod_name": "product",
     }
 
+    # 1. Normalize columns & Fuzzy Matching
     if options.normalize_columns:
         try:
-            df.columns = [c.strip().lower() for c in df.columns]
+            # First pass: trim & clean names
+            df.columns = [_normalize_column_name(c) for c in df.columns]
             
-            # A3. FUZZY COLUMN NAME CANONICALIZATION
-            for old_col, new_col in COLUMN_SYNONYMS.items():
-                if old_col in df.columns and new_col not in df.columns:
-                    df.rename(columns={old_col: new_col}, inplace=True)
-                    columns_renamed.append(f"{old_col} \u2192 {new_col}")
-        except Exception:
-            pass
+            # Second pass: synonym matching
+            for old_col, canonical in COLUMN_SYNONYMS.items():
+                if old_col in df.columns and canonical not in df.columns:
+                    df.rename(columns={old_col: canonical}, inplace=True)
+                    columns_renamed.append(f"{old_col} \u2192 {canonical}")
+        except Exception as e:
+            warnings.append(f"Column normalization failed: {str(e)}")
 
-    # A1 & A2. CURRENCY SYMBOL CLEANING & WHITESPACE STRIPPING
+    # 2. Currency Cleaning
     try:
         string_cols = df.select_dtypes(include=["object", "string"]).columns
         for col in string_cols:
             try:
-                # A2. Whitespace stripping
+                # Whitespace strip
                 df[col] = df[col].astype(str).str.strip()
                 
-                # A1. Currency symbol cleaning (Robust Regex)
-                # Matches $, £, €, ₹, ¥, ₩ and other common currency markers, and common separators
-                t = df[col].astype(str).str.strip()
-                t = t.replace(['nan', 'None', 'null', ''], np.nan)
-                
-                # Remove symbols and commas
-                temp_series = t.str.replace(r'[\$£€₹¥₩\s,]', '', regex=True)
-                
-                # Try converting to numeric
-                numeric_series = pd.to_numeric(temp_series, errors='coerce')
-                
-                # Check if we successfully converted a significant portion (not all NaN)
-                if not numeric_series.isna().all():
-                    # Only accept if it doesn't create NEW nulls beyond a small threshold
-                    # (Allowing +1 for potential footer row or header mess)
-                    before_nulls = t.isna().sum()
-                    after_nulls = numeric_series.isna().sum()
+                # Check if it looks like currency
+                sample = df[col].dropna().head(20).astype(str)
+                if any(re.search(r'[\$£€₹¥₩]', s) for s in sample):
+                    cleaned = df[col].astype(str).str.replace(r'[\$£€₹¥₩\s,]', '', regex=True)
+                    numeric = pd.to_numeric(cleaned, errors='coerce')
                     
-                    if after_nulls <= before_nulls + 1:
-                        df[col] = numeric_series
-                        columns_currency_cleaned.append(col)
+                    if not numeric.isna().all():
+                        # Validity check to avoid corrupting text columns
+                        before_nulls = df[col].isna().sum()
+                        after_nulls = numeric.isna().sum()
+                        if after_nulls <= before_nulls + (0.01 * len(df)) + 1:
+                            df[col] = numeric
+                            columns_currency_cleaned.append(col)
             except Exception:
                 continue
     except Exception:
         pass
 
-    # A4. ROBUST DATE PARSING
+    # 3. Robust Date Parsing
     try:
-        date_candidates = ["date", "order_date", "created_date", "sale_date", "invoice_date"]
-        for col in date_candidates:
-            if col in df.columns:
+        # Scan ALL object columns + known candidates
+        date_names = {"date", "order_date", "invoice_date", "created_at", "timestamp"}
+        for col in df.columns:
+            if col in date_names or df[col].dtype == object:
                 try:
-                    parsed_date = pd.to_datetime(df[col], errors='coerce')
-                    valid_count = parsed_date.notna().sum()
-                    if valid_count > 0 and (valid_count / len(df)) >= 0.5:
-                        df[col] = parsed_date
+                    # Quick sample check for date-like format
+                    sample = df[col].dropna().head(10).astype(str)
+                    if any(re.search(r'\d{1,4}[\-/\.]\d{1,2}[\-/\.]\d{1,4}', s) for s in sample):
+                        parsed = pd.to_datetime(df[col], errors='coerce')
+                        valid_ratio = parsed.notna().sum() / max(len(df), 1)
+                        if valid_ratio >= 0.5:
+                            df[col] = parsed
+                            date_columns_parsed.append(col)
                 except Exception:
                     continue
     except Exception:
         pass
 
-    # A5. PRODUCT NAME NORMALIZATION
+    # 4. Product Normalization
     try:
-        if "product" in df.columns:
-            df["product"] = df["product"].astype(str).str.strip().str.lower().str.replace(r'\s+', ' ', regex=True)
+        product_cols = [c for c in df.columns if _normalize_column_name(c) in {"product", "product_name", "item", "description"}]
+        for col in product_cols:
+            df[col] = df[col].astype(str).str.strip().str.lower().str.replace(r'\s+', ' ', regex=True)
     except Exception:
         pass
 
+    # 5. Deduplication
     if options.drop_duplicates:
         try:
-            # A6. SAFER DUPLICATE HANDLING
             initial_rows = len(df)
+            # Order-aware dedup
             if "order_id" in df.columns:
                 df = df.drop_duplicates(subset=["order_id"], keep="first")
-            elif "transaction_id" in df.columns:
-                df = df.drop_duplicates(subset=["transaction_id"], keep="first")
             else:
                 df = df.drop_duplicates()
             duplicate_rows_dropped = initial_rows - len(df)
         except Exception:
-            # Fallback to existing all-column behavior
-            initial_rows = len(df)
-            df = df.drop_duplicates()
-            duplicate_rows_dropped = initial_rows - len(df)
+            pass
 
+    # 6. Targeted Missing Value Handling
+    missing_summary = {}
     if options.drop_missing:
         try:
             initial_rows = len(df)
-            df = df.dropna()
+            # Define critical columns for analysis
+            critical_cols = [c for c in ["revenue", "date", "product", "order_id"] if c in df.columns]
+            
+            if critical_cols:
+                # Drop rows ONLY if critical fields are null
+                df = df.dropna(subset=critical_cols)
+            else:
+                # Fallback to general dropna if no critical columns found
+                df = df.dropna(how='all')
+            
             null_rows_dropped = initial_rows - len(df)
+            
+            # Summary of remaining nulls in other columns
+            for col in df.columns:
+                null_count = int(df[col].isna().sum())
+                if null_count > 0:
+                    missing_summary[col] = {
+                        "null_count": null_count,
+                        "null_pct": round(null_count / max(len(df), 1) * 100, 1)
+                    }
         except Exception:
             pass
 
+    # 7. Cap Outliers
     if options.cap_outliers:
         try:
-            # simple numeric capping (v1.5)
             numeric_cols = df.select_dtypes(include="number").columns
             for col in numeric_cols:
                 upper = df[col].quantile(0.99)
@@ -643,7 +799,11 @@ def preprocess_with_options(df, options):
         except Exception:
             pass
 
-    # A7. DATA QUALITY REPORT GENERATION
+    # 8. Schema & Granularity detection
+    schema_detected = _detect_schema(df)
+    granularity_detected = _detect_granularity(df, schema_detected)
+
+    # 9. Data Quality Report
     try:
         rows_after, cols_after = df.shape
         df.attrs["data_quality"] = {
@@ -653,8 +813,13 @@ def preprocess_with_options(df, options):
             "columns_after": int(cols_after),
             "columns_renamed": columns_renamed,
             "columns_currency_cleaned": columns_currency_cleaned,
+            "date_columns_parsed": date_columns_parsed,
             "null_rows_dropped": int(null_rows_dropped),
             "duplicate_rows_dropped": int(duplicate_rows_dropped),
+            "missing_value_summary": missing_summary,
+            "schema_detected": schema_detected,
+            "granularity": granularity_detected,
+            "warnings": warnings,
         }
     except Exception:
         pass
