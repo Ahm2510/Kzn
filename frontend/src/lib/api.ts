@@ -230,8 +230,33 @@ export interface InsightReport {
       has_critical?: boolean;
       has_high?: boolean;
     };
+    cohort_product_performance?: {
+      cohorts?: Array<{
+        cohort_label: string;
+        cohort_basis: string;
+        product_count: number;
+        transaction_count: number;
+        total_revenue: number;
+        revenue_share_pct: number;
+        avg_revenue_per_product: number;
+        period_growth_pct?: number | null;
+        stability: string;
+        performance_tier: string;
+        confidence: string;
+        explanation: string;
+        warning?: string | null;
+        watchlist?: boolean;
+      }>;
+      cohort_count?: number;
+      cohort_basis?: string;
+      has_declining?: boolean;
+      has_underperformer?: boolean;
+      warning?: string | null;
+      confidence?: string;
+    };
     products_to_watch?: string[];
     meta?: Record<string, any>;
+
   };
   insights?: Array<{
     code?: string;

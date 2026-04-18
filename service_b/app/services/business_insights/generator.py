@@ -20,6 +20,8 @@ from app.schemas.insight.metrics import MetricDelta
 from app.services.revenue_stability import RevenueStabilityResult, compute_revenue_stability_index
 from app.services.inventory_health import InventoryHealthResult, compute_inventory_health_score
 from app.services.early_warnings import EarlyWarningResult, compute_early_warnings
+from app.services.product_cohorts import CohortProductPerformanceResult, compute_cohort_product_performance
+
 
 
 class TrendInsight(BaseModel):
@@ -94,6 +96,8 @@ class BusinessInsights(BaseModel):
     revenue_stability_index: Optional[RevenueStabilityResult] = None
     inventory_health_score: Optional[InventoryHealthResult] = None
     early_warning_alerts: Optional[EarlyWarningResult] = None
+    cohort_product_performance: Optional[CohortProductPerformanceResult] = None
+
     # Metadata
     meta: Optional[Dict[str, Any]] = None
 
@@ -295,6 +299,9 @@ class BusinessInsightGenerator:
             )
             ewa_result = compute_early_warnings(_pre_bi.dict(), current_df)
 
+            # Cohort-Level Product Performance (additive — returns None on failure)
+            clpp_result = compute_cohort_product_performance(current_df, revenue_column)
+
             return BusinessInsights(
                 executive_takeaways=takeaways, scope=self.build_scope_block(),
                 trend=trend, stability=stability, efficiency=efficiency, concentration=concentration,
@@ -303,7 +310,9 @@ class BusinessInsightGenerator:
                 revenue_stability_index=rsi_result,
                 inventory_health_score=ihs_result,
                 early_warning_alerts=ewa_result,
+                cohort_product_performance=clpp_result,
             )
+
         except Exception: return None
 
     def _generate_trend_insight(self, delta: MetricDelta, has_baseline: bool) -> Optional[TrendInsight]:

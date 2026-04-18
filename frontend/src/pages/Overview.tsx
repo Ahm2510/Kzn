@@ -313,8 +313,96 @@ export default function Overview() {
           </section>
         )}
  
+        {bi?.cohort_product_performance &&
+          bi.cohort_product_performance.cohorts &&
+          bi.cohort_product_performance.cohorts.length > 0 && (
+          <section className="section-spacing">
+            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
+              Product Cohort Performance
+              {bi.cohort_product_performance.has_declining && (
+                <span className="ml-2 text-red-500 font-bold text-[10px] bg-red-500/10 border border-red-500/20 rounded px-1.5 py-0.5">
+                  DECLINING
+                </span>
+              )}
+            </h3>
+            {bi.cohort_product_performance.cohort_basis && (
+              <p className="text-xs text-muted-foreground mb-3">
+                Grouped by: <span className="font-mono">{bi.cohort_product_performance.cohort_basis.replace(/_/g, " ")}</span>
+              </p>
+            )}
+            <div className="space-y-3">
+              {bi.cohort_product_performance.cohorts.map((cohort, idx) => {
+                const tierColors: Record<string, string> = {
+                  top_performer: "border-emerald-500/40 bg-emerald-500/5",
+                  stable_performer: "border-border bg-card",
+                  underperformer: "border-amber-500/30 bg-amber-500/5",
+                  declining_cohort: "border-red-500/40 bg-red-500/5",
+                  insufficient_data: "border-border bg-muted/30",
+                };
+                const tierTextColors: Record<string, string> = {
+                  top_performer: "text-emerald-600",
+                  stable_performer: "text-foreground",
+                  underperformer: "text-amber-600",
+                  declining_cohort: "text-red-500",
+                  insufficient_data: "text-muted-foreground",
+                };
+                const borderClass = tierColors[cohort.performance_tier] || tierColors.stable_performer;
+                const textClass = tierTextColors[cohort.performance_tier] || tierTextColors.stable_performer;
+ 
+                return (
+                  <div
+                    key={cohort.cohort_label + idx}
+                    className={`border rounded-lg p-4 space-y-2 ${borderClass}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] font-bold font-mono uppercase ${textClass}`}>
+                          {cohort.performance_tier.replace(/_/g, " ")}
+                        </span>
+                        <span className="text-sm font-medium text-foreground">
+                          {cohort.cohort_label}
+                        </span>
+                      </div>
+                      <span className="text-xs font-mono text-muted-foreground">
+                        {cohort.revenue_share_pct.toFixed(1)}% rev
+                      </span>
+                    </div>
+                    <div className="flex gap-4 text-xs text-muted-foreground">
+                      <span>{cohort.product_count} products</span>
+                      <span>{cohort.transaction_count.toLocaleString()} txns</span>
+                      {cohort.period_growth_pct != null && (
+                        <span className={cohort.period_growth_pct >= 0 ? "text-emerald-600" : "text-red-500"}>
+                          {cohort.period_growth_pct >= 0 ? "+" : ""}{cohort.period_growth_pct.toFixed(1)}% growth
+                        </span>
+                      )}
+                      <span>Stability: {cohort.stability}</span>
+                    </div>
+                    <p className="text-xs text-foreground/80 leading-relaxed">
+                      {cohort.explanation}
+                    </p>
+                    {cohort.warning && (
+                      <p className="text-xs text-amber-500 bg-amber-500/5 border border-amber-500/20 rounded px-2 py-1">
+                        {cohort.warning}
+                      </p>
+                    )}
+                    <p className="text-[10px] text-muted-foreground font-mono">
+                      Confidence: {cohort.confidence.toUpperCase()}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+            {bi.cohort_product_performance.warning && (
+              <p className="text-xs text-amber-500 mt-3">
+                {bi.cohort_product_performance.warning}
+              </p>
+            )}
+          </section>
+        )}
+ 
         {/* Business Insight Detail Sections */}
         {hasBI && (
+
           <section className="section-spacing space-y-6">
             {[
               { label: "Trend Analysis", data: bi?.trend },

@@ -570,6 +570,10 @@ def render_pdf(
         ewa_data = business_insights["early_warning_alerts"]
         if isinstance(ewa_data, dict) and ewa_data.get("alert_count", 0) > 0:
             toc_sections.append("Early Warning Alerts")
+    if business_insights and business_insights.get("cohort_product_performance"):
+        clpp_data = business_insights["cohort_product_performance"]
+        if isinstance(clpp_data, dict) and clpp_data.get("cohort_count", 0) > 0:
+            toc_sections.append("Product Cohort Performance")
     toc_sections.append("Insights")
     if business_insights:
         toc_sections.append("Business Interpretation")
@@ -878,10 +882,76 @@ def render_pdf(
             pass  # Never fail PDF generation for EWA
 
     # ------------------------------------------------------------------
+    # Product Cohort Performance section (if available and non-empty)
+    # ------------------------------------------------------------------
+    if business_insights and business_insights.get("cohort_product_performance"):
+        try:
+            clpp = business_insights["cohort_product_performance"]
+            clpp_cohorts = clpp.get("cohorts") or []
+            if clpp_cohorts:
+                story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
+                story.append(Paragraph("Product Cohort Performance", section_heading_style))
+ 
+                clpp_basis = clpp.get("cohort_basis", "")
+                if clpp_basis:
+                    story.append(
+                        Paragraph(
+                            f"Cohort grouping: <b>{_escape(clpp_basis.replace('_', ' ').title())}</b> "
+                            f"({len(clpp_cohorts)} cohort{'s' if len(clpp_cohorts) != 1 else ''})",
+                            small_muted_style,
+                        )
+                    )
+                    story.append(Spacer(1, 0.1 * inch))
+ 
+                tier_icon = {
+                    "top_performer": "\u2605",
+                    "stable_performer": "\u25cf",
+                    "underperformer": "\u25bc",
+                    "declining_cohort": "\u25bc\u25bc",
+                    "insufficient_data": "\u2014",
+                }
+ 
+                for cohort in clpp_cohorts:
+                    label = cohort.get("cohort_label", "")
+                    tier = cohort.get("performance_tier", "")
+                    icon = tier_icon.get(tier, "")
+                    rev_share = cohort.get("revenue_share_pct", 0)
+                    growth = cohort.get("period_growth_pct")
+                    explanation = cohort.get("explanation", "")
+                    confidence = cohort.get("confidence", "")
+                    warning = cohort.get("warning")
+ 
+                    tier_display = tier.replace("_", " ").title()
+                    growth_str = f"{growth:+.1f}%" if growth is not None else "N/A"
+ 
+                    story.append(
+                        Paragraph(
+                            f"{icon} <b>{_escape(str(label))}</b> — {_escape(tier_display)}",
+                            body_style,
+                        )
+                    )
+                    story.append(
+                        Paragraph(
+                            f"Revenue share: {rev_share:.1f}% | Growth: {growth_str} | Confidence: {str(confidence).upper()}",
+                            small_muted_style,
+                        )
+                    )
+                    if explanation:
+                        story.append(Paragraph(_escape(str(explanation)), small_muted_style))
+                    if warning:
+                        story.append(Paragraph(f"\u26a0 {_escape(str(warning))}", small_muted_style))
+                    story.append(Spacer(1, 0.12 * inch))
+ 
+                story.append(Spacer(1, 0.1 * inch))
+        except Exception:
+            pass  # Never fail PDF generation for CLPP
+ 
+    # ------------------------------------------------------------------
     # Insights section
     # ------------------------------------------------------------------
     story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
     story.append(Paragraph("Insights", section_heading_style))
+
 
     insights_style = body_style
 
