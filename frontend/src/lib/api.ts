@@ -330,6 +330,46 @@ export interface InsightReport {
       data_coverage?: string;
       warning?: string | null;
     };
+    mom_commentary?: {
+      period_label?: string;
+      revenue_current?: number;
+      revenue_baseline?: number | null;
+      absolute_change?: number | null;
+      percent_change?: number | null;
+      direction?: string;
+      magnitude?: string;
+      is_meaningful?: boolean;
+      commentary?: string;
+      interpretation?: string;
+      driver_hint?: string | null;
+      confidence?: string;
+      warning?: string | null;
+      sample_size?: number;
+      has_baseline?: boolean;
+    };
+    enhanced_products_to_watch?: {
+      products?: Array<{
+        product: string;
+        status: string;
+        reason: string;
+        revenue: number;
+        revenue_share_pct: number;
+        transaction_count: number;
+        trend_direction?: string | null;
+        momentum?: string | null;
+        volatility?: string | null;
+        confidence: string;
+        severity: string;
+        action_direction?: string | null;
+        warning?: string | null;
+      }>;
+      product_count?: number;
+      total_products_analyzed?: number;
+      has_declining?: boolean;
+      has_unstable?: boolean;
+      confidence?: string;
+      warning?: string | null;
+    };
     products_to_watch?: string[];
     meta?: Record<string, any>;
 

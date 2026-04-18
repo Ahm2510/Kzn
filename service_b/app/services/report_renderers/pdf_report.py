@@ -583,10 +583,16 @@ def render_pdf(
         csca_data = business_insights["customer_segmentation"]
         if isinstance(csca_data, dict) and csca_data.get("segment_count", 0) > 0:
             toc_sections.append("Customer Segmentation")
+    if business_insights and business_insights.get("mom_commentary"):
+        toc_sections.append("Period Comparison")
     if business_insights and business_insights.get("concentration_risk_dashboard"):
         crd_data = business_insights["concentration_risk_dashboard"]
         if isinstance(crd_data, dict) and crd_data.get("dimension_count", 0) > 0:
             toc_sections.append("Concentration Risk Dashboard")
+    if business_insights and business_insights.get("enhanced_products_to_watch"):
+        eptw_data = business_insights["enhanced_products_to_watch"]
+        if isinstance(eptw_data, dict) and eptw_data.get("product_count", 0) > 0:
+            toc_sections.append("Products to Watch (Enhanced)")
     toc_sections.append("Insights")
     if business_insights:
         toc_sections.append("Business Interpretation")
@@ -738,6 +744,64 @@ def render_pdf(
     for b in summary_bullets:
         story.append(Paragraph(b, body_style))
     story.append(Spacer(1, 0.25 * inch))
+
+    # ------------------------------------------------------------------
+    # MoM Commentary section (if available)
+    # ------------------------------------------------------------------
+    if business_insights and business_insights.get("mom_commentary"):
+        try:
+            mom = business_insights["mom_commentary"]
+            story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
+            story.append(Paragraph("Period Comparison", section_heading_style))
+            
+            direction = mom.get("direction", "no_baseline")
+            magnitude = mom.get("magnitude", "no_baseline")
+            meaningful = mom.get("is_meaningful", False)
+            
+            badge_text = f"<b>{direction.upper()}</b>"
+            if magnitude != "no_baseline":
+                badge_text += f" | <b>{magnitude.upper()}</b>"
+            if meaningful:
+                badge_text += " | <b>MEANINGFUL</b>"
+            
+            story.append(Paragraph(badge_text, small_muted_style))
+            story.append(Spacer(1, 0.05 * inch))
+            
+            rev_curr = mom.get("revenue_current", 0)
+            rev_base = mom.get("revenue_baseline")
+            abs_chg = mom.get("absolute_change")
+            pct_chg = mom.get("percent_change")
+            
+            metrics_line = f"Current Period: ${rev_curr:,.2f}"
+            if rev_base is not None:
+                metrics_line += f" | Baseline: ${rev_base:,.2f}"
+            if pct_chg is not None:
+                sign = "+" if pct_chg >= 0 else ""
+                metrics_line += f" | Change: {sign}{pct_chg:.1f}% (${abs_chg:,.2f})"
+                
+            story.append(Paragraph(metrics_line, body_style))
+            story.append(Spacer(1, 0.1 * inch))
+            
+            commentary = mom.get("commentary", "")
+            if commentary:
+                story.append(Paragraph(_escape(commentary), body_style))
+                story.append(Spacer(1, 0.1 * inch))
+                
+            interpretation = mom.get("interpretation", "")
+            if interpretation:
+                story.append(Paragraph(f"<b>Interpretation:</b> {_escape(interpretation)}", small_muted_style))
+            
+            warning = mom.get("warning")
+            if warning:
+                story.append(Paragraph(f"\u26a0 {_escape(str(warning))}", small_muted_style))
+                
+            conf = mom.get("confidence", "medium")
+            n = mom.get("sample_size", 0)
+            story.append(Paragraph(f"Confidence: {conf.upper()} (n={n:,})", small_muted_style))
+            
+            story.append(Spacer(1, 0.25 * inch))
+        except Exception:
+            pass
 
     # C5. DATA QUALITY SUMMARY IN PDF
     if business_insights and business_insights.get("data_quality"):
@@ -1177,6 +1241,61 @@ def render_pdf(
                 story.append(Spacer(1, 0.1 * inch))
         except Exception:
             pass  # Never fail PDF generation for CRD
+ 
+    # ------------------------------------------------------------------
+    # Enhanced Products to Watch section (if available)
+    # ------------------------------------------------------------------
+    if business_insights and business_insights.get("enhanced_products_to_watch"):
+        try:
+            eptw = business_insights["enhanced_products_to_watch"]
+            prods = eptw.get("products") or []
+            if prods:
+                story.append(HRFlowable(width="100%", thickness=0.5, color=HexColor("#E5E7EB"), spaceAfter=8, spaceBefore=4))
+                
+                header_text = "Products to Watch (Enhanced)"
+                if eptw.get("has_declining"):
+                    header_text += " — <b>DECLINING DETECTED</b>"
+                
+                story.append(Paragraph(header_text, section_heading_style))
+                
+                status_icon = {
+                    "declining": "\u25bc",
+                    "unstable": "\u2248",
+                    "watch": "\u25cf",
+                    "improving": "\u25b2",
+                    "low_confidence": "!",
+                }
+                
+                for p in prods:
+                    name = p.get("product", "Unknown")
+                    status = p.get("status", "watch")
+                    reason = p.get("reason", "")
+                    share = p.get("revenue_share_pct", 0)
+                    trend = p.get("trend_direction", "")
+                    action = p.get("action_direction", "")
+                    icon = status_icon.get(status, "\u25cf")
+                    
+                    story.append(Paragraph(f"{icon} <b>{_escape(name)}</b> — {status.upper()}", body_style))
+                    
+                    details = f"Share: {share:.1f}%"
+                    if trend and trend != "insufficient_data":
+                        details += f" | Trend: {trend.upper()}"
+                    details += f" | Confidence: {p.get('confidence', 'medium').upper()}"
+                    
+                    story.append(Paragraph(details, small_muted_style))
+                    story.append(Paragraph(f"<i>Reason:</i> {_escape(reason)}", small_muted_style))
+                    if action:
+                        story.append(Paragraph(f"<i>Action:</i> {_escape(action)}", small_muted_style))
+                    story.append(Spacer(1, 0.12 * inch))
+                
+                eptw_warning = eptw.get("warning")
+                if eptw_warning:
+                    story.append(Paragraph(f"\u26a0 {_escape(str(eptw_warning))}", small_muted_style))
+                    
+                story.append(Spacer(1, 0.15 * inch))
+        except Exception:
+            pass
+
  
     # ------------------------------------------------------------------
     # Insights section

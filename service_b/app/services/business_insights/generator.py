@@ -24,6 +24,8 @@ from app.services.product_cohorts import CohortProductPerformanceResult, compute
 from app.services.customer_segments import CustomerSegmentationResult, compute_customer_segmentation
 from app.services.concentration_risk import ConcentrationRiskDashboardResult, compute_concentration_risk
 from app.services.executive_summary import EnhancedExecutiveSummaryResult, compute_enhanced_executive_summary
+from app.services.mom_commentary import MoMCommentaryResult, compute_mom_commentary
+from app.services.enhanced_products_to_watch import EnhancedProductsToWatchResult, compute_enhanced_products_to_watch
 
 
 
@@ -103,6 +105,8 @@ class BusinessInsights(BaseModel):
     customer_segmentation: Optional[CustomerSegmentationResult] = None
     concentration_risk_dashboard: Optional[ConcentrationRiskDashboardResult] = None
     enhanced_executive_summary: Optional[EnhancedExecutiveSummaryResult] = None
+    mom_commentary: Optional[MoMCommentaryResult] = None
+    enhanced_products_to_watch: Optional[EnhancedProductsToWatchResult] = None
 
 
 
@@ -316,7 +320,20 @@ class BusinessInsightGenerator:
  
             # Concentration Risk Dashboard (additive — returns None on failure)
             crd_result = compute_concentration_risk(current_df, revenue_column)
- 
+
+            # MoM Commentary (additive — reads revenue data + existing insights)
+            mom_result = compute_mom_commentary(
+                current_df=current_df,
+                baseline_df=baseline_df,
+                revenue_column=revenue_column,
+                baseline_revenue_column=baseline_revenue_column,
+                stability=stability.dict() if stability else None,
+                concentration=concentration.dict() if concentration else None,
+            )
+
+            # Enhanced Products to Watch (additive — reads product + revenue data)
+            eptw_result = compute_enhanced_products_to_watch(current_df, revenue_column)
+
             # Enhanced Executive Summary (meta-layer — synthesizes all computed insights)
             # Create a temporary container so compute_enhanced_executive_summary can read from all sub-results
             _all_bi = BusinessInsights(
@@ -330,6 +347,8 @@ class BusinessInsightGenerator:
                 cohort_product_performance=clpp_result,
                 customer_segmentation=csca_result,
                 concentration_risk_dashboard=crd_result,
+                mom_commentary=mom_result,
+                enhanced_products_to_watch=eptw_result,
             )
             ees_result = compute_enhanced_executive_summary(_all_bi.dict(), len(current_df))
  
@@ -345,6 +364,8 @@ class BusinessInsightGenerator:
                 customer_segmentation=csca_result,
                 concentration_risk_dashboard=crd_result,
                 enhanced_executive_summary=ees_result,
+                mom_commentary=mom_result,
+                enhanced_products_to_watch=eptw_result,
             )
 
 

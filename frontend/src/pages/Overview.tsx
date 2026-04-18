@@ -186,6 +186,84 @@ export default function Overview() {
           </div>
         </section>
 
+        {bi?.mom_commentary && bi.mom_commentary.commentary && (
+          <section className="section-spacing">
+            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
+              Period-over-Period Commentary
+            </h3>
+            <div className="bg-card border border-border rounded-lg p-6 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="flex flex-wrap gap-2">
+                  <StatusBadge 
+                    status="complete" 
+                    label={bi.mom_commentary.direction?.toUpperCase() || "FLAT"} 
+                  />
+                  {bi.mom_commentary.magnitude && bi.mom_commentary.magnitude !== "no_baseline" && (
+                    <StatusBadge 
+                      status="complete" 
+                      label={bi.mom_commentary.magnitude.toUpperCase()} 
+                    />
+                  )}
+                  {bi.mom_commentary.is_meaningful && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
+                      MEANINGFUL
+                    </span>
+                  )}
+                </div>
+                <div className="flex gap-4 text-[10px] font-mono whitespace-nowrap">
+                   {bi.mom_commentary.revenue_baseline != null && (
+                     <div className="text-muted-foreground">
+                       BASELINE: <span className="text-foreground">${bi.mom_commentary.revenue_baseline.toLocaleString()}</span>
+                     </div>
+                   )}
+                   <div className="text-muted-foreground">
+                     CURRENT: <span className="text-foreground">${bi.mom_commentary.revenue_current?.toLocaleString()}</span>
+                   </div>
+                   {bi.mom_commentary.percent_change != null && (
+                     <div className="text-muted-foreground">
+                       CHANGE: <span className={bi.mom_commentary.percent_change >= 0 ? "text-emerald-500" : "text-red-500"}>
+                         {bi.mom_commentary.percent_change >= 0 ? "+" : ""}{bi.mom_commentary.percent_change.toFixed(1)}%
+                       </span>
+                     </div>
+                   )}
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-border/60">
+                <p className="text-sm text-foreground leading-relaxed italic">
+                  "{bi.mom_commentary.commentary}"
+                </p>
+              </div>
+
+              {bi.mom_commentary.interpretation && (
+                <div className="p-3 bg-muted/30 border border-border/50 rounded-md">
+                  <p className="text-xs text-foreground">
+                    <span className="font-bold text-primary mr-1">Interpretation:</span>
+                    {bi.mom_commentary.interpretation}
+                  </p>
+                </div>
+              )}
+
+              {bi.mom_commentary.driver_hint && (
+                <p className="text-xs text-muted-foreground">
+                  <span className="font-medium">Potential Driver:</span> {bi.mom_commentary.driver_hint}
+                </p>
+              )}
+
+              <div className="flex items-center justify-between pt-2">
+                <p className="text-[10px] text-muted-foreground font-mono">
+                  Confidence: {bi.mom_commentary.confidence?.toUpperCase()} (n={bi.mom_commentary.sample_size?.toLocaleString()})
+                </p>
+                {bi.mom_commentary.warning && (
+                  <span className="text-[10px] text-amber-500 font-medium">
+                    ⚠ {bi.mom_commentary.warning}
+                  </span>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
         <section className="section-spacing">
           <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">Signals</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -736,22 +814,74 @@ export default function Overview() {
         )}
 
         {/* Products to Watch */}
-        {bi?.products_to_watch && Array.isArray(bi.products_to_watch) && bi.products_to_watch.length > 0 && (
+        {bi?.enhanced_products_to_watch && bi.enhanced_products_to_watch.products && bi.enhanced_products_to_watch.products.length > 0 ? (
           <section className="section-spacing">
             <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
-              Products to Watch
+              Products to Watch (Enhanced)
+              {bi.enhanced_products_to_watch.has_declining && (
+                <span className="ml-2 text-red-500 font-bold text-[10px] bg-red-500/10 border border-red-500/20 rounded px-1.5 py-0.5">
+                  DECLINING DETECTED
+                </span>
+              )}
             </h3>
-            <div className="bg-card border border-border rounded-lg p-6">
-              <ul className="list-disc pl-5 space-y-1">
-                {bi.products_to_watch.map((p: string, idx: number) => (
-                  <li key={idx} className="text-sm text-foreground">{p}</li>
-                ))}
-              </ul>
-              <p className="text-xs text-muted-foreground mt-3">
-                These products are underperforming relative to the portfolio — consider reviewing pricing, availability, or positioning.
-              </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {bi.enhanced_products_to_watch.products.map((p, idx) => {
+                const statusColors: Record<string, string> = {
+                  declining: "text-red-500 bg-red-500/5 border-red-500/20",
+                  unstable: "text-amber-500 bg-amber-500/5 border-amber-500/20",
+                  watch: "text-blue-500 bg-blue-500/5 border-blue-500/20",
+                  improving: "text-emerald-500 bg-emerald-500/5 border-emerald-500/20",
+                  low_confidence: "text-muted-foreground bg-muted/50 border-border",
+                };
+                return (
+                  <div key={idx} className="bg-card border border-border rounded-lg p-5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold text-foreground truncate max-w-[70%]">{p.product}</span>
+                      <span className={`text-[10px] font-bold font-mono px-2 py-0.5 rounded border ${statusColors[p.status] || statusColors.watch}`}>
+                        {p.status.toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="flex gap-4 text-[10px] font-mono text-muted-foreground">
+                      <span>Share: {p.revenue_share_pct.toFixed(1)}%</span>
+                      {p.trend_direction && p.trend_direction !== "insufficient_data" && (
+                        <span>Trend: {p.trend_direction.toUpperCase()}</span>
+                      )}
+                      <span>Conf: {p.confidence.toUpperCase()}</span>
+                    </div>
+                    <p className="text-xs text-foreground/80 leading-relaxed">
+                      {p.reason}
+                    </p>
+                    {p.action_direction && (
+                      <p className="text-xs text-primary font-medium pt-2 border-t border-border/40">
+                        {p.action_direction}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
+            {bi.enhanced_products_to_watch.warning && (
+              <p className="text-xs text-amber-500 mt-3">⚠ {bi.enhanced_products_to_watch.warning}</p>
+            )}
           </section>
+        ) : (
+          bi?.products_to_watch && Array.isArray(bi.products_to_watch) && bi.products_to_watch.length > 0 && (
+            <section className="section-spacing">
+              <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
+                Products to Watch
+              </h3>
+              <div className="bg-card border border-border rounded-lg p-6">
+                <ul className="list-disc pl-5 space-y-1">
+                  {bi.products_to_watch.map((p: string, idx: number) => (
+                    <li key={idx} className="text-sm text-foreground">{p}</li>
+                  ))}
+                </ul>
+                <p className="text-xs text-muted-foreground mt-3">
+                  These products are underperforming relative to the portfolio — consider reviewing pricing, availability, or positioning.
+                </p>
+              </div>
+            </section>
+          )
         )}
       </div>
     </AppLayout>
