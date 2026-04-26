@@ -81,7 +81,7 @@ def _detect_date_col(df: pd.DataFrame) -> Optional[str]:
     col = _detect_col(df, _DATE_CANDIDATES)
     if col:
         try:
-            parsed = pd.to_datetime(df[col], errors="coerce", infer_datetime_format=True)
+            parsed = pd.to_datetime(df[col], errors="coerce")
             if parsed.notna().sum() > len(df) * 0.5:
                 return col
         except Exception:
@@ -92,7 +92,7 @@ def _detect_date_col(df: pd.DataFrame) -> Optional[str]:
             return c
         if df[c].dtype == object:
             try:
-                parsed = pd.to_datetime(df[c], errors="coerce", infer_datetime_format=True)
+                parsed = pd.to_datetime(df[c], errors="coerce")
                 if parsed.notna().sum() > len(df) * 0.5:
                     return c
             except Exception:
@@ -118,7 +118,7 @@ def _form_launch_period_cohorts(
     Assign each product to the month it first appeared.
     Then map that label back to every row.
     """
-    dates = pd.to_datetime(df[date_col], errors="coerce", infer_datetime_format=True)
+    dates = pd.to_datetime(df[date_col], errors="coerce")
     first_seen = dates.groupby(df[product_col]).min()
     first_seen_label = first_seen.dt.to_period("M").astype(str)
     cohort_map = first_seen_label.to_dict()
@@ -156,7 +156,7 @@ def _compute_cohort_growth(
     if not date_col:
         return None
     try:
-        dates = pd.to_datetime(cohort_df[date_col], errors="coerce", infer_datetime_format=True)
+        dates = pd.to_datetime(cohort_df[date_col], errors="coerce")
         valid = dates.dropna()
         if len(valid) < 4:
             return None

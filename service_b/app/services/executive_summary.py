@@ -278,7 +278,7 @@ def _build_sections(
     # 1. Overview
     overview_text = bi.get("executive_summary", "")
     if not overview_text:
-        trend_desc = bi.get("trend", {}).get("description", "Revenue performance is stable.")
+        trend_desc = (bi.get("trend") or {}).get("description", "Revenue performance is stable.")
         overview_text = f"Performance overview: {trend_desc}"
     
     sections.append(ExecutiveSummarySection(

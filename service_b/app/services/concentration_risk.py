@@ -107,7 +107,7 @@ def _detect_date_col(df: pd.DataFrame) -> Optional[str]:
     col = _detect_col(df, _DATE_CANDIDATES)
     if col:
         try:
-            parsed = pd.to_datetime(df[col], errors="coerce", infer_datetime_format=True)
+            parsed = pd.to_datetime(df[col], errors="coerce")
             if parsed.notna().sum() > len(df) * 0.5:
                 return col
         except Exception:
@@ -177,7 +177,7 @@ def _hhi_trend(
 ) -> Tuple[Optional[str], Optional[float]]:
     """Compute HHI change between first and second half of time range."""
     try:
-        dates = pd.to_datetime(df[date_col], errors="coerce", infer_datetime_format=True)
+        dates = pd.to_datetime(df[date_col], errors="coerce")
         valid = dates.dropna()
         if len(valid) < 10:
             return None, None

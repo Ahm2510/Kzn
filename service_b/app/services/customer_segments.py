@@ -86,7 +86,7 @@ def _detect_date_col(df: pd.DataFrame) -> Optional[str]:
     col = _detect_col(df, _DATE_CANDIDATES)
     if col:
         try:
-            parsed = pd.to_datetime(df[col], errors="coerce", infer_datetime_format=True)
+            parsed = pd.to_datetime(df[col], errors="coerce")
             if parsed.notna().sum() > len(df) * 0.5:
                 return col
         except Exception:
@@ -173,7 +173,7 @@ def _segment_growth(
     if not date_col or seg_df.empty:
         return None
     try:
-        dates = pd.to_datetime(seg_df[date_col], errors="coerce", infer_datetime_format=True)
+        dates = pd.to_datetime(seg_df[date_col], errors="coerce")
         valid = dates.dropna()
         if len(valid) < 4:
             return None
@@ -292,7 +292,7 @@ def _run_rfv_or_fv(
     t_cooling = 90.0
     if date_col:
         try:
-            dates = pd.to_datetime(df[date_col], errors="coerce", infer_datetime_format=True)
+            dates = pd.to_datetime(df[date_col], errors="coerce")
             max_date = dates.max()
             last_seen = dates.groupby(df[cust_col]).max()
             cust_rec_raw = (max_date - last_seen).dt.days.astype(float)
