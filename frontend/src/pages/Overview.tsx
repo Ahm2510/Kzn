@@ -17,13 +17,26 @@ export default function Overview() {
         <div className="page-container animate-fade-in">
           <section className="section-spacing">
             <Skeleton className="h-6 w-48 mb-6" />
+            {/* Score cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+              <Skeleton className="h-36 rounded-lg" />
+              <Skeleton className="h-36 rounded-lg" />
+            </div>
+            {/* Alerts */}
+            <Skeleton className="h-24 w-full rounded-lg mb-8" />
+            {/* Takeaways */}
             <Skeleton className="h-32 w-full rounded-lg mb-8" />
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* Summary */}
+            <Skeleton className="h-48 w-full rounded-lg mb-8" />
+            {/* Signals grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               <Skeleton className="h-20 rounded-lg" />
               <Skeleton className="h-20 rounded-lg" />
               <Skeleton className="h-20 rounded-lg" />
               <Skeleton className="h-20 rounded-lg" />
             </div>
+            {/* Tables */}
+            <Skeleton className="h-64 w-full rounded-lg" />
           </section>
         </div>
       </AppLayout>
@@ -90,6 +103,186 @@ export default function Overview() {
             />
           </div>
         </section>
+
+        {bi?.revenue_stability_index && (
+          <section className="section-spacing">
+            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
+              Revenue Stability Index
+            </h3>
+            <div className="bg-card border border-border rounded-lg p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-3xl font-display font-bold text-foreground">
+                    {Math.round(bi.revenue_stability_index.score)}
+                  </span>
+                  <span className="text-sm text-muted-foreground ml-1">/100</span>
+                </div>
+                <StatusBadge status="complete" label={bi.revenue_stability_index.label} />
+              </div>
+              <p className="text-sm text-foreground leading-relaxed">
+                {bi.revenue_stability_index.explanation}
+              </p>
+              {bi.revenue_stability_index.contributing_factors &&
+                bi.revenue_stability_index.contributing_factors.length > 0 && (
+                  <div className="space-y-1 pt-2 border-t border-border/60">
+                    {bi.revenue_stability_index.contributing_factors.map(
+                      (f: string, i: number) => (
+                        <p key={i} className="text-xs text-muted-foreground">
+                          - {f}
+                        </p>
+                      )
+                    )}
+                  </div>
+                )}
+              {bi.revenue_stability_index.warning && (
+                <p className="text-xs text-amber-500 bg-amber-500/5 border border-amber-500/20 rounded px-3 py-2">
+                  ⚠ {bi.revenue_stability_index.warning}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Confidence:{" "}
+                <span className="font-mono">
+                  {(bi.revenue_stability_index.confidence ?? "").toUpperCase()}
+                </span>
+              </p>
+            </div>
+          </section>
+        )}
+
+        {bi?.inventory_health_score && (
+          <section className="section-spacing">
+            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
+              Inventory Health Score
+            </h3>
+            <div className="bg-card border border-border rounded-lg p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-3xl font-display font-bold text-foreground">
+                    {Math.round(bi.inventory_health_score.score)}
+                  </span>
+                  <span className="text-sm text-muted-foreground ml-1">/100</span>
+                </div>
+                <StatusBadge status="complete" label={bi.inventory_health_score.label} />
+              </div>
+              <p className="text-sm text-foreground leading-relaxed">
+                {bi.inventory_health_score.explanation}
+              </p>
+              {bi.inventory_health_score.contributing_factors &&
+                bi.inventory_health_score.contributing_factors.length > 0 && (
+                  <div className="space-y-1 pt-2 border-t border-border/60">
+                    {bi.inventory_health_score.contributing_factors.map(
+                      (f: string, i: number) => (
+                        <p key={i} className="text-xs text-muted-foreground">
+                          - {f}
+                        </p>
+                      )
+                    )}
+                  </div>
+                )}
+              {bi.inventory_health_score.watchlist &&
+                bi.inventory_health_score.watchlist.length > 0 && (
+                  <div className="pt-2 border-t border-border/60">
+                    <p className="text-xs text-muted-foreground font-medium mb-1">
+                      SKUs to review:
+                    </p>
+                    <p className="text-xs text-foreground">
+                      {bi.inventory_health_score.watchlist.join(", ")}
+                    </p>
+                  </div>
+                )}
+              {bi.inventory_health_score.warning && (
+                <p className="text-xs text-amber-500 bg-amber-500/5 border border-amber-500/20 rounded px-3 py-2">
+                  ⚠ {bi.inventory_health_score.warning}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Confidence:{" "}
+                <span className="font-mono">
+                  {(bi.inventory_health_score.confidence ?? "").toUpperCase()}
+                </span>
+                {bi.inventory_health_score.confidence_reason ? (
+                  <span> — {bi.inventory_health_score.confidence_reason}</span>
+                ) : bi.inventory_health_score.data_source ? (
+                  <span> — based on {bi.inventory_health_score.data_source}</span>
+                ) : null}
+              </p>
+            </div>
+          </section>
+        )}
+
+        {bi?.early_warning_alerts &&
+          bi.early_warning_alerts.alerts &&
+          bi.early_warning_alerts.alerts.length > 0 && (
+          <section className="section-spacing">
+            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
+              Early Warning Alerts
+              {bi.early_warning_alerts.has_critical && (
+                <span className="ml-2 text-red-500 font-bold text-[10px] bg-red-500/10 border border-red-500/20 rounded px-1.5 py-0.5">
+                  CRITICAL
+                </span>
+              )}
+              {!bi.early_warning_alerts.has_critical && bi.early_warning_alerts.has_high && (
+                <span className="ml-2 text-amber-500 font-bold text-[10px] bg-amber-500/10 border border-amber-500/20 rounded px-1.5 py-0.5">
+                  HIGH
+                </span>
+              )}
+            </h3>
+            <div className="space-y-3">
+              {bi.early_warning_alerts.alerts.map((alert, idx) => {
+                const sevColors: Record<string, string> = {
+                  critical: "border-red-500/40 bg-red-500/5",
+                  high: "border-amber-500/40 bg-amber-500/5",
+                  medium: "border-yellow-500/30 bg-yellow-500/5",
+                  low: "border-border bg-card",
+                };
+                const sevTextColors: Record<string, string> = {
+                  critical: "text-red-500",
+                  high: "text-amber-500",
+                  medium: "text-yellow-600",
+                  low: "text-muted-foreground",
+                };
+                const borderClass = sevColors[alert.severity] || sevColors.low;
+                const textClass = sevTextColors[alert.severity] || sevTextColors.low;
+ 
+                return (
+                  <div
+                    key={alert.alert_code + idx}
+                    className={`border rounded-lg p-4 space-y-2 ${borderClass}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] font-bold font-mono uppercase ${textClass}`}>
+                        {alert.severity}
+                      </span>
+                      <span className="text-sm font-medium text-foreground">
+                        {alert.title}
+                      </span>
+                    </div>
+                    <p className="text-xs text-foreground/80 leading-relaxed">
+                      {alert.description}
+                    </p>
+                    {alert.driver && (
+                      <p className="text-xs text-muted-foreground">
+                        <span className="font-medium">Driver:</span> {alert.driver}
+                      </p>
+                    )}
+                    {alert.action_direction && (
+                      <p className="text-xs text-primary">
+                        <span className="font-medium">Action:</span> {alert.action_direction}
+                      </p>
+                    )}
+                    {alert.confidence && (
+                      <p className="text-[10px] text-muted-foreground font-mono">
+                        Confidence: {alert.confidence.toUpperCase()}
+                        {alert.confidence_basis && <span> — {alert.confidence_basis}</span>}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {bi?.executive_takeaways && Array.isArray(bi.executive_takeaways) && bi.executive_takeaways.length > 0 && (
           <section className="section-spacing">
             <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">Executive Takeaways</h3>
@@ -285,185 +478,6 @@ export default function Overview() {
             </div>
           </div>
         </section>
-
-        {bi?.revenue_stability_index && (
-          <section className="section-spacing">
-            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
-              Revenue Stability Index
-            </h3>
-            <div className="bg-card border border-border rounded-lg p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-3xl font-display font-bold text-foreground">
-                    {Math.round(bi.revenue_stability_index.score)}
-                  </span>
-                  <span className="text-sm text-muted-foreground ml-1">/100</span>
-                </div>
-                <StatusBadge status="complete" label={bi.revenue_stability_index.label} />
-              </div>
-              <p className="text-sm text-foreground leading-relaxed">
-                {bi.revenue_stability_index.explanation}
-              </p>
-              {bi.revenue_stability_index.contributing_factors &&
-                bi.revenue_stability_index.contributing_factors.length > 0 && (
-                  <div className="space-y-1 pt-2 border-t border-border/60">
-                    {bi.revenue_stability_index.contributing_factors.map(
-                      (f: string, i: number) => (
-                        <p key={i} className="text-xs text-muted-foreground">
-                          - {f}
-                        </p>
-                      )
-                    )}
-                  </div>
-                )}
-              {bi.revenue_stability_index.warning && (
-                <p className="text-xs text-amber-500 bg-amber-500/5 border border-amber-500/20 rounded px-3 py-2">
-                  ⚠ {bi.revenue_stability_index.warning}
-                </p>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Confidence:{" "}
-                <span className="font-mono">
-                  {(bi.revenue_stability_index.confidence ?? "").toUpperCase()}
-                </span>
-              </p>
-            </div>
-          </section>
-        )}
-
-        {bi?.inventory_health_score && (
-          <section className="section-spacing">
-            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
-              Inventory Health Score
-            </h3>
-            <div className="bg-card border border-border rounded-lg p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-3xl font-display font-bold text-foreground">
-                    {Math.round(bi.inventory_health_score.score)}
-                  </span>
-                  <span className="text-sm text-muted-foreground ml-1">/100</span>
-                </div>
-                <StatusBadge status="complete" label={bi.inventory_health_score.label} />
-              </div>
-              <p className="text-sm text-foreground leading-relaxed">
-                {bi.inventory_health_score.explanation}
-              </p>
-              {bi.inventory_health_score.contributing_factors &&
-                bi.inventory_health_score.contributing_factors.length > 0 && (
-                  <div className="space-y-1 pt-2 border-t border-border/60">
-                    {bi.inventory_health_score.contributing_factors.map(
-                      (f: string, i: number) => (
-                        <p key={i} className="text-xs text-muted-foreground">
-                          - {f}
-                        </p>
-                      )
-                    )}
-                  </div>
-                )}
-              {bi.inventory_health_score.watchlist &&
-                bi.inventory_health_score.watchlist.length > 0 && (
-                  <div className="pt-2 border-t border-border/60">
-                    <p className="text-xs text-muted-foreground font-medium mb-1">
-                      SKUs to review:
-                    </p>
-                    <p className="text-xs text-foreground">
-                      {bi.inventory_health_score.watchlist.join(", ")}
-                    </p>
-                  </div>
-                )}
-              {bi.inventory_health_score.warning && (
-                <p className="text-xs text-amber-500 bg-amber-500/5 border border-amber-500/20 rounded px-3 py-2">
-                  ⚠ {bi.inventory_health_score.warning}
-                </p>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Confidence:{" "}
-                <span className="font-mono">
-                  {(bi.inventory_health_score.confidence ?? "").toUpperCase()}
-                </span>
-                {bi.inventory_health_score.confidence_reason ? (
-                  <span> — {bi.inventory_health_score.confidence_reason}</span>
-                ) : bi.inventory_health_score.data_source ? (
-                  <span> — based on {bi.inventory_health_score.data_source}</span>
-                ) : null}
-              </p>
-            </div>
-          </section>
-        )}
-
-        {bi?.early_warning_alerts &&
-          bi.early_warning_alerts.alerts &&
-          bi.early_warning_alerts.alerts.length > 0 && (
-          <section className="section-spacing">
-            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
-              Early Warning Alerts
-              {bi.early_warning_alerts.has_critical && (
-                <span className="ml-2 text-red-500 font-bold text-[10px] bg-red-500/10 border border-red-500/20 rounded px-1.5 py-0.5">
-                  CRITICAL
-                </span>
-              )}
-              {!bi.early_warning_alerts.has_critical && bi.early_warning_alerts.has_high && (
-                <span className="ml-2 text-amber-500 font-bold text-[10px] bg-amber-500/10 border border-amber-500/20 rounded px-1.5 py-0.5">
-                  HIGH
-                </span>
-              )}
-            </h3>
-            <div className="space-y-3">
-              {bi.early_warning_alerts.alerts.map((alert, idx) => {
-                const sevColors: Record<string, string> = {
-                  critical: "border-red-500/40 bg-red-500/5",
-                  high: "border-amber-500/40 bg-amber-500/5",
-                  medium: "border-yellow-500/30 bg-yellow-500/5",
-                  low: "border-border bg-card",
-                };
-                const sevTextColors: Record<string, string> = {
-                  critical: "text-red-500",
-                  high: "text-amber-500",
-                  medium: "text-yellow-600",
-                  low: "text-muted-foreground",
-                };
-                const borderClass = sevColors[alert.severity] || sevColors.low;
-                const textClass = sevTextColors[alert.severity] || sevTextColors.low;
- 
-                return (
-                  <div
-                    key={alert.alert_code + idx}
-                    className={`border rounded-lg p-4 space-y-2 ${borderClass}`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className={`text-[10px] font-bold font-mono uppercase ${textClass}`}>
-                        {alert.severity}
-                      </span>
-                      <span className="text-sm font-medium text-foreground">
-                        {alert.title}
-                      </span>
-                    </div>
-                    <p className="text-xs text-foreground/80 leading-relaxed">
-                      {alert.description}
-                    </p>
-                    {alert.driver && (
-                      <p className="text-xs text-muted-foreground">
-                        <span className="font-medium">Driver:</span> {alert.driver}
-                      </p>
-                    )}
-                    {alert.action_direction && (
-                      <p className="text-xs text-primary">
-                        <span className="font-medium">Action:</span> {alert.action_direction}
-                      </p>
-                    )}
-                    {alert.confidence && (
-                      <p className="text-[10px] text-muted-foreground font-mono">
-                        Confidence: {alert.confidence.toUpperCase()}
-                        {alert.confidence_basis && <span> — {alert.confidence_basis}</span>}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
  
         {bi?.cohort_product_performance &&
           bi.cohort_product_performance.cohorts &&
@@ -955,6 +969,40 @@ export default function Overview() {
               </div>
             </section>
           )
+        )}
+
+        {bi?.scope && ((bi.scope.analyzed && bi.scope.analyzed.length > 0) || (bi.scope.not_analyzed && bi.scope.not_analyzed.length > 0)) && (
+          <section className="section-spacing">
+            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
+              Analysis Scope
+            </h3>
+            <div className="bg-card border border-border rounded-lg p-5 space-y-3">
+              {bi.scope.analyzed && bi.scope.analyzed.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-mono text-emerald-600 uppercase mb-2">Analyzed Fields</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {bi.scope.analyzed.map((f: string, i: number) => (
+                      <span key={i} className="text-[10px] px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded text-emerald-700 dark:text-emerald-400 font-mono">
+                        {f}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {bi.scope.not_analyzed && bi.scope.not_analyzed.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-mono text-muted-foreground uppercase mb-2">Not Analyzed</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {bi.scope.not_analyzed.map((f: string, i: number) => (
+                      <span key={i} className="text-[10px] px-2 py-0.5 bg-muted/40 border border-border rounded text-muted-foreground font-mono">
+                        {f}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
         )}
       </div>
     </AppLayout>

@@ -7,7 +7,7 @@ interface DatasetUploadBoxProps {
   label: string;
   description?: string;
   isOptional?: boolean;
-  onFileSelect?: (file: File) => void | Promise<void>;
+  onFileSelect?: (file: File | null) => void | Promise<void>;
   className?: string;
 }
 
@@ -68,6 +68,7 @@ export function DatasetUploadBox({
     if (inputRef.current) {
       inputRef.current.value = '';
     }
+    onFileSelect?.(null);
   };
 
   return (

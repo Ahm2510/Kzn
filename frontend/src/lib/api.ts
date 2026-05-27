@@ -403,7 +403,7 @@ export interface InsightReport {
       };
       warnings?: string[];
     };
-    meta?: Record<string, any>;
+    meta?: Record<string, unknown>;
 
 
 
@@ -448,4 +448,35 @@ export const analysisApi = {
   delete: (id: number) => api(`/analysis-runs/${id}/`, { method: "DELETE" }),
 
   downloadPdf: (id: number) => api<Blob>(`/analysis-runs/${id}/pdf/`),
+};
+
+// ── Password Management ──
+
+export interface ChangePasswordPayload {
+  old_password: string;
+  new_password: string;
+}
+
+export interface AdminResetPasswordPayload {
+  user_id: number;
+  new_password: string;
+}
+
+export interface AdminUser {
+  id: number;
+  username: string;
+  email: string;
+  is_staff: boolean;
+  last_login: string | null;
+}
+
+export const passwordApi = {
+  changePassword: (payload: ChangePasswordPayload) =>
+    api<{ success: boolean }>("/auth/change-password/", { method: "POST", body: payload }),
+
+  adminResetUserPassword: (payload: AdminResetPasswordPayload) =>
+    api<{ success: boolean }>("/auth/admin/reset-user-password/", { method: "POST", body: payload }),
+
+  adminListUsers: () =>
+    api<AdminUser[]>("/auth/admin/users/"),
 };

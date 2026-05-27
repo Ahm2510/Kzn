@@ -1,7 +1,8 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { Moon, Sun, LogOut } from "lucide-react";
+import { Moon, Sun, LogOut, ShieldCheck } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/hooks/useAuth";
+import { cn } from "@/lib/utils";
 
 const PAGE_TITLES: Record<string, string> = {
   "/": "Overview",
@@ -11,13 +12,14 @@ const PAGE_TITLES: Record<string, string> = {
   "/report": "Report",
   "/history": "History",
   "/settings": "Settings",
+  "/admin": "Admin Panel",
 };
 
 export function AppHeader() {
   const location = useLocation();
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
   const title = PAGE_TITLES[location.pathname] ?? "Kaizen.";
 
   return (
@@ -27,6 +29,25 @@ export function AppHeader() {
         <div className="flex items-center gap-3">
           {user && (
             <span className="text-xs text-muted-foreground font-mono">{user.email}</span>
+          )}
+          {user && (
+            <span className={cn(
+              "text-[10px] font-mono px-1.5 py-0.5 rounded border",
+              user.role === "admin"
+                ? "border-primary/40 text-primary bg-primary/10"
+                : "border-border text-muted-foreground bg-muted/30"
+            )}>
+              {user.role.toUpperCase()}
+            </span>
+          )}
+          {isAdmin && (
+            <button
+              onClick={() => navigate("/admin")}
+              className="p-2 rounded-md hover:bg-muted transition-all duration-200"
+              title="Admin Panel"
+            >
+              <ShieldCheck className="w-4 h-4 text-muted-foreground" />
+            </button>
           )}
           <button
             onClick={toggleTheme}

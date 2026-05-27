@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
-import { authApi, DjangoUser, setCsrfToken, clearCsrfToken } from "@/lib/api";
+import { authApi, DjangoUser, setCsrfToken, clearCsrfToken, passwordApi } from "@/lib/api";
 
 export type UserRole = "admin" | "user";
 
@@ -16,6 +16,7 @@ interface AuthContextType {
   isAdmin: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
+  changePassword: (oldPw: string, newPw: string) => Promise<{ success: boolean; error?: string }>;
   isLoading: boolean;
 }
 
@@ -71,6 +72,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const changePassword = useCallback(async (oldPw: string, newPw: string) => {
+    try {
+      await passwordApi.changePassword({ old_password: oldPw, new_password: newPw });
+      return { success: true };
+    } catch (err: unknown) {
+      return { success: false, error: err instanceof Error ? err.message : "Password change failed." };
+    }
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -79,6 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAdmin: user?.role === "admin",
         login,
         logout,
+        changePassword,
         isLoading,
       }}
     >

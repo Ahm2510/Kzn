@@ -15,7 +15,7 @@ export async function sampleCsvFirstRows(file: File, opts: SampleCsvOptions = {}
   const reader = file.stream().getReader();
 
   let header: string | null = null;
-  let outputParts: string[] = [];
+  const outputParts: string[] = [];
   let leftover = "";
   let rowsCollected = 0;
   let outputBytes = 0;

@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 export type InsightSeverity = "high" | "medium" | "low";
 
@@ -11,6 +13,8 @@ interface InsightCardProps {
   confidence?: string;
   confidenceBasis?: string;
   severity: InsightSeverity;
+  expandable?: boolean;
+  defaultExpanded?: boolean;
   className?: string;
 }
 
@@ -23,9 +27,13 @@ export function InsightCard({
   confidence,
   confidenceBasis,
   severity,
+  expandable = false,
+  defaultExpanded = false,
   className,
 }: InsightCardProps) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const hasEnrichment = driver || implication || actionDirection || confidenceBasis;
+  const showDetails = expandable ? expanded : true;
 
   return (
     <div
@@ -62,8 +70,11 @@ export function InsightCard({
         </p>
 
         {/* Structured fields — only render if at least one is populated */}
-        {hasEnrichment && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-border/60">
+        {hasEnrichment && showDetails && (
+          <div className={cn(
+            "grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-border/60",
+            expandable && "transition-all duration-200"
+          )}>
             {driver && (
               <div className="text-xs">
                 <span className="text-muted-foreground">Driver: </span>
@@ -89,6 +100,21 @@ export function InsightCard({
               </div>
             )}
           </div>
+        )}
+
+        {/* Expand/collapse toggle */}
+        {expandable && hasEnrichment && (
+          <button
+            type="button"
+            onClick={() => setExpanded(prev => !prev)}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors pt-1"
+          >
+            {expanded ? (
+              <><ChevronUp className="w-3.5 h-3.5" /> Hide details</>
+            ) : (
+              <><ChevronDown className="w-3.5 h-3.5" /> Show details</>
+            )}
+          </button>
         )}
       </div>
     </div>

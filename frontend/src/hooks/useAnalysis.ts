@@ -73,3 +73,14 @@ export function useCreateAnalysis() {
     },
   });
 }
+
+/** Delete an analysis run */
+export function useDeleteRun() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => analysisApi.delete(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["analysis-runs"] });
+    },
+  });
+}

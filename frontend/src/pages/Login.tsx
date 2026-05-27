@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,8 @@ export default function Login() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isHovering, setIsHovering] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
   
   const navigate = useNavigate();
@@ -196,139 +199,211 @@ export default function Login() {
             </p>
           </div>
 
-          {/* Error state */}
-          {error && (
-            <div className="mb-8 p-4 bg-destructive/5 border border-destructive/20 rounded-xl animate-fade-in backdrop-blur-sm">
-              <p className="text-sm text-destructive/90 font-medium">
-                {error}
-              </p>
+          {!showForgot ? (
+            <>
+              {/* Error state */}
+              {error && (
+                <div className="mb-8 p-4 bg-destructive/5 border border-destructive/20 rounded-xl animate-fade-in backdrop-blur-sm">
+                  <p className="text-sm text-destructive/90 font-medium">
+                    {error}
+                  </p>
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="space-y-2">
+                  <label 
+                    htmlFor="email" 
+                    className={cn(
+                      "text-sm font-medium transition-all duration-500",
+                      focusedField === "email" ? "text-primary" : "text-foreground"
+                    )}
+                  >
+                    Email address
+                  </label>
+                  <div className="relative">
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      onFocus={() => setFocusedField("email")}
+                      onBlur={() => setFocusedField(null)}
+                      placeholder="you@organization.com"
+                      required
+                      className={cn(
+                        "h-14 text-base px-4 rounded-xl border-2",
+                        "transition-all duration-500 ease-out",
+                        "placeholder:text-muted-foreground/40",
+                        focusedField === "email" 
+                          ? "border-primary shadow-lg shadow-primary/10 bg-background" 
+                          : "border-border/60 bg-muted/30 hover:bg-muted/50"
+                      )}
+                    />
+                    <div className={cn(
+                      "absolute inset-0 rounded-xl pointer-events-none transition-opacity duration-500",
+                      focusedField === "email" ? "opacity-100" : "opacity-0"
+                    )}
+                      style={{
+                        background: `linear-gradient(135deg, hsl(var(--primary) / 0.05) 0%, transparent 50%)`,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label 
+                    htmlFor="password" 
+                    className={cn(
+                      "text-sm font-medium transition-all duration-500",
+                      focusedField === "password" ? "text-primary" : "text-foreground"
+                    )}
+                  >
+                    Password
+                  </label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      onFocus={() => setFocusedField("password")}
+                      onBlur={() => setFocusedField(null)}
+                      placeholder="••••••••••••"
+                      required
+                      className={cn(
+                        "h-14 text-base px-4 rounded-xl border-2",
+                        "transition-all duration-500 ease-out",
+                        "placeholder:text-muted-foreground/40",
+                        focusedField === "password" 
+                          ? "border-primary shadow-lg shadow-primary/10 bg-background" 
+                          : "border-border/60 bg-muted/30 hover:bg-muted/50"
+                      )}
+                    />
+                    <div className={cn(
+                      "absolute inset-0 rounded-xl pointer-events-none transition-opacity duration-500",
+                      focusedField === "password" ? "opacity-100" : "opacity-0"
+                    )}
+                      style={{
+                        background: `linear-gradient(135deg, hsl(var(--primary) / 0.05) 0%, transparent 50%)`,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-4">
+                  <Button 
+                    type="submit" 
+                    onMouseEnter={() => setIsHovering(true)}
+                    onMouseLeave={() => setIsHovering(false)}
+                    className={cn(
+                      "w-full h-14 text-base font-medium rounded-xl relative overflow-hidden group",
+                      "transition-all duration-700 ease-out",
+                      "active:scale-[0.98] active:transition-transform active:duration-150",
+                      "shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30",
+                      isLoading && "opacity-90"
+                    )}
+                    disabled={isLoading}
+                  >
+                    {/* Button gradient animation */}
+                    <div className={cn(
+                      "absolute inset-0 bg-gradient-to-r from-primary via-primary/90 to-primary opacity-0 transition-opacity duration-500",
+                      isHovering && !isLoading && "opacity-100"
+                    )} />
+                    
+                    <span className="relative z-10 flex items-center justify-center gap-3">
+                      {isLoading ? (
+                        <>
+                          <div className="flex gap-1">
+                            <div className="w-2 h-2 bg-primary-foreground/80 rounded-full animate-bounce-slow" style={{ animationDelay: '0ms' }} />
+                            <div className="w-2 h-2 bg-primary-foreground/80 rounded-full animate-bounce-slow" style={{ animationDelay: '150ms' }} />
+                            <div className="w-2 h-2 bg-primary-foreground/80 rounded-full animate-bounce-slow" style={{ animationDelay: '300ms' }} />
+                          </div>
+                          <span>Authenticating</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Continue to Kaizen.</span>
+                          <ArrowRight className={cn(
+                            "w-4 h-4 transition-transform duration-500",
+                            isHovering && "translate-x-1"
+                          )} />
+                        </>
+                      )}
+                    </span>
+                  </Button>
+                </div>
+              </form>
+              <div className="text-center mt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowForgot(true)}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Forgot your password?
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="space-y-6">
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 rounded-lg bg-muted/50">
+                    <Lock className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                  <span className="text-xs font-mono text-muted-foreground/70 uppercase tracking-wider">
+                    Password Reset
+                  </span>
+                </div>
+                <h2 className="font-display text-3xl font-semibold text-foreground mb-4">
+                  Reset Password
+                </h2>
+                <p className="text-muted-foreground leading-relaxed">
+                  Enter your email and your administrator will be notified to reset your password.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="forgot-email" className="text-sm font-medium text-foreground">
+                  Email address
+                </label>
+                <Input
+                  id="forgot-email"
+                  type="email"
+                  placeholder="your@email.com"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  className={cn(
+                    "h-14 text-base px-4 rounded-xl border-2",
+                    "transition-all duration-500 ease-out",
+                    "placeholder:text-muted-foreground/40",
+                    "border-border/60 bg-muted/30 hover:bg-muted/50 focus:border-primary focus:shadow-lg focus:shadow-primary/10 focus:bg-background"
+                  )}
+                />
+              </div>
+              <Button
+                type="button"
+                className={cn(
+                  "w-full h-14 text-base font-medium rounded-xl",
+                  "shadow-lg shadow-primary/20"
+                )}
+                onClick={() => {
+                  toast.info("Password reset is managed by your administrator. Please contact them directly.");
+                  setShowForgot(false);
+                }}
+              >
+                Send Reset Request
+              </Button>
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => setShowForgot(false)}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  ← Back to sign in
+                </button>
+              </div>
             </div>
           )}
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <label 
-                htmlFor="email" 
-                className={cn(
-                  "text-sm font-medium transition-all duration-500",
-                  focusedField === "email" ? "text-primary" : "text-foreground"
-                )}
-              >
-                Email address
-              </label>
-              <div className="relative">
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  onFocus={() => setFocusedField("email")}
-                  onBlur={() => setFocusedField(null)}
-                  placeholder="you@organization.com"
-                  required
-                  className={cn(
-                    "h-14 text-base px-4 rounded-xl border-2",
-                    "transition-all duration-500 ease-out",
-                    "placeholder:text-muted-foreground/40",
-                    focusedField === "email" 
-                      ? "border-primary shadow-lg shadow-primary/10 bg-background" 
-                      : "border-border/60 bg-muted/30 hover:bg-muted/50"
-                  )}
-                />
-                <div className={cn(
-                  "absolute inset-0 rounded-xl pointer-events-none transition-opacity duration-500",
-                  focusedField === "email" ? "opacity-100" : "opacity-0"
-                )}
-                  style={{
-                    background: `linear-gradient(135deg, hsl(var(--primary) / 0.05) 0%, transparent 50%)`,
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label 
-                htmlFor="password" 
-                className={cn(
-                  "text-sm font-medium transition-all duration-500",
-                  focusedField === "password" ? "text-primary" : "text-foreground"
-                )}
-              >
-                Password
-              </label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onFocus={() => setFocusedField("password")}
-                  onBlur={() => setFocusedField(null)}
-                  placeholder="••••••••••••"
-                  required
-                  className={cn(
-                    "h-14 text-base px-4 rounded-xl border-2",
-                    "transition-all duration-500 ease-out",
-                    "placeholder:text-muted-foreground/40",
-                    focusedField === "password" 
-                      ? "border-primary shadow-lg shadow-primary/10 bg-background" 
-                      : "border-border/60 bg-muted/30 hover:bg-muted/50"
-                  )}
-                />
-                <div className={cn(
-                  "absolute inset-0 rounded-xl pointer-events-none transition-opacity duration-500",
-                  focusedField === "password" ? "opacity-100" : "opacity-0"
-                )}
-                  style={{
-                    background: `linear-gradient(135deg, hsl(var(--primary) / 0.05) 0%, transparent 50%)`,
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="pt-4">
-              <Button 
-                type="submit" 
-                onMouseEnter={() => setIsHovering(true)}
-                onMouseLeave={() => setIsHovering(false)}
-                className={cn(
-                  "w-full h-14 text-base font-medium rounded-xl relative overflow-hidden group",
-                  "transition-all duration-700 ease-out",
-                  "active:scale-[0.98] active:transition-transform active:duration-150",
-                  "shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30",
-                  isLoading && "opacity-90"
-                )}
-                disabled={isLoading}
-              >
-                {/* Button gradient animation */}
-                <div className={cn(
-                  "absolute inset-0 bg-gradient-to-r from-primary via-primary/90 to-primary opacity-0 transition-opacity duration-500",
-                  isHovering && !isLoading && "opacity-100"
-                )} />
-                
-                <span className="relative z-10 flex items-center justify-center gap-3">
-                  {isLoading ? (
-                    <>
-                      <div className="flex gap-1">
-                        <div className="w-2 h-2 bg-primary-foreground/80 rounded-full animate-bounce-slow" style={{ animationDelay: '0ms' }} />
-                        <div className="w-2 h-2 bg-primary-foreground/80 rounded-full animate-bounce-slow" style={{ animationDelay: '150ms' }} />
-                        <div className="w-2 h-2 bg-primary-foreground/80 rounded-full animate-bounce-slow" style={{ animationDelay: '300ms' }} />
-                      </div>
-                      <span>Authenticating</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Continue to Kaizen.</span>
-                      <ArrowRight className={cn(
-                        "w-4 h-4 transition-transform duration-500",
-                        isHovering && "translate-x-1"
-                      )} />
-                    </>
-                  )}
-                </span>
-              </Button>
-            </div>
-          </form>
 
           {/* Footer note */}
           <div className="mt-16 pt-8 border-t border-border/50">
