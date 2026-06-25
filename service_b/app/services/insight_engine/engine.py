@@ -113,10 +113,36 @@ class InsightEngine:
 
         summary = generate_summary(metric_deltas, insights)
 
+        # Count total transactions (non-null revenue rows in current dataset)
+        try:
+            total_transactions = int(
+                pd.to_numeric(current_df[current_col], errors="coerce").notna().sum()
+            )
+        except Exception:
+            total_transactions = len(current_df)
+
+        # Count distinct products if product column exists
+        products_analyzed = None
+        try:
+            product_candidates = [
+                "product", "product_name", "item", "sku", "description",
+                "product_id", "item_name", "product_category", "category",
+            ]
+            cols_lower = {col.lower().strip(): col for col in current_df.columns}
+            product_col = next(
+                (cols_lower[c] for c in product_candidates if c in cols_lower), None
+            )
+            if product_col:
+                products_analyzed = int(current_df[product_col].nunique())
+        except Exception:
+            products_analyzed = None
+
         return InsightReport(
             summary=summary,
             metric_deltas=metric_deltas,
             insights=insights,
+            total_transactions=total_transactions,
+            products_analyzed=products_analyzed,
         )
 
     def _generate_standalone_insight(self, metric_delta: MetricDelta) -> Optional[Insight]:

@@ -4,14 +4,16 @@ import { InsightCard, InsightSeverity } from "@/components/ui/InsightCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Lightbulb, Database, Search, ArrowUpDown } from "lucide-react";
+import { Lightbulb, Database, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useLatestCompletedRun } from "@/hooks/useAnalysis";
+import { SeveritySeal, SignalTag, type SeverityLevel } from "@/components/ui/SeveritySeal";
+import { CountUp } from "@/components/ui/CountUp";
+import { Reveal, RevealItem } from "@/components/motion";
+import { formatINR, formatINRLakh, formatCount } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type SeverityFilter = "all" | "high" | "medium" | "low";
-type SortOption = "default" | "severity-desc" | "confidence-desc" | "alphabetical";
 
 export default function Insights() {
   const navigate = useNavigate();
@@ -19,28 +21,12 @@ export default function Insights() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
-  const [sortBy, setSortBy] = useState<SortOption>("default");
 
-  const insights = useMemo(() => {
-    return run?.insight_report?.insights || [];
-  }, [run]);
+  const bi = run?.insight_report?.business_insights ?? null;
+  const insights = useMemo(() => run?.insight_report?.insights || [], [run]);
 
-  // Compute counts
-  const counts = useMemo(() => {
-    const res = { all: insights.length, high: 0, medium: 0, low: 0 };
-    insights.forEach((ins) => {
-      if (ins.severity === "high") res.high++;
-      else if (ins.severity === "medium") res.medium++;
-      else if (ins.severity === "low") res.low++;
-    });
-    return res;
-  }, [insights]);
-
-  // Filter & Sort
-  const filteredAndSortedInsights = useMemo(() => {
+  const filteredInsights = useMemo(() => {
     let result = [...insights];
-
-    // Filter by search
     if (searchTerm.trim()) {
       const q = searchTerm.toLowerCase();
       result = result.filter(
@@ -48,55 +34,25 @@ export default function Insights() {
           ins.title.toLowerCase().includes(q) ||
           ins.description.toLowerCase().includes(q) ||
           (ins.driver && ins.driver.toLowerCase().includes(q)) ||
-          (ins.implication && ins.implication.toLowerCase().includes(q)) ||
           (ins.action_direction && ins.action_direction.toLowerCase().includes(q))
       );
     }
-
-    // Filter by severity
     if (severityFilter !== "all") {
       result = result.filter((ins) => ins.severity === severityFilter);
     }
-
-    // Sort
-    if (sortBy === "severity-desc") {
-      const severityWeight = { high: 3, medium: 2, low: 1 };
-      result.sort((a, b) => (severityWeight[b.severity] || 0) - (severityWeight[a.severity] || 0));
-    } else if (sortBy === "confidence-desc") {
-      const confidenceWeight = (conf?: string) => {
-        if (!conf) return 0;
-        const c = conf.toUpperCase();
-        if (c === "HIGH") return 3;
-        if (c === "MEDIUM") return 2;
-        if (c === "LOW") return 1;
-        return 0;
-      };
-      result.sort((a, b) => confidenceWeight(b.confidence) - confidenceWeight(a.confidence));
-    } else if (sortBy === "alphabetical") {
-      result.sort((a, b) => a.title.localeCompare(b.title));
-    }
-
     return result;
-  }, [insights, searchTerm, severityFilter, sortBy]);
-
-  const handleClearFilters = () => {
-    setSearchTerm("");
-    setSeverityFilter("all");
-    setSortBy("default");
-  };
+  }, [insights, searchTerm, severityFilter]);
 
   if (isLoading) {
     return (
       <AppLayout>
-        <div className="page-container animate-fade-in">
-          <section className="section-spacing">
-            <Skeleton className="h-6 w-48 mb-6" />
-            <div className="space-y-4">
-              <Skeleton className="h-40 w-full rounded-lg" />
-              <Skeleton className="h-40 w-full rounded-lg" />
-              <Skeleton className="h-40 w-full rounded-lg" />
-            </div>
-          </section>
+        <div className="page-container">
+          <div className="h-8 w-56 rounded bg-muted animate-pulse" />
+          <div className="mt-8 space-y-4">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-36 rounded-lg border border-border bg-card animate-pulse" />
+            ))}
+          </div>
         </div>
       </AppLayout>
     );
@@ -107,8 +63,8 @@ export default function Insights() {
       <AppLayout>
         <EmptyState
           icon={Lightbulb}
-          title="Unable to load insights"
-          description={error.message || "An error occurred while loading insights."}
+          title="We couldn't load your insights"
+          description={(error as Error).message || "The analysis service didn't respond. Refresh to try again."}
           action={<Button variant="outline" onClick={() => window.location.reload()}>Try again</Button>}
           className="h-[calc(100vh-3.5rem)]"
         />
@@ -116,17 +72,23 @@ export default function Insights() {
     );
   }
 
-  if (insights.length === 0) {
+  const churn = bi?.customer_churn_risk;
+  const dead = bi?.inventory_health_score;
+  const recv = bi?.receivables_risk;
+  const hasDistribution =
+    (churn?.has_at_risk) || (dead?.dead_stock_count ?? 0) > 0 || (recv?.total_outstanding ?? 0) > 0;
+
+  if (insights.length === 0 && !hasDistribution) {
     return (
       <AppLayout>
         <EmptyState
           icon={Lightbulb}
-          title="No insights generated"
-          description="Upload and analyze a dataset to generate deep automated insights."
+          title="No findings yet"
+          description="Upload a sales or ledger export and Kaizen will surface churn, dead stock, overdue payments, and structural risks."
           action={
-            <Button onClick={() => navigate("/datasets")} className="bg-primary hover:bg-primary/95 text-primary-foreground">
-              <Database className="w-4 h-4 mr-2" />
-              Upload dataset
+            <Button onClick={() => navigate("/datasets")}>
+              <Database className="mr-2 h-4 w-4" />
+              Upload a dataset
             </Button>
           }
           className="h-[calc(100vh-3.5rem)]"
@@ -137,167 +99,217 @@ export default function Insights() {
 
   return (
     <AppLayout>
-      <div className="page-container animate-fade-in">
-        {/* Header Block */}
-        <section className="mb-8">
-          <p className="text-sm font-mono text-muted-foreground uppercase tracking-wider">
-            Automated Intelligence
-          </p>
-          <h2 className="text-3xl font-display font-bold text-foreground mt-1">
-            Data Insights & Signals
-          </h2>
-          <p className="text-sm text-muted-foreground mt-2 max-w-2xl font-sans">
-            Here are the structural findings, outliers, and optimization recommendations computed from your latest dataset analysis.
-          </p>
-        </section>
+      <div className="page-container">
+        <header className="mb-8">
+          <p className="eyebrow">Where your money is leaking</p>
+          <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight text-foreground">
+            Churn, dead stock &amp; receivables
+          </h1>
+        </header>
 
-        {/* Dynamic Summary Cards */}
-        <section className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="p-4 rounded-xl bg-card border border-border/80 text-center space-y-1">
-            <span className="text-2xl font-display font-bold text-foreground">{counts.all}</span>
-            <p className="text-xs text-muted-foreground uppercase font-mono tracking-wider">Total Findings</p>
-          </div>
-          <div className="p-4 rounded-xl bg-destructive/5 border border-destructive/20 text-center space-y-1">
-            <span className="text-2xl font-display font-bold text-destructive">{counts.high}</span>
-            <p className="text-xs text-destructive/80 uppercase font-mono tracking-wider">High Severity</p>
-          </div>
-          <div className="p-4 rounded-xl bg-gold/5 border border-gold/20 text-center space-y-1">
-            <span className="text-2xl font-display font-bold text-gold">{counts.medium}</span>
-            <p className="text-xs text-gold/80 uppercase font-mono tracking-wider">Medium Severity</p>
-          </div>
-          <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 text-center space-y-1">
-            <span className="text-2xl font-display font-bold text-primary">{counts.low}</span>
-            <p className="text-xs text-primary/85 uppercase font-mono tracking-wider">Low Severity</p>
-          </div>
-        </section>
+        {/* ── Receivables ───────────────────────────────────────────────── */}
+        {recv && (recv.total_outstanding ?? 0) > 0 && (
+          <RiskSection
+            level={(recv.over_45_amount ?? 0) > 0 ? "overdue" : "slowing"}
+            title="Overdue receivables"
+            headline={
+              <>
+                <CountUp value={recv.total_outstanding ?? 0} format={formatINRLakh} className="font-mono font-semibold tabular-nums text-foreground" />
+                {" "}outstanding across {formatCount(recv.customer_count ?? 0)} customers
+                {recv.aging_available && (recv.over_45_amount ?? 0) > 0 && (
+                  <>, <span className="text-signal-overdue">{formatINRLakh(recv.over_45_amount)}</span> over 45 days</>
+                )}
+              </>
+            }
+            warning={recv.warning}
+            rows={(recv.customers ?? []).slice(0, 8).map((c) => {
+              const aged = (c.oldest_unpaid_days ?? 0) >= 45;
+              return {
+                key: c.customer,
+                level: (aged ? "overdue" : "slowing") as SeverityLevel,
+                tag: c.aging_bucket ? `${c.aging_bucket} days` : "outstanding",
+                name: c.customer,
+                meta: c.oldest_unpaid_days != null ? `oldest bill ${c.oldest_unpaid_days}d old` : undefined,
+                amount: formatINR(c.outstanding),
+              };
+            })}
+          />
+        )}
 
-        {/* Filter Controls Row */}
-        <section className="section-spacing">
-          <div className="bg-card border border-border rounded-xl p-5 space-y-4">
-            <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-              {/* Search */}
-              <div className="relative w-full md:w-80">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search insights..."
-                  className="pl-9 bg-muted/20 border-border"
-                />
+        {/* ── Dead stock ────────────────────────────────────────────────── */}
+        {dead && (dead.dead_stock_count ?? 0) > 0 && (
+          <RiskSection
+            level="slowing"
+            title="Dead & slow-moving stock"
+            headline={
+              <>
+                <CountUp value={dead.total_dead_stock_value ?? 0} format={formatINRLakh} className="font-mono font-semibold tabular-nums text-foreground" />
+                {" "}tied up in {formatCount(dead.dead_stock_count ?? 0)} SKUs idle {dead.dead_stock_window_days ?? 60}+ days
+              </>
+            }
+            rows={(dead.dead_stock_skus ?? []).slice(0, 8).map((s) => ({
+              key: s.sku,
+              level: "slowing" as SeverityLevel,
+              tag: `idle ${s.days_inactive}d`,
+              name: s.sku,
+              meta: `last sold ${s.last_sold}`,
+              amount: formatINR(s.value_tied_up),
+            }))}
+          />
+        )}
+
+        {/* ── Customer churn ────────────────────────────────────────────── */}
+        {churn && churn.has_at_risk && (
+          <RiskSection
+            level={(churn.churned_count ?? 0) > 0 ? "overdue" : "slowing"}
+            title="Shops going quiet"
+            headline={
+              <>
+                <CountUp value={churn.revenue_at_risk ?? 0} format={formatINRLakh} className="font-mono font-semibold tabular-nums text-foreground" />
+                {" "}of historic revenue at risk across {formatCount((churn.at_risk_count ?? 0) + (churn.churned_count ?? 0))} shops.
+                {" "}Following up is likely to recover revenue.
+              </>
+            }
+            warning={churn.warning}
+            rows={(churn.customers ?? [])
+              .filter((c) => c.risk === "churned" || c.risk === "at_risk")
+              .slice(0, 8)
+              .map((c) => ({
+                key: c.customer,
+                level: (c.risk === "churned" ? "overdue" : "slowing") as SeverityLevel,
+                tag: c.risk === "churned" ? "churned" : "at risk",
+                name: c.customer,
+                meta: `quiet ${c.days_since_last_order}d · ${c.order_count} orders`,
+                amount: formatINR(c.total_revenue),
+              }))}
+          />
+        )}
+
+        {/* ── Structural findings ───────────────────────────────────────── */}
+        {insights.length > 0 && (
+          <section className="mt-12">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="eyebrow">Structural findings</h2>
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search findings"
+                    className="h-9 w-48 pl-9 text-sm"
+                  />
+                </div>
+                <div className="flex gap-1">
+                  {(["all", "high", "medium", "low"] as SeverityFilter[]).map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => setSeverityFilter(f)}
+                      className={cn(
+                        "focus-calm rounded-md border px-2.5 py-1.5 text-xs font-medium capitalize transition-colors",
+                        severityFilter === f
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-card text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {f}
+                    </button>
+                  ))}
+                </div>
               </div>
+            </div>
 
-              {/* Sort selector */}
-              <div className="flex items-center gap-2 w-full md:w-auto shrink-0">
-                <ArrowUpDown className="w-4 h-4 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground shrink-0 font-medium">Sort by:</span>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as SortOption)}
-                  className="h-9 px-3 rounded-md border border-input bg-background text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring flex-1 md:flex-initial"
+            {filteredInsights.length === 0 ? (
+              <div className="rounded-lg border border-border bg-card p-10 text-center">
+                <p className="text-sm text-muted-foreground">No findings match your filters.</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-4"
+                  onClick={() => { setSearchTerm(""); setSeverityFilter("all"); }}
                 >
-                  <option value="default">Default Order</option>
-                  <option value="severity-desc">Severity: High to Low</option>
-                  <option value="confidence-desc">Confidence: High to Low</option>
-                  <option value="alphabetical">Alphabetical</option>
-                </select>
+                  Reset filters
+                </Button>
               </div>
-            </div>
-
-            {/* Severity Filter buttons row */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border/50">
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  onClick={() => setSeverityFilter("all")}
-                  className={cn(
-                    "text-xs px-3 py-1.5 rounded-lg border transition-all duration-200",
-                    severityFilter === "all"
-                      ? "bg-primary text-primary-foreground border-primary font-medium shadow-sm"
-                      : "bg-muted/30 border-border/80 text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                  )}
-                >
-                  All ({counts.all})
-                </button>
-                <button
-                  onClick={() => setSeverityFilter("high")}
-                  className={cn(
-                    "text-xs px-3 py-1.5 rounded-lg border transition-all duration-200",
-                    severityFilter === "high"
-                      ? "bg-destructive text-destructive-foreground border-destructive font-medium shadow-sm"
-                      : "bg-destructive/5 border-destructive/15 text-destructive/80 hover:bg-destructive/10"
-                  )}
-                >
-                  High ({counts.high})
-                </button>
-                <button
-                  onClick={() => setSeverityFilter("medium")}
-                  className={cn(
-                    "text-xs px-3 py-1.5 rounded-lg border transition-all duration-200",
-                    severityFilter === "medium"
-                      ? "bg-gold text-gold-foreground border-gold font-medium shadow-sm"
-                      : "bg-gold/5 border-gold/15 text-gold/80 hover:bg-gold/10"
-                  )}
-                >
-                  Medium ({counts.medium})
-                </button>
-                <button
-                  onClick={() => setSeverityFilter("low")}
-                  className={cn(
-                    "text-xs px-3 py-1.5 rounded-lg border transition-all duration-200",
-                    severityFilter === "low"
-                      ? "bg-primary text-primary-foreground border-primary font-medium shadow-sm"
-                      : "bg-primary/5 border-primary/15 text-primary/80 hover:bg-primary/10"
-                  )}
-                >
-                  Low ({counts.low})
-                </button>
+            ) : (
+              <div className="space-y-4">
+                {filteredInsights.map((insight, idx) => (
+                  <InsightCard
+                    key={insight.code ?? idx}
+                    title={insight.title}
+                    description={insight.description}
+                    driver={insight.driver}
+                    implication={insight.implication}
+                    actionDirection={insight.action_direction}
+                    confidence={insight.confidence}
+                    confidenceBasis={insight.confidence_basis}
+                    severity={insight.severity as InsightSeverity}
+                    expandable
+                    defaultExpanded={insight.severity === "high"}
+                  />
+                ))}
               </div>
-
-              {(searchTerm || severityFilter !== "all" || sortBy !== "default") && (
-                <button
-                  onClick={handleClearFilters}
-                  className="text-xs text-primary font-medium hover:underline focus:outline-none"
-                >
-                  Reset all filters
-                </button>
-              )}
-            </div>
-          </div>
-        </section>
-
-        {/* Insights list */}
-        <section className="section-spacing">
-          {filteredAndSortedInsights.length === 0 ? (
-            <div className="bg-card border border-border/80 rounded-xl p-12 text-center">
-              <Lightbulb className="w-10 h-10 text-muted-foreground/60 mx-auto mb-4" />
-              <h4 className="font-semibold text-foreground mb-1">No matching insights</h4>
-              <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-4">
-                No findings match your current search queries or filter selections. Try resetting your search terms.
-              </p>
-              <Button onClick={handleClearFilters} variant="outline" size="sm">
-                Clear Filters
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredAndSortedInsights.map((insight, idx) => (
-                <InsightCard
-                  key={insight.code ?? idx}
-                  title={insight.title}
-                  description={insight.description}
-                  driver={insight.driver}
-                  implication={insight.implication}
-                  actionDirection={insight.action_direction}
-                  confidence={insight.confidence}
-                  confidenceBasis={insight.confidence_basis}
-                  severity={insight.severity as InsightSeverity}
-                  expandable={true}
-                  defaultExpanded={insight.severity === "high"}
-                />
-              ))}
-            </div>
-          )}
-        </section>
+            )}
+          </section>
+        )}
       </div>
     </AppLayout>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface RiskRowData {
+  key: string;
+  level: SeverityLevel;
+  tag: string;
+  name: string;
+  meta?: string;
+  amount: string;
+}
+
+function RiskSection({
+  level,
+  title,
+  headline,
+  rows,
+  warning,
+}: {
+  level: SeverityLevel;
+  title: string;
+  headline: React.ReactNode;
+  rows: RiskRowData[];
+  warning?: string | null;
+}) {
+  return (
+    <section className="mb-8">
+      <div className="mb-3 flex items-start gap-3">
+        <SeveritySeal level={level} size="lg" pulse={level === "overdue"} />
+        <div>
+          <h2 className="font-display text-lg font-semibold tracking-tight text-foreground">{title}</h2>
+          <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">{headline}</p>
+        </div>
+      </div>
+
+      <Reveal className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card" stagger={0.04}>
+        {rows.map((r) => (
+          <RevealItem key={r.key}>
+            <div className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/40">
+              <SeveritySeal level={r.level} size="sm" />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="truncate text-sm font-medium text-foreground">{r.name}</span>
+                  <SignalTag level={r.level}>{r.tag}</SignalTag>
+                </div>
+                {r.meta && <p className="mt-0.5 text-xs text-muted-foreground">{r.meta}</p>}
+              </div>
+              <span className="shrink-0 font-mono text-sm font-semibold tabular-nums text-foreground">{r.amount}</span>
+            </div>
+          </RevealItem>
+        ))}
+      </Reveal>
+
+      {warning && <p className="mt-2 text-xs text-signal-slowing">{warning}</p>}
+    </section>
   );
 }

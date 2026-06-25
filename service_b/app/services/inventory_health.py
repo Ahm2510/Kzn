@@ -13,11 +13,13 @@ Score bands:
 """
 from __future__ import annotations
  
-from typing import List, Optional, Dict
- 
+from typing import Any, List, Optional, Dict
+
 import pandas as pd
 import numpy as np
 from pydantic import BaseModel
+
+from app.services.insight_engine.column_detector import detect_revenue_column
  
  
 class InventoryHealthResult(BaseModel):
@@ -36,6 +38,13 @@ class InventoryHealthResult(BaseModel):
     has_stock_data: bool
     has_date_data: bool
     watchlist: Optional[List[str]] = None
+    # ── Dead stock / slow-moving inventory (distribution niche) ──────────────
+    # SKUs with no transaction in the most recent `dead_stock_window_days`,
+    # ranked by the rupee value of capital tied up in them.
+    dead_stock_skus: Optional[List[Dict[str, Any]]] = None
+    total_dead_stock_value: Optional[float] = None
+    dead_stock_count: Optional[int] = None
+    dead_stock_window_days: Optional[int] = None
  
  
 # ─────────────────────────────────────────────
@@ -120,14 +129,115 @@ def _build_explanation(
  
  
 # ─────────────────────────────────────────────
+# Dead stock / slow-moving inventory (distribution niche)
+# ─────────────────────────────────────────────
+
+DEFAULT_DEAD_STOCK_DAYS = 60
+
+
+def _compute_dead_stock(
+    df: pd.DataFrame,
+    product_col: str,
+    date_col: Optional[str],
+    n_days: int = DEFAULT_DEAD_STOCK_DAYS,
+) -> Optional[Dict[str, Any]]:
+    """
+    Identify SKUs with no transaction in the most recent ``n_days`` (relative to
+    the dataset's own date range) and estimate the rupee value of capital tied
+    up in them.
+
+    Requires a date column (recency is time-based) and a product column. The
+    rupee figure uses the already-detected revenue column when available, so the
+    headline reads as money sitting still — not just a SKU count. Returns
+    ``None`` when dead stock cannot be computed; never raises.
+    """
+    try:
+        if not date_col or product_col not in df.columns:
+            return None
+
+        work = df[[product_col, date_col]].copy()
+        work[date_col] = pd.to_datetime(work[date_col], errors="coerce")
+        work = work.dropna(subset=[product_col, date_col])
+        if work.empty:
+            return None
+
+        # Detect a revenue/value column for the rupee estimate (graceful).
+        rev_col, _conf, _mode = detect_revenue_column(df)
+        rev_series = None
+        if rev_col and rev_col in df.columns:
+            rev_series = pd.to_numeric(df[rev_col], errors="coerce")
+            work["__rev"] = rev_series.reindex(work.index)
+
+        work[product_col] = work[product_col].astype(str)
+        dataset_max = work[date_col].max()
+        cutoff = dataset_max - pd.Timedelta(days=int(n_days))
+
+        last_seen = work.groupby(product_col)[date_col].max()
+        dead_skus_idx = last_seen[last_seen < cutoff].index
+        if len(dead_skus_idx) == 0:
+            return {
+                "skus": [],
+                "total_value": 0.0 if rev_series is not None else None,
+                "count": 0,
+                "window_days": int(n_days),
+            }
+
+        # Per-SKU value tied up = total historical revenue of that SKU.
+        sku_value = None
+        sku_avg_value = None
+        if rev_series is not None:
+            sku_value = work.groupby(product_col)["__rev"].sum()
+            sku_avg_value = work.groupby(product_col)["__rev"].mean()
+
+        rows: List[Dict[str, Any]] = []
+        for sku in dead_skus_idx:
+            last_date = last_seen[sku]
+            days_inactive = int((dataset_max - last_date).days)
+            value_tied = None
+            avg_txn = None
+            if sku_value is not None:
+                v = sku_value.get(sku)
+                value_tied = round(float(v), 2) if pd.notna(v) else 0.0
+                a = sku_avg_value.get(sku)
+                avg_txn = round(float(a), 2) if pd.notna(a) else 0.0
+            rows.append({
+                "sku": str(sku)[:80],
+                "last_sold": last_date.strftime("%Y-%m-%d"),
+                "days_inactive": days_inactive,
+                "value_tied_up": value_tied if value_tied is not None else 0.0,
+                "avg_transaction_value": avg_txn if avg_txn is not None else 0.0,
+            })
+
+        # Rank by capital tied up (rupee value) descending.
+        rows.sort(key=lambda r: r.get("value_tied_up", 0.0), reverse=True)
+
+        total_value = None
+        if sku_value is not None:
+            total_value = round(float(sum(r["value_tied_up"] for r in rows)), 2)
+
+        return {
+            "skus": rows[:15],
+            "total_value": total_value,
+            "count": len(rows),
+            "window_days": int(n_days),
+        }
+    except Exception:
+        return None
+
+
+# ─────────────────────────────────────────────
 # Public API
 # ─────────────────────────────────────────────
- 
+
 def compute_inventory_health_score(
     df: pd.DataFrame,
+    dead_stock_days: int = DEFAULT_DEAD_STOCK_DAYS,
 ) -> Optional[InventoryHealthResult]:
     """
     Compute the Inventory Health Score V2.
+
+    ``dead_stock_days`` (default 60) controls the recency window used to flag
+    dead / slow-moving SKUs and the rupee value of capital tied up in them.
     """
     try:
         n = len(df)
@@ -332,7 +442,40 @@ def compute_inventory_health_score(
         if has_stock_data: sources.append("stock levels")
         if has_date_data: sources.append("temporal trends")
         data_source = " + ".join(sources) if sources else "transaction patterns"
- 
+
+        # ── Dead stock / slow-moving inventory with rupee value ───────────────
+        # Resolve SKU/date columns with the niche-aware entity detector so Tally
+        # exports ("Stock Item", "Voucher Date") are recognised; fall back to the
+        # legacy detectors used by the health score itself.
+        from app.services.insight_engine.entity_detector import (
+            detect_sku_column as _detect_sku,
+            detect_date_column as _detect_date,
+        )
+        ds_product_col = _detect_sku(df)[0] or product_col
+        ds_date_col = _detect_date(df)[0] or date_col
+        dead_stock_skus = None
+        total_dead_stock_value = None
+        dead_stock_count = None
+        dead_stock_window_days = None
+        if ds_product_col and ds_date_col:
+            ds = _compute_dead_stock(df, ds_product_col, ds_date_col, dead_stock_days)
+            if ds is not None:
+                dead_stock_skus = ds["skus"] or None
+                total_dead_stock_value = ds["total_value"]
+                dead_stock_count = ds["count"]
+                dead_stock_window_days = ds["window_days"]
+                if dead_stock_count:
+                    if total_dead_stock_value is not None:
+                        from app.services.insight_engine.entity_detector import format_inr_lakh
+                        contributing_factors.append(
+                            f"Dead stock: {dead_stock_count} SKU(s) idle {dead_stock_window_days}+ days, "
+                            f"~{format_inr_lakh(total_dead_stock_value)} of capital tied up"
+                        )
+                    else:
+                        contributing_factors.append(
+                            f"Dead stock: {dead_stock_count} SKU(s) idle {dead_stock_window_days}+ days"
+                        )
+
         return InventoryHealthResult(
             score=score,
             label=_label_from_score(score),
@@ -346,6 +489,10 @@ def compute_inventory_health_score(
             has_stock_data=has_stock_data,
             has_date_data=has_date_data,
             watchlist=watchlist if watchlist else None,
+            dead_stock_skus=dead_stock_skus,
+            total_dead_stock_value=total_dead_stock_value,
+            dead_stock_count=dead_stock_count,
+            dead_stock_window_days=dead_stock_window_days,
         )
  
     except Exception:

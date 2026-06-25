@@ -11,6 +11,10 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable,
 from reportlab.lib.enums import TA_LEFT
 
 from app.schemas.insight.report import InsightReport
+from app.services.insight_engine.entity_detector import (
+    format_inr as _format_inr,
+    format_inr_lakh as _format_inr_lakh,
+)
 
 
 _CURRENCY_NEGATIVE_RE = re.compile(r"\$\s*-\s*\d")
@@ -635,7 +639,16 @@ def render_pdf(
     story.append(Paragraph("Table of Contents", section_heading_style))
     story.append(Spacer(1, 0.06 * inch))
 
+    # Default Helvetica has no ₹ (U+20B9) glyph; render rupee figures as "Rs."
+    # in the PDF while the JSON/API keeps ₹ for the frontend.
+    def _inr_pdf(text: Any) -> str:
+        return str(text).replace("₹", "Rs.")
+
     toc_sections = ["Executive Takeaways"]
+    if business_insights and business_insights.get("action_list"):
+        action_list_data = business_insights.get("action_list")
+        if isinstance(action_list_data, list) and len(action_list_data) > 0:
+            toc_sections.append("Priority Action List")
     if business_insights and business_insights.get("enhanced_executive_summary"):
         ees_data = business_insights["enhanced_executive_summary"]
         if isinstance(ees_data, dict) and ees_data.get("narrative"):
@@ -645,6 +658,17 @@ def render_pdf(
         toc_sections.append("Revenue Stability Index")
     if business_insights and business_insights.get("inventory_health_score"):
         toc_sections.append("Inventory Health Score")
+        ihs_toc = business_insights.get("inventory_health_score")
+        if isinstance(ihs_toc, dict) and ihs_toc.get("dead_stock_count"):
+            toc_sections.append("Dead Stock & Slow-Moving Inventory")
+    if business_insights and business_insights.get("receivables_risk"):
+        rr_toc = business_insights.get("receivables_risk")
+        if isinstance(rr_toc, dict) and (rr_toc.get("total_outstanding") or 0) > 0:
+            toc_sections.append("Receivables Risk")
+    if business_insights and business_insights.get("customer_churn_risk"):
+        ccr_toc = business_insights.get("customer_churn_risk")
+        if isinstance(ccr_toc, dict) and ccr_toc.get("has_at_risk"):
+            toc_sections.append("Customer Churn Risk")
     if business_insights and business_insights.get("early_warning_alerts"):
         ewa_data = business_insights["early_warning_alerts"]
         if isinstance(ewa_data, dict) and ewa_data.get("alert_count", 0) > 0:
@@ -724,6 +748,42 @@ def render_pdf(
             pass
  
     # ------------------------------------------------------------------
+    # Priority Action List (distribution niche) — operator to-do list, top of report
+    # ------------------------------------------------------------------
+    if business_insights and business_insights.get("action_list"):
+        try:
+            action_list = business_insights.get("action_list")
+            if isinstance(action_list, list) and len(action_list) > 0:
+                story.append(HR_MAJOR())
+                story.append(Paragraph("Priority Action List", major_section_heading_style))
+                story.append(Paragraph(
+                    "Your top moves this week, in priority order:", small_muted_style
+                ))
+                story.append(Spacer(1, 0.06 * inch))
+                action_bullet_style = ParagraphStyle(
+                    "ActionBullet",
+                    parent=body_style,
+                    leftIndent=10,
+                    spaceAfter=2,
+                )
+                for item in action_list[:6]:
+                    if not isinstance(item, dict):
+                        continue
+                    headline = item.get("headline")
+                    if not headline:
+                        continue
+                    story.append(Paragraph(
+                        f"<b>■ {_escape(_inr_pdf(headline))}</b>", action_bullet_style
+                    ))
+                    detail = item.get("detail")
+                    if detail:
+                        story.append(Paragraph(f"&nbsp;&nbsp;&nbsp;{_escape(_inr_pdf(detail))}", small_muted_style))
+                    story.append(Spacer(1, 0.05 * inch))
+                story.append(Spacer(1, 0.2 * inch))
+        except Exception:
+            pass  # Never fail PDF generation for the action list
+
+    # ------------------------------------------------------------------
     # Enhanced Executive Summary section (if available)
     # ------------------------------------------------------------------
     if business_insights and business_insights.get("enhanced_executive_summary"):
@@ -749,7 +809,14 @@ def render_pdf(
  
                 story.append(Paragraph(_escape(narrative), body_style))
                 story.append(Spacer(1, 0.1 * inch))
- 
+
+                headline_metrics = ees.get("headline_metrics") or []
+                if headline_metrics:
+                    story.append(Paragraph("<b>Headline Numbers</b>", body_style))
+                    for hm in headline_metrics[:4]:
+                        story.append(Paragraph(f"▸ {_escape(_inr_pdf(str(hm)))}", small_muted_style))
+                    story.append(Spacer(1, 0.08 * inch))
+
                 key_positives = ees.get("key_positives") or []
                 if key_positives:
                     story.append(Paragraph("<b>Key Strengths</b>", body_style))
@@ -797,8 +864,13 @@ def render_pdf(
             revenue_delta = d
             break
     total_revenue_value = revenue_delta.current if revenue_delta else None
-    total_transactions_value = _extract_total_transactions(report)
-    products_analyzed_value = _extract_distinct_products(report, business_insights)
+    
+    # Total transactions — use direct field, not regex extraction
+    total_transactions_value = report.total_transactions
+    
+    # Products analyzed — use direct field
+    products_analyzed_value = report.products_analyzed
+    
     insights_generated_value = len(report.insights or [])
 
     # 2-column table for metrics
@@ -1080,7 +1152,122 @@ def render_pdf(
             story.append(Spacer(1, 0.25 * inch))
         except Exception:
             pass  # Never fail PDF generation for IHS
- 
+
+    # ------------------------------------------------------------------
+    # Dead Stock & Slow-Moving Inventory section (distribution niche)
+    # ------------------------------------------------------------------
+    if business_insights and business_insights.get("inventory_health_score"):
+        try:
+            ihs_ds = business_insights["inventory_health_score"]
+            dead_skus = ihs_ds.get("dead_stock_skus") if isinstance(ihs_ds, dict) else None
+            dead_count = ihs_ds.get("dead_stock_count") if isinstance(ihs_ds, dict) else None
+            dead_value = ihs_ds.get("total_dead_stock_value") if isinstance(ihs_ds, dict) else None
+            dead_window = ihs_ds.get("dead_stock_window_days") if isinstance(ihs_ds, dict) else 60
+            if dead_count:
+                story.append(HR_STANDARD())
+                story.append(Paragraph("Dead Stock & Slow-Moving Inventory", section_heading_style))
+                if dead_value is not None:
+                    story.append(Paragraph(
+                        f"<b>{_inr_pdf(_format_inr_lakh(dead_value))}</b> of capital is tied up in "
+                        f"<b>{dead_count}</b> SKU(s) with no transaction in {dead_window}+ days.",
+                        body_style,
+                    ))
+                else:
+                    story.append(Paragraph(
+                        f"<b>{dead_count}</b> SKU(s) had no transaction in {dead_window}+ days.",
+                        body_style,
+                    ))
+                story.append(Spacer(1, 0.05 * inch))
+                for s in (dead_skus or [])[:10]:
+                    if not isinstance(s, dict):
+                        continue
+                    sku = s.get("sku", "")
+                    val = s.get("value_tied_up")
+                    days = s.get("days_inactive")
+                    line = f"• {_escape(str(sku))}"
+                    if val:
+                        line += f" — {_inr_pdf(_format_inr(val))} tied up"
+                    if days is not None:
+                        line += f", idle {days} days"
+                    story.append(Paragraph(line, small_muted_style))
+                story.append(Spacer(1, 0.25 * inch))
+        except Exception:
+            pass  # Never fail PDF generation for dead stock
+
+    # ------------------------------------------------------------------
+    # Receivables Risk section (distribution niche)
+    # ------------------------------------------------------------------
+    if business_insights and business_insights.get("receivables_risk"):
+        try:
+            rr = business_insights["receivables_risk"]
+            if isinstance(rr, dict) and (rr.get("total_outstanding") or 0) > 0:
+                story.append(HR_STANDARD())
+                story.append(Paragraph("Receivables Risk", section_heading_style))
+                total = rr.get("total_outstanding")
+                cust_n = rr.get("customer_count")
+                headline = f"<b>{_inr_pdf(_format_inr_lakh(total))}</b> outstanding across <b>{cust_n}</b> customer(s)."
+                if rr.get("aging_available") and (rr.get("over_45_amount") or 0) > 0:
+                    headline += (
+                        f" {_inr_pdf(_format_inr_lakh(rr.get('over_45_amount')))} is over 45 days old"
+                    )
+                    if rr.get("over_90_amount"):
+                        headline += f" ({_inr_pdf(_format_inr_lakh(rr.get('over_90_amount')))} over 90 days)"
+                    headline += "."
+                story.append(Paragraph(headline, body_style))
+                story.append(Spacer(1, 0.05 * inch))
+                for c in (rr.get("customers") or [])[:10]:
+                    if not isinstance(c, dict):
+                        continue
+                    name = c.get("customer", "")
+                    amt = c.get("outstanding")
+                    bucket = c.get("aging_bucket")
+                    line = f"• {_escape(str(name))} — {_inr_pdf(_format_inr(amt))}"
+                    if bucket:
+                        line += f" ({_escape(str(bucket))} days)"
+                    story.append(Paragraph(line, small_muted_style))
+                rr_warning = rr.get("warning")
+                if rr_warning:
+                    story.append(Paragraph(f"⚠ {_escape(str(rr_warning))}", small_muted_style))
+                story.append(Spacer(1, 0.25 * inch))
+        except Exception:
+            pass  # Never fail PDF generation for receivables
+
+    # ------------------------------------------------------------------
+    # Customer Churn Risk section (distribution niche)
+    # ------------------------------------------------------------------
+    if business_insights and business_insights.get("customer_churn_risk"):
+        try:
+            ccr = business_insights["customer_churn_risk"]
+            if isinstance(ccr, dict) and ccr.get("has_at_risk"):
+                story.append(HR_STANDARD())
+                story.append(Paragraph("Customer Churn Risk", section_heading_style))
+                flagged = (ccr.get("at_risk_count") or 0) + (ccr.get("churned_count") or 0)
+                rev_at_risk = ccr.get("revenue_at_risk")
+                headline = f"<b>{flagged}</b> shop(s) have gone quiet"
+                if rev_at_risk:
+                    headline += f", with <b>{_inr_pdf(_format_inr_lakh(rev_at_risk))}</b> of historic revenue at risk"
+                headline += ". Following up with these customers is likely to recover revenue."
+                story.append(Paragraph(headline, body_style))
+                story.append(Spacer(1, 0.05 * inch))
+                for c in (ccr.get("customers") or [])[:10]:
+                    if not isinstance(c, dict):
+                        continue
+                    if c.get("risk") not in ("churned", "at_risk"):
+                        continue
+                    name = c.get("customer", "")
+                    rev = c.get("total_revenue")
+                    days = c.get("days_since_last_order")
+                    risk = c.get("risk", "")
+                    line = f"• {_escape(str(name))} — {_escape(str(risk).replace('_', ' '))}"
+                    if rev:
+                        line += f", {_inr_pdf(_format_inr(rev))} historic"
+                    if days is not None:
+                        line += f", quiet {days} days"
+                    story.append(Paragraph(line, small_muted_style))
+                story.append(Spacer(1, 0.25 * inch))
+        except Exception:
+            pass  # Never fail PDF generation for churn
+
     # ------------------------------------------------------------------
     # Early Warning Alerts section (if available and non-empty)
     # ------------------------------------------------------------------

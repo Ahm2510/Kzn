@@ -8,9 +8,11 @@ This is not a generic summary; it is a rule-based engine that identifies
 the most critical positives and risks and provides an action direction.
 """
 from __future__ import annotations
- 
+
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
+
+from app.services.insight_engine.entity_detector import format_inr_lakh
  
  
 # ─────────────────────────────────────────────
@@ -31,6 +33,7 @@ class EnhancedExecutiveSummaryResult(BaseModel):
     key_positives: List[str] = []
     key_risks: List[str] = []
     watchpoints: List[str] = []
+    headline_metrics: List[str] = []   # top-line rupee figures (dead stock, receivables, churn)
     data_coverage: str = "limited"
     warning: Optional[str] = None
  
@@ -61,9 +64,13 @@ def compute_enhanced_executive_summary(
         
         # 3. Build action-oriented watchpoints
         watchpoints = _collect_watchpoints(bi_dict, risks, row_count)
-        
+
+        # 3b. Headline rupee figures for the distributor niche (dead stock,
+        #     receivables) — surfaced with the same prominence as top-line metrics.
+        headline_metrics = _collect_headline_metrics(bi_dict)
+
         # 4. Build structured narrative sections
-        sections = _build_sections(bi_dict, positives, risks, watchpoints, sentiment, coverage, confidence)
+        sections = _build_sections(bi_dict, positives, risks, watchpoints, sentiment, coverage, confidence, headline_metrics)
         
         # 5. Generate final narrative string
         narrative = " ".join([s.content for s in sections if s.content])
@@ -87,6 +94,7 @@ def compute_enhanced_executive_summary(
             key_positives=positives[:4],
             key_risks=risks[:4],
             watchpoints=watchpoints[:4],
+            headline_metrics=headline_metrics[:4],
             data_coverage=coverage,
             warning=warning
         )
@@ -199,10 +207,66 @@ def _collect_risks(bi: Dict[str, Any]) -> List[str]:
             risks.append("At-risk customer segments identified.")
         elif csca.get("has_declining"):
             risks.append("Declining customer segments detected.")
- 
+
+    # Customer churn (distribution niche)
+    ccr = bi.get("customer_churn_risk")
+    if ccr and ccr.get("has_at_risk"):
+        flagged = (ccr.get("at_risk_count") or 0) + (ccr.get("churned_count") or 0)
+        risks.append(f"{flagged} shop(s) have gone quiet and may be churning.")
+
+    # Receivables (distribution niche)
+    rr = bi.get("receivables_risk")
+    if rr and rr.get("aging_available") and (rr.get("over_45_amount") or 0) > 0:
+        risks.append(
+            f"{format_inr_lakh(rr.get('over_45_amount'))} of receivables is over 45 days overdue."
+        )
+
     return risks
  
  
+def _collect_headline_metrics(bi: Dict[str, Any]) -> List[str]:
+    """Top-line rupee figures for the distributor niche — presented with the
+    same prominence as existing headline metrics."""
+    metrics: List[str] = []
+
+    # Dead stock (Feature 3): rupee value of capital tied up.
+    ihs = bi.get("inventory_health_score")
+    if ihs and isinstance(ihs, dict):
+        dead_value = ihs.get("total_dead_stock_value")
+        dead_count = ihs.get("dead_stock_count")
+        window = ihs.get("dead_stock_window_days") or 60
+        if dead_value and dead_count:
+            metrics.append(
+                f"{format_inr_lakh(dead_value)} of capital is tied up in {dead_count} "
+                f"dead-stock SKU(s) idle {window}+ days."
+            )
+
+    # Receivables (Feature 4): outstanding and aged amounts.
+    rr = bi.get("receivables_risk")
+    if rr and isinstance(rr, dict):
+        total = rr.get("total_outstanding")
+        cust_n = rr.get("customer_count")
+        over_45 = rr.get("over_45_amount")
+        if total and cust_n:
+            line = f"{format_inr_lakh(total)} outstanding across {cust_n} customer(s)"
+            if rr.get("aging_available") and over_45:
+                line += f", {format_inr_lakh(over_45)} of which is over 45 days old"
+            metrics.append(line + ".")
+
+    # Churn (Feature 2): revenue now at risk from quiet shops.
+    ccr = bi.get("customer_churn_risk")
+    if ccr and isinstance(ccr, dict):
+        rev_at_risk = ccr.get("revenue_at_risk")
+        flagged = (ccr.get("at_risk_count") or 0) + (ccr.get("churned_count") or 0)
+        if rev_at_risk and flagged:
+            metrics.append(
+                f"{format_inr_lakh(rev_at_risk)} of historic revenue is at risk across "
+                f"{flagged} quiet shop(s)."
+            )
+
+    return metrics
+
+
 def _collect_watchpoints(bi: Dict[str, Any], risks: List[str], row_count: int) -> List[str]:
     watchpoints = []
     
@@ -270,23 +334,33 @@ def _determine_confidence(row_count: int, coverage: str) -> str:
  
  
 def _build_sections(
-    bi: Dict[str, Any], positives: List[str], risks: List[str], 
-    watchpoints: List[str], sentiment: str, coverage: str, confidence: str
+    bi: Dict[str, Any], positives: List[str], risks: List[str],
+    watchpoints: List[str], sentiment: str, coverage: str, confidence: str,
+    headline_metrics: Optional[List[str]] = None,
 ) -> List[ExecutiveSummarySection]:
     sections = []
-    
+
     # 1. Overview
     overview_text = bi.get("executive_summary", "")
     if not overview_text:
         trend_desc = (bi.get("trend") or {}).get("description", "Revenue performance is stable.")
         overview_text = f"Performance overview: {trend_desc}"
-    
+
     sections.append(ExecutiveSummarySection(
         heading="Performance Overview",
         content=overview_text,
         sentiment="neutral"
     ))
-    
+
+    # 1b. Headline Numbers — prominent top-line rupee figures (dead stock,
+    #     receivables, churn) for the distributor niche.
+    if headline_metrics:
+        sections.append(ExecutiveSummarySection(
+            heading="Headline Numbers",
+            content=" ".join(headline_metrics[:4]),
+            sentiment="warning"
+        ))
+
     # 2. Positives
     if positives:
         sections.append(ExecutiveSummarySection(

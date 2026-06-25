@@ -11,6 +11,9 @@ import {
   ChevronLeft,
   ChevronRight,
   ShieldCheck,
+  TrendingUp,
+  PieChart,
+  RefreshCw,
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -20,6 +23,9 @@ const NAV_ITEMS = [
   { path: "/", label: "Overview", icon: LayoutDashboard },
   { path: "/datasets", label: "Datasets", icon: Database },
   { path: "/insights", label: "Insights", icon: Lightbulb },
+  { path: "/forecast", label: "Forecast", icon: TrendingUp },
+  { path: "/margins", label: "Margins", icon: PieChart },
+  { path: "/retention", label: "Retention", icon: RefreshCw },
   { path: "/comparison", label: "Comparison", icon: GitCompare },
   { path: "/report", label: "Report", icon: FileText },
   { path: "/history", label: "History", icon: History },
@@ -76,13 +82,13 @@ export function AppSidebar() {
                 "group/nav flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200",
                 active
                   ? "bg-sidebar-accent text-sidebar-primary"
-                  : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 hover:translate-x-0.5"
+                  : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
               )}
             >
               <Icon
                 className={cn(
-                  "w-4 h-4 shrink-0 transition-transform duration-200",
-                  active ? "text-sidebar-primary" : "group-hover/nav:scale-110"
+                  "w-4 h-4 shrink-0",
+                  active ? "text-sidebar-primary" : ""
                 )}
               />
               {!collapsed && <span>{label}</span>}

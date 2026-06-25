@@ -1,5 +1,8 @@
-from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile, File, Form, HTTPException, status, Request
+import asyncio
 import base64
+import hashlib
+import io
 import pandas as pd
 import tempfile
 import json
@@ -10,8 +13,10 @@ from slowapi.util import get_remote_address
 
 from app.config.settings import settings
 from app.utils.security import require_internal_auth
+from app.utils.cache import analysis_cache
 from app.services.insight_v1_5 import InsightV15Service
 from app.schemas.insight.cleaning import CleaningOptions
+from app.schemas.analyze import AnalyzeResponse
 from app.services.report_renderers.pdf_report import render_pdf
 from app.services.business_insights.generator import BusinessInsightGenerator
 from app.services.insight_engine.column_detector import detect_revenue_column
@@ -29,6 +34,28 @@ logger = logging.getLogger(__name__)
 limiter = Limiter(key_func=get_remote_address, enabled=settings.RATE_LIMIT_ENABLED)
 
 MAX_ANALYSIS_ROWS = 200000
+
+
+def _safe_remove(path: str | None) -> None:
+    """Best-effort temp-file cleanup, run after the response is sent."""
+    if path and os.path.exists(path):
+        try:
+            os.remove(path)
+        except Exception:
+            pass
+
+
+def _cache_key(current_bytes: bytes, baseline_bytes: bytes | None, options: dict) -> str:
+    """Deterministic key over raw input bytes + options, so an identical
+    re-submission short-circuits the whole engine."""
+    h = hashlib.sha256()
+    h.update(current_bytes)
+    h.update(b"||")
+    if baseline_bytes:
+        h.update(baseline_bytes)
+    h.update(b"||")
+    h.update(json.dumps(options, sort_keys=True, default=str).encode("utf-8"))
+    return h.hexdigest()
 
 
 def _read_csv_safe(file_obj) -> pd.DataFrame:
@@ -164,10 +191,11 @@ def _apply_revenue_fallback(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-@router.post("/analyze")
+@router.post("/analyze", response_model=AnalyzeResponse)
 @limiter.limit(settings.ANALYZE_LIMIT)
 async def analyze(
     request: Request,
+    background_tasks: BackgroundTasks,
     current_file: UploadFile = File(...),
     baseline_file: UploadFile | None = File(None),
     drop_duplicates: bool = Form(True),
@@ -175,16 +203,20 @@ async def analyze(
     cap_outliers: bool = Form(False),
     normalize_columns: bool = Form(True),
     metric_schema: str | None = Form(None),
+    include_pdf: bool = Form(True),
     _auth: bool = Depends(require_internal_auth),
 ):
     pdf_path = None  # Track for cleanup on error
+    baseline_bytes: bytes | None = None
     try:
         # Validate current file upload
         _validate_upload_file(current_file, "current dataset")
         
-        # Parse current dataset
+        # Parse current dataset (read bytes once so we can both parse and
+        # content-hash the input for caching).
         try:
-            current_df = _read_csv_safe(current_file.file)
+            current_bytes = await current_file.read()
+            current_df = _read_csv_safe(io.BytesIO(current_bytes))
         except Exception:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -216,7 +248,8 @@ async def analyze(
             _validate_upload_file(baseline_file, "baseline dataset")
             
             try:
-                baseline_df = _read_csv_safe(baseline_file.file)
+                baseline_bytes = await baseline_file.read()
+                baseline_df = _read_csv_safe(io.BytesIO(baseline_bytes))
             except Exception:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -241,6 +274,21 @@ async def analyze(
                     detail="The baseline dataset file is empty. Please upload a file with data or omit the baseline file."
                 )
 
+        # Response cache: an identical dataset + options short-circuits the
+        # whole engine (no Redis in the stack; this is the lightest option).
+        cache_options = {
+            "drop_duplicates": drop_duplicates,
+            "drop_missing": drop_missing,
+            "cap_outliers": cap_outliers,
+            "normalize_columns": normalize_columns,
+            "metric_schema": metric_schema,
+            "include_pdf": include_pdf,
+        }
+        cache_key = _cache_key(current_bytes, baseline_bytes, cache_options)
+        cached_response = analysis_cache.get(cache_key)
+        if cached_response is not None:
+            return {**cached_response, "cached": True}
+
         # Construct CleaningOptions from parsed form fields
         cleaning = CleaningOptions(
             drop_duplicates=drop_duplicates,
@@ -249,9 +297,12 @@ async def analyze(
             normalize_columns=normalize_columns,
         )
 
-        # Process datasets and generate report
+        # Process datasets and generate report.
+        # Offloaded to a worker thread so the heavy, synchronous pandas pipeline
+        # never blocks the event loop — concurrent analyses stay responsive.
         try:
-            report = service.run(
+            report = await asyncio.to_thread(
+                service.run,
                 current_df=current_df,
                 baseline_df=baseline_df,
                 cleaning=cleaning,
@@ -317,7 +368,8 @@ async def analyze(
                     baseline_rev_col, _, _ = detect_revenue_column(bi_baseline_df)
             
             if current_rev_col:
-                bi_result = business_insight_generator.generate(
+                bi_result = await asyncio.to_thread(
+                    business_insight_generator.generate,
                     report=report,
                     current_df=bi_current_df,
                     baseline_df=bi_baseline_df,
@@ -355,34 +407,61 @@ async def analyze(
             # Business insights are optional - never fail main request
             pass
 
-        # Generate PDF report (now includes business insights if available)
-        try:
-            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
-                render_pdf(report, f.name, business_insights=business_insights)
-                pdf_path = f.name
-        except Exception as e:
-            # PDF generation failure
-            logger.error(f"PDF generation error: {type(e).__name__}: {e}", exc_info=True)
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="An error occurred while generating the PDF report. Please try again."
-            )
-
-        # Encode PDF as base64 for cross-service transfer (no shared filesystem needed)
+        # Generate PDF report off the event loop, and only when requested.
+        # Callers that need just the JSON analysis (e.g. re-viewing results) can
+        # pass include_pdf=false for a much faster response.
         pdf_base64 = None
-        if pdf_path and os.path.exists(pdf_path):
+        if include_pdf:
             try:
-                with open(pdf_path, "rb") as pf:
-                    pdf_base64 = base64.b64encode(pf.read()).decode("utf-8")
-            except Exception:
-                pass  # PDF encoding is best-effort
+                fd, pdf_path = tempfile.mkstemp(suffix=".pdf")
+                os.close(fd)
+                await asyncio.to_thread(
+                    render_pdf, report, pdf_path, business_insights=business_insights
+                )
+            except Exception as e:
+                logger.error(f"PDF generation error: {type(e).__name__}: {e}", exc_info=True)
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="An error occurred while generating the PDF report. Please try again."
+                )
 
-        return {
+            # Encode PDF as base64 for cross-service transfer (no shared FS needed)
+            if pdf_path and os.path.exists(pdf_path):
+                try:
+                    with open(pdf_path, "rb") as pf:
+                        pdf_base64 = base64.b64encode(pf.read()).decode("utf-8")
+                except Exception:
+                    pass  # PDF encoding is best-effort
+                # The base64 is now in the body; drop the temp file after sending.
+                background_tasks.add_task(_safe_remove, pdf_path)
+
+        # Lift distribution-schema detection results to the top level so the
+        # frontend can surface column-detection coverage and warnings without
+        # digging into the business_insights payload.
+        distribution_schema = None
+        schema_warnings = None
+        if isinstance(business_insights, dict):
+            distribution_schema = business_insights.get("distribution_schema")
+            schema_warnings = business_insights.get("schema_warnings")
+
+        response_payload = {
             "report": report.dict(),
             "pdf_path": pdf_path,
             "pdf_base64": pdf_base64,
             "business_insights": business_insights,
+            "distribution_schema": distribution_schema,
+            "schema_warnings": schema_warnings,
+            "cached": False,
         }
+
+        # Cache a portable copy. The PDF only travels as base64; the temp path is
+        # ephemeral (cleaned up post-response), so null it in the cached copy.
+        try:
+            analysis_cache.set(cache_key, {**response_payload, "pdf_path": None})
+        except Exception:
+            pass  # caching is best-effort, never fail the request
+
+        return response_payload
     
     except HTTPException:
         # Cleanup temp file on error

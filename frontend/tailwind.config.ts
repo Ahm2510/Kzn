@@ -15,9 +15,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['League Spartan', 'system-ui', 'sans-serif'],
-        mono: ['Roboto Mono', 'monospace'],
+        sans: ['IBM Plex Sans', 'system-ui', 'sans-serif'],
+        display: ['Archivo', 'system-ui', 'sans-serif'],
+        mono: ['IBM Plex Mono', 'ui-monospace', 'monospace'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -72,6 +72,12 @@ export default {
           medium: "hsl(var(--insight-severity-medium))",
           low: "hsl(var(--insight-severity-low))",
         },
+        // Functional signal scale — the product's risk language
+        signal: {
+          overdue: "hsl(var(--signal-overdue))",
+          slowing: "hsl(var(--signal-slowing))",
+          clear: "hsl(var(--signal-clear))",
+        },
         gold: "hsl(var(--gold-emphasis))",
         "accent-gold": "hsl(var(--gold-emphasis))",
       },
@@ -93,35 +99,21 @@ export default {
           from: { opacity: "0" },
           to: { opacity: "1" },
         },
-        "slide-in-left": {
-          from: { transform: "translateX(-8px)", opacity: "0" },
-          to: { transform: "translateX(0)", opacity: "1" },
-        },
-        "pulse-slow": {
-          "0%, 100%": { opacity: "1" },
-          "50%": { opacity: "0.6" },
-        },
         "page-enter": {
-          "0%": { opacity: "0", transform: "translateY(12px)" },
+          "0%": { opacity: "0", transform: "translateY(8px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
-        "slide-up-fade": {
-          "0%": { opacity: "0", transform: "translateY(20px)" },
-          "100%": { opacity: "1", transform: "translateY(0)" },
+        "seal-breathe": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.55" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "fade-in": "fade-in 0.5s ease-out",
-        "slide-in-left": "slide-in-left 0.4s ease-out",
-        "pulse-slow": "pulse-slow 2s ease-in-out infinite",
-        "page-enter": "page-enter 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards",
-        "slide-up-fade": "slide-up-fade 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards",
-        "orb-drift": "orb-drift 15s ease-in-out infinite",
-        breathe: "breathe 4s ease-in-out infinite",
-        "pulse-subtle": "pulse-subtle 3s ease-in-out infinite",
-        "spin-slow": "spin-slow 8s linear infinite",
+        "fade-in": "fade-in 0.3s ease-out",
+        "page-enter": "page-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+        "seal-breathe": "seal-breathe 2.6s ease-in-out infinite",
       },
       spacing: {
         "18": "4.5rem",

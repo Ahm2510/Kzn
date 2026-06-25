@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-type StatusType = "pending" | "processing" | "complete" | "error" | "idle";
+type StatusType = "pending" | "processing" | "complete" | "error" | "idle" | "warning";
 
 interface StatusBadgeProps {
   status: StatusType;
@@ -28,6 +28,10 @@ const statusConfig: Record<StatusType, { label: string; className: string }> = {
   error: {
     label: "Error",
     className: "bg-destructive/10 text-destructive",
+  },
+  warning: {
+    label: "Warning",
+    className: "bg-amber-500/10 text-amber-500",
   },
 };
 

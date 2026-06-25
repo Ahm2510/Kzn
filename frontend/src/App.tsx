@@ -8,11 +8,14 @@ import Login from "./pages/Login";
 import Overview from "./pages/Overview";
 import Datasets from "./pages/Datasets";
 import Insights from "./pages/Insights";
+import Forecast from "./pages/Forecast";
 import Comparison from "./pages/Comparison";
 import Report from "./pages/Report";
 import History from "./pages/History";
 import Settings from "./pages/Settings";
 import Admin from "./pages/Admin";
+import Margins from "./pages/Margins";
+import Retention from "./pages/Retention";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -85,6 +88,30 @@ function AnimatedRoutes() {
           element={
             <RequireAuth>
               <Insights />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/forecast"
+          element={
+            <RequireAuth>
+              <Forecast />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/margins"
+          element={
+            <RequireAuth>
+              <Margins />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/retention"
+          element={
+            <RequireAuth>
+              <Retention />
             </RequireAuth>
           }
         />

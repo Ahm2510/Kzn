@@ -308,7 +308,14 @@ export default function History() {
                         <StatusBadge status={mapStatus(run.status)} />
                       </TableCell>
                       <TableCell className="text-right font-mono py-4 text-foreground pr-8">
-                        {run.insight_report?.insights?.length ?? 0}
+                        <div className="flex flex-col items-end gap-0.5">
+                          <span>{run.insight_report?.insights?.length ?? 0}</span>
+                          {run.insight_report?.total_transactions != null && (
+                            <span className="text-[10px] text-muted-foreground">
+                              {run.insight_report.total_transactions.toLocaleString()} txns
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-xs py-4 pl-8 font-sans">
                         {new Date(run.created_at).toLocaleString("en-US", {
@@ -492,8 +499,17 @@ export default function History() {
 
                   {selectedRun.insight_report?.insights && selectedRun.insight_report.insights.length > 0 && (
                     <div className="pt-4 border-t border-border/50 space-y-3">
-                      <span className="text-xs text-muted-foreground block font-bold uppercase tracking-wider font-mono">
-                        Top Insights
+                      <span className="text-xs text-muted-foreground flex items-center justify-between font-bold uppercase tracking-wider font-mono">
+                        <span>Top Insights</span>
+                        <span className="font-sans text-[10px] font-normal lowercase opacity-80 flex gap-2">
+                          <span>{selectedRun.insight_report?.insights?.length ?? 0} insights</span>
+                          {selectedRun.insight_report?.total_transactions != null && (
+                            <span>&middot; {selectedRun.insight_report.total_transactions.toLocaleString()} transactions</span>
+                          )}
+                          {selectedRun.baseline_file_path && (
+                            <span>&middot; Comparison included</span>
+                          )}
+                        </span>
                       </span>
                       <div className="space-y-3">
                         {selectedRun.insight_report.insights.slice(0, 3).map((insight: { title: string; description: string; severity?: string; confidence?: string }, idx: number) => (

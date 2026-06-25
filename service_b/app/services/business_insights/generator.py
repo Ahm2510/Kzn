@@ -26,6 +26,17 @@ from app.services.concentration_risk import ConcentrationRiskDashboardResult, co
 from app.services.executive_summary import EnhancedExecutiveSummaryResult, compute_enhanced_executive_summary
 from app.services.mom_commentary import MoMCommentaryResult, compute_mom_commentary
 from app.services.enhanced_products_to_watch import EnhancedProductsToWatchResult, compute_enhanced_products_to_watch
+from app.services.forecasting import ForecastResult, compute_forecast
+from app.services.margin_analysis import MarginAnalysisResult, compute_margin_analysis
+from app.services.cohort_retention import CohortRetentionResult, compute_cohort_retention
+from app.services.customer_churn_risk import CustomerChurnRiskResult, compute_customer_churn_risk
+from app.services.receivables_risk import ReceivablesRiskResult, compute_receivables_risk
+from app.services.action_list import ActionItem, build_action_list
+from app.services.insight_engine.entity_detector import (
+    detect_distribution_schema,
+    resolve_schema,
+    build_schema_warnings,
+)
 
 
 
@@ -107,9 +118,16 @@ class BusinessInsights(BaseModel):
     enhanced_executive_summary: Optional[EnhancedExecutiveSummaryResult] = None
     mom_commentary: Optional[MoMCommentaryResult] = None
     enhanced_products_to_watch: Optional[EnhancedProductsToWatchResult] = None
+    forecast: Optional[ForecastResult] = None
+    margin_analysis: Optional[MarginAnalysisResult] = None
+    cohort_retention: Optional[CohortRetentionResult] = None
 
-
-
+    # ── Distribution-niche additions (FMCG / pharma / auto-parts) ────────────
+    customer_churn_risk: Optional[CustomerChurnRiskResult] = None
+    receivables_risk: Optional[ReceivablesRiskResult] = None
+    action_list: Optional[List[ActionItem]] = None
+    distribution_schema: Optional[Dict[str, Any]] = None
+    schema_warnings: Optional[List[str]] = None
 
     # Metadata
     meta: Optional[Dict[str, Any]] = None
@@ -129,12 +147,21 @@ class BusinessInsightGenerator:
     # Mandatory keywords for analytical thinking
     MANDATORY_KEYWORDS = ["risk", "concentration", "volatility", "growth", "stability", "anomaly", "dependency", "efficiency"]
 
-    def build_scope_block(self) -> ScopeBlock:
+    def build_scope_block(
+        self,
+        has_cost: bool = False,
+        has_margin: bool = False,
+    ) -> ScopeBlock:
         """Build explicit scope definition for the analysis."""
-        return ScopeBlock(
-            analyzed=["revenue"],
-            not_analyzed=["costs", "margins", "forecasting", "cohort_analysis"]
-        )
+        analyzed = ["revenue"]
+        not_analyzed = []
+        if has_cost:
+            analyzed.append("costs")
+            analyzed.append("margins")
+        else:
+            not_analyzed.extend(["costs", "margins"])
+        not_analyzed.extend(["forecasting", "cohort_analysis"])
+        return ScopeBlock(analyzed=analyzed, not_analyzed=not_analyzed)
     
     def build_executive_takeaways(
         self,
@@ -300,15 +327,35 @@ class BusinessInsightGenerator:
             # Inventory Health Score (additive — returns None on failure)
             ihs_result = compute_inventory_health_score(current_df)
 
+            # Margin Analysis (additive — returns None if no cost column detected)
+            margin_result = compute_margin_analysis(
+                current_df=current_df,
+                revenue_column=revenue_column,
+                baseline_df=baseline_df,
+                baseline_revenue_column=baseline_revenue_column,
+            )
+
+            # Cohort Retention Analysis (additive — returns None if no customer+date columns)
+            cohort_retention_result = compute_cohort_retention(
+                current_df=current_df,
+                revenue_column=revenue_column,
+            )
+
+            scope = self.build_scope_block(
+                has_cost=margin_result is not None,
+                has_margin=margin_result is not None,
+            )
+
             # Early Warning Alerts (meta-layer — reads from already-computed insights)
             # Build a temporary dict of computed insights so EWA can evaluate rules
             _pre_bi = BusinessInsights(
-                executive_takeaways=takeaways, scope=self.build_scope_block(),
+                executive_takeaways=takeaways, scope=scope,
                 trend=trend, stability=stability, efficiency=efficiency, concentration=concentration,
                 executive_summary=exec_summary,
                 products_to_watch=products_to_watch,
                 revenue_stability_index=rsi_result,
                 inventory_health_score=ihs_result,
+                forecast=None,
             )
             ewa_result = compute_early_warnings(_pre_bi.dict(), current_df)
 
@@ -334,10 +381,57 @@ class BusinessInsightGenerator:
             # Enhanced Products to Watch (additive — reads product + revenue data)
             eptw_result = compute_enhanced_products_to_watch(current_df, revenue_column)
 
+            # Forecasting (additive — returns None on failure)
+            forecast_result = compute_forecast(
+                current_df=current_df,
+                revenue_column=revenue_column,
+                forecast_horizon=3,
+            )
+
+            # ── Distribution-niche features (FMCG / pharma / auto-parts) ──────
+            # One shared multi-entity detection pass drives the distributor
+            # features and the schema warnings surfaced to the frontend.
+            distribution_schema = None
+            schema_warnings = None
+            churn_result = None
+            receivables_result = None
+            action_items = None
+            try:
+                schema = detect_distribution_schema(current_df)
+                resolved = resolve_schema(schema)
+                schema_warnings = build_schema_warnings(schema) or None
+                # Serializable view of the schema for the API response.
+                distribution_schema = {
+                    key: {
+                        "column": val[0],
+                        "confidence": round(float(val[1]), 2),
+                        "mode": val[2],
+                    }
+                    for key, val in schema.items()
+                }
+
+                # Feature 2 — customer / shop churn & risk
+                churn_result = compute_customer_churn_risk(
+                    current_df, revenue_column, schema=resolved,
+                )
+                # Feature 4 — receivables / payments-due risk (None if no column)
+                receivables_result = compute_receivables_risk(
+                    current_df, schema=resolved,
+                )
+                # Feature 5 — operator action list (top item from 2 / 3 / 4)
+                action_items = build_action_list(
+                    churn=churn_result,
+                    inventory_health=ihs_result,
+                    receivables=receivables_result,
+                ) or None
+            except Exception:
+                # Distribution features are additive — never fail generation.
+                pass
+
             # Enhanced Executive Summary (meta-layer — synthesizes all computed insights)
             # Create a temporary container so compute_enhanced_executive_summary can read from all sub-results
             _all_bi = BusinessInsights(
-                executive_takeaways=takeaways, scope=self.build_scope_block(),
+                executive_takeaways=takeaways, scope=scope,
                 trend=trend, stability=stability, efficiency=efficiency, concentration=concentration,
                 executive_summary=exec_summary,
                 products_to_watch=products_to_watch,
@@ -349,11 +443,16 @@ class BusinessInsightGenerator:
                 concentration_risk_dashboard=crd_result,
                 mom_commentary=mom_result,
                 enhanced_products_to_watch=eptw_result,
+                forecast=forecast_result,
+                cohort_retention=cohort_retention_result,
+                customer_churn_risk=churn_result,
+                receivables_risk=receivables_result,
+                action_list=action_items,
             )
             ees_result = compute_enhanced_executive_summary(_all_bi.dict(), len(current_df))
  
             return BusinessInsights(
-                executive_takeaways=takeaways, scope=self.build_scope_block(),
+                executive_takeaways=takeaways, scope=scope,
                 trend=trend, stability=stability, efficiency=efficiency, concentration=concentration,
                 executive_summary=exec_summary,
                 products_to_watch=products_to_watch,
@@ -366,6 +465,14 @@ class BusinessInsightGenerator:
                 enhanced_executive_summary=ees_result,
                 mom_commentary=mom_result,
                 enhanced_products_to_watch=eptw_result,
+                forecast=forecast_result,
+                margin_analysis=margin_result,
+                cohort_retention=cohort_retention_result,
+                customer_churn_risk=churn_result,
+                receivables_risk=receivables_result,
+                action_list=action_items,
+                distribution_schema=distribution_schema,
+                schema_warnings=schema_warnings,
             )
 
 

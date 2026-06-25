@@ -137,6 +137,8 @@ export interface AnalysisRun {
 
 export interface InsightReport {
   summary?: string;
+  total_transactions?: number | null;
+  products_analyzed?: number | null;
   executive_summary?: string;
   trend_direction?: string;
   stability?: string;
@@ -212,6 +214,17 @@ export interface InsightReport {
       has_quantity_data?: boolean;
       has_stock_data?: boolean;
       watchlist?: string[];
+      // Distribution niche (Prompt 1): dead / slow-moving stock with rupee value
+      dead_stock_skus?: Array<{
+        sku: string;
+        last_sold: string;
+        days_inactive: number;
+        value_tied_up: number;
+        avg_transaction_value: number;
+      }>;
+      total_dead_stock_value?: number | null;
+      dead_stock_count?: number | null;
+      dead_stock_window_days?: number | null;
     };
     early_warning_alerts?: {
       alerts?: Array<{
@@ -327,6 +340,7 @@ export interface InsightReport {
       key_positives?: string[];
       key_risks?: string[];
       watchpoints?: string[];
+      headline_metrics?: string[];      // Prompt 1: top-line rupee figures
       data_coverage?: string;
       warning?: string | null;
     };
@@ -370,7 +384,148 @@ export interface InsightReport {
       confidence?: string;
       warning?: string | null;
     };
+    forecast?: {
+      forecast_horizon: number;
+      granularity: string;
+      historical_points: Array<{
+        period_label: string;
+        projected_value: number;
+        lower_bound: number;
+        upper_bound: number;
+      }>;
+      projected_points: Array<{
+        period_label: string;
+        projected_value: number;
+        lower_bound: number;
+        upper_bound: number;
+      }>;
+      trend_direction: string;
+      trend_slope: number;
+      r_squared: number;
+      confidence: string;
+      confidence_reason: string;
+      explanation: string;
+      warning?: string | null;
+      revenue_column_used: string;
+      date_column_used?: string | null;
+      sample_size: number;
+    } | null;
+    margin_analysis?: {
+      total_revenue: number;
+      total_cost: number;
+      total_gross_profit: number;
+      overall_margin_pct: number;
+      margin_health: string;              // "healthy"|"moderate"|"thin"|"critical"
+      margin_health_explanation: string;
+      revenue_column_used: string;
+      cost_column_used: string;
+      has_product_breakdown: boolean;
+      product_breakdown?: Array<{
+        product: string;
+        revenue: number;
+        cost: number;
+        gross_profit: number;
+        margin_pct: number;
+        tier: string;                     // "healthy"|"moderate"|"thin"|"loss_making"
+        revenue_share_pct: number;
+        watchlist: boolean;
+      }> | null;
+      products_loss_making: number;
+      products_thin_margin: number;
+      products_healthy: number;
+      baseline_margin_pct?: number | null;
+      margin_change_pct?: number | null;
+      margin_direction?: string | null;   // "improving"|"stable"|"declining"
+      confidence: string;
+      confidence_reason: string;
+      warning?: string | null;
+      sample_size: number;
+    } | null;
+    cohort_retention?: {
+      cohort_table: Array<{
+        cohort_label: string;
+        cohort_size: number;
+        periods: number[];
+        period_labels: string[];
+      }>;
+      summary: {
+        overall_retention_rate: number;
+        avg_orders_per_customer: number;
+        single_purchase_customers_pct: number;
+        repeat_purchase_rate: number;
+        best_cohort?: string | null;
+        worst_cohort?: string | null;
+        cohort_trend: string;           // "improving"|"stable"|"declining"
+        at_risk_cohorts: string[];
+      };
+      customer_column_used: string;
+      date_column_used: string;
+      revenue_column_used: string;
+      total_customers: number;
+      total_cohorts: number;
+      analysis_granularity: string;
+      confidence: string;
+      confidence_reason: string;
+      explanation: string;
+      warning?: string | null;
+      has_sufficient_history: boolean;
+      sample_size: number;
+    } | null;
     products_to_watch?: string[];
+
+    // ── Distribution niche (Prompt 1) ──────────────────────────────────────
+    customer_churn_risk?: {
+      customers?: Array<{
+        customer: string;
+        risk: "churned" | "at_risk" | "active";
+        order_count: number;
+        days_since_last_order: number;
+        avg_gap_days?: number | null;
+        last_order_date?: string | null;
+        total_revenue: number;
+        revenue_share_pct: number;
+        explanation: string;
+      }>;
+      total_customers?: number;
+      at_risk_count?: number;
+      churned_count?: number;
+      revenue_at_risk?: number;
+      revenue_at_risk_pct?: number;
+      has_at_risk?: boolean;
+      basis?: string;
+      confidence?: string;
+      warning?: string | null;
+      headline_action?: string | null;
+    };
+    receivables_risk?: {
+      customers?: Array<{
+        customer: string;
+        outstanding: number;
+        share_pct: number;
+        aging_bucket?: string | null;
+        oldest_unpaid_days?: number | null;
+        explanation?: string | null;
+      }>;
+      total_outstanding?: number;
+      customer_count?: number;
+      aging_available?: boolean;
+      over_45_amount?: number;
+      over_60_amount?: number;
+      over_90_amount?: number;
+      over_45_customer_count?: number;
+      confidence?: string;
+      warning?: string | null;
+      headline_action?: string | null;
+    };
+    action_list?: Array<{
+      category: "churn" | "dead_stock" | "receivables" | string;
+      priority: number;
+      headline: string;
+      detail?: string | null;
+    }>;
+    distribution_schema?: Record<string, { column: string | null; confidence: number; mode: string }>;
+    schema_warnings?: string[];
+
     data_quality?: {
       rows_before?: number;
       rows_after?: number;

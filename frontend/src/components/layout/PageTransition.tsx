@@ -1,34 +1,24 @@
-import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
-import { cn } from "@/lib/utils";
+/**
+ * Route transition: a single calm fade + 6px lift, ~220ms, exponential ease-out.
+ * App.tsx remounts this on pathname change (via key), so the enter animation
+ * runs on every navigation. Collapses to an instant render under reduced motion.
+ */
+import { motion, useReducedMotion } from "framer-motion";
 
 interface PageTransitionProps {
   children: React.ReactNode;
 }
 
 export function PageTransition({ children }: PageTransitionProps) {
-  const location = useLocation();
-  const [displayedChildren, setDisplayedChildren] = useState(children);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-
-  useEffect(() => {
-    setIsTransitioning(true);
-    const timer = setTimeout(() => {
-      setDisplayedChildren(children);
-      setIsTransitioning(false);
-    }, 150);
-
-    return () => clearTimeout(timer);
-  }, [location.pathname, children]);
+  const reduce = useReducedMotion();
 
   return (
-    <div
-      className={cn(
-        "transition-all duration-300 ease-out",
-        isTransitioning ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"
-      )}
+    <motion.div
+      initial={reduce ? { opacity: 0 } : { opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: reduce ? 0.001 : 0.22, ease: [0.16, 1, 0.3, 1] }}
     >
-      {displayedChildren}
-    </div>
+      {children}
+    </motion.div>
   );
 }

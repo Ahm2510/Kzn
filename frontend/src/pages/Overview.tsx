@@ -1,11 +1,43 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Database, LayoutDashboard } from "lucide-react";
+import { Database, LayoutDashboard, ArrowRight, CheckCircle2, TriangleAlert } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useLatestCompletedRun } from "@/hooks/useAnalysis";
+import { AttentionLedger, type LedgerItem } from "@/components/ledger/AttentionLedger";
+import { CountUp } from "@/components/ui/CountUp";
+import { Reveal, RevealItem } from "@/components/motion";
+import { formatINRLakh } from "@/lib/format";
+import { cn } from "@/lib/utils";
+
+function greeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning.";
+  if (h < 17) return "Good afternoon.";
+  return "Good evening.";
+}
+
+function OverviewSkeleton() {
+  return (
+    <div className="page-container">
+      <div className="h-5 w-40 rounded bg-muted animate-pulse" />
+      <div className="mt-3 h-8 w-72 rounded bg-muted animate-pulse" />
+      <div className="mt-8 space-y-px overflow-hidden rounded-lg border border-border">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="flex items-center gap-4 bg-card px-5 py-5">
+            <div className="h-7 w-7 rounded-md bg-muted animate-pulse" />
+            <div className="flex-1 space-y-2">
+              <div className="h-3 w-20 rounded bg-muted animate-pulse" />
+              <div className="h-4 w-2/3 rounded bg-muted animate-pulse" />
+            </div>
+            <div className="h-5 w-16 rounded bg-muted animate-pulse" />
+          </div>
+        ))}
+      </div>
+      <div className="mt-6 h-20 rounded-lg border border-border bg-card animate-pulse" />
+    </div>
+  );
+}
 
 export default function Overview() {
   const navigate = useNavigate();
@@ -14,31 +46,7 @@ export default function Overview() {
   if (isLoading) {
     return (
       <AppLayout>
-        <div className="page-container animate-fade-in">
-          <section className="section-spacing">
-            <Skeleton className="h-6 w-48 mb-6" />
-            {/* Score cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-              <Skeleton className="h-36 rounded-lg" />
-              <Skeleton className="h-36 rounded-lg" />
-            </div>
-            {/* Alerts */}
-            <Skeleton className="h-24 w-full rounded-lg mb-8" />
-            {/* Takeaways */}
-            <Skeleton className="h-32 w-full rounded-lg mb-8" />
-            {/* Summary */}
-            <Skeleton className="h-48 w-full rounded-lg mb-8" />
-            {/* Signals grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              <Skeleton className="h-20 rounded-lg" />
-              <Skeleton className="h-20 rounded-lg" />
-              <Skeleton className="h-20 rounded-lg" />
-              <Skeleton className="h-20 rounded-lg" />
-            </div>
-            {/* Tables */}
-            <Skeleton className="h-64 w-full rounded-lg" />
-          </section>
-        </div>
+        <OverviewSkeleton />
       </AppLayout>
     );
   }
@@ -48,9 +56,16 @@ export default function Overview() {
       <AppLayout>
         <EmptyState
           icon={LayoutDashboard}
-          title="Unable to load overview"
-          description={error.message || "An error occurred while loading the analysis overview."}
-          action={<Button variant="outline" onClick={() => window.location.reload()}>Try again</Button>}
+          title="We couldn't load your overview"
+          description={
+            (error as Error).message ||
+            "The analysis service didn't respond. Refresh to try again, or re-run the dataset from Datasets."
+          }
+          action={
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              Try again
+            </Button>
+          }
           className="h-[calc(100vh-3.5rem)]"
         />
       </AppLayout>
@@ -62,12 +77,12 @@ export default function Overview() {
       <AppLayout>
         <EmptyState
           icon={Database}
-          title="No active analysis"
-          description="Upload a dataset to begin generating insights."
+          title="Nothing to show yet"
+          description="Upload a sales or ledger export and Kaizen will surface who's churning, what stock is dead, and which payments are overdue."
           action={
             <Button onClick={() => navigate("/datasets")}>
-              <Database className="w-4 h-4 mr-2" />
-              Upload dataset
+              <Database className="mr-2 h-4 w-4" />
+              Upload a dataset
             </Button>
           }
           className="h-[calc(100vh-3.5rem)]"
@@ -78,933 +93,198 @@ export default function Overview() {
 
   const report = run.insight_report;
   const bi = report?.business_insights || null;
-  const hasBI =
-    !!bi &&
-    !!(
-      bi.executive_takeaways ||
-      bi.executive_summary ||
-      bi.trend ||
-      bi.stability ||
-      bi.efficiency ||
-      bi.concentration
-    );
+
+  // ── Build the attention ledger from the action list + structured amounts ──
+  const amountFor: Record<string, number | undefined> = {
+    churn: bi?.customer_churn_risk?.revenue_at_risk,
+    dead_stock: bi?.inventory_health_score?.total_dead_stock_value ?? undefined,
+    receivables: bi?.receivables_risk?.total_outstanding,
+  };
+  const tagFor: Record<string, string> = {
+    receivables: "Overdue",
+    churn: "Gone quiet",
+    dead_stock: "Dead stock",
+  };
+  const ledgerItems: LedgerItem[] = (bi?.action_list ?? []).map((a, i) => ({
+    id: `${a.category}-${i}`,
+    level: a.category === "receivables" ? "overdue" : "slowing",
+    tag: tagFor[a.category] ?? a.category.replace(/_/g, " "),
+    headline: a.headline,
+    detail: a.detail ?? undefined,
+    amount: amountFor[a.category],
+  }));
+
+  const headlineFigures = [
+    { label: "Outstanding", value: bi?.receivables_risk?.total_outstanding, sub: bi?.receivables_risk?.customer_count ? `${bi.receivables_risk.customer_count} customers` : undefined },
+    { label: "Dead stock", value: bi?.inventory_health_score?.total_dead_stock_value ?? undefined, sub: bi?.inventory_health_score?.dead_stock_count ? `${bi.inventory_health_score.dead_stock_count} SKUs` : undefined },
+    { label: "Revenue at risk", value: bi?.customer_churn_risk?.revenue_at_risk, sub: bi?.customer_churn_risk ? `${(bi.customer_churn_risk.at_risk_count ?? 0) + (bi.customer_churn_risk.churned_count ?? 0)} shops` : undefined },
+  ].filter((f) => typeof f.value === "number" && (f.value as number) > 0) as { label: string; value: number; sub?: string }[];
+
+  const schemaWarnings = bi?.schema_warnings ?? [];
+
+  const signals = [
+    { label: "Trend", value: bi?.trend?.direction || report.trend_direction },
+    { label: "Stability", value: bi?.stability?.category || report.stability },
+    { label: "Concentration", value: bi?.concentration?.risk_level || report.concentration_risk },
+    { label: "Efficiency", value: bi?.efficiency?.signal || report.efficiency_signal },
+  ].filter((s) => s.value);
+
+  const summary =
+    bi?.enhanced_executive_summary?.narrative || report.summary || report.executive_summary || "";
+
+  const stateLine =
+    ledgerItems.length > 0
+      ? `${ledgerItems.length} ${ledgerItems.length === 1 ? "thing needs" : "things need"} your attention today.`
+      : "Nothing urgent today. Here's where the business stands.";
 
   return (
     <AppLayout>
-      <div className="page-container animate-fade-in">
-        <section className="section-spacing">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
-              Data Mode
-            </p>
-            <StatusBadge
-              status={hasBI ? "complete" : "idle"}
-              label={hasBI ? "Business Insights Active" : "Legacy Fields"}
-            />
-          </div>
-        </section>
+      <div className="page-container">
+        {/* Greeting + one-line state of the business */}
+        <header className="mb-8">
+          <p className="eyebrow">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}</p>
+          <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight text-foreground">
+            {greeting()} <span className="text-muted-foreground">{stateLine}</span>
+          </h1>
+        </header>
 
-        {bi?.revenue_stability_index && (
-          <section className="section-spacing">
-            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
-              Revenue Stability Index
-            </h3>
-            <div className="bg-card border border-border rounded-lg p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-3xl font-display font-bold text-foreground">
-                    {Math.round(bi.revenue_stability_index.score)}
-                  </span>
-                  <span className="text-sm text-muted-foreground ml-1">/100</span>
-                </div>
-                <StatusBadge status="complete" label={bi.revenue_stability_index.label} />
-              </div>
-              <p className="text-sm text-foreground leading-relaxed">
-                {bi.revenue_stability_index.explanation}
-              </p>
-              {bi.revenue_stability_index.contributing_factors &&
-                bi.revenue_stability_index.contributing_factors.length > 0 && (
-                  <div className="space-y-1 pt-2 border-t border-border/60">
-                    {bi.revenue_stability_index.contributing_factors.map(
-                      (f: string, i: number) => (
-                        <p key={i} className="text-xs text-muted-foreground">
-                          - {f}
-                        </p>
-                      )
-                    )}
-                  </div>
-                )}
-              {bi.revenue_stability_index.warning && (
-                <p className="text-xs text-amber-500 bg-amber-500/5 border border-amber-500/20 rounded px-3 py-2">
-                  ⚠ {bi.revenue_stability_index.warning}
-                </p>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Confidence:{" "}
-                <span className="font-mono">
-                  {(bi.revenue_stability_index.confidence ?? "").toUpperCase()}
-                </span>
-              </p>
-            </div>
-          </section>
-        )}
-
-        {bi?.inventory_health_score && (
-          <section className="section-spacing">
-            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
-              Inventory Health Score
-            </h3>
-            <div className="bg-card border border-border rounded-lg p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-3xl font-display font-bold text-foreground">
-                    {Math.round(bi.inventory_health_score.score)}
-                  </span>
-                  <span className="text-sm text-muted-foreground ml-1">/100</span>
-                </div>
-                <StatusBadge status="complete" label={bi.inventory_health_score.label} />
-              </div>
-              <p className="text-sm text-foreground leading-relaxed">
-                {bi.inventory_health_score.explanation}
-              </p>
-              {bi.inventory_health_score.contributing_factors &&
-                bi.inventory_health_score.contributing_factors.length > 0 && (
-                  <div className="space-y-1 pt-2 border-t border-border/60">
-                    {bi.inventory_health_score.contributing_factors.map(
-                      (f: string, i: number) => (
-                        <p key={i} className="text-xs text-muted-foreground">
-                          - {f}
-                        </p>
-                      )
-                    )}
-                  </div>
-                )}
-              {bi.inventory_health_score.watchlist &&
-                bi.inventory_health_score.watchlist.length > 0 && (
-                  <div className="pt-2 border-t border-border/60">
-                    <p className="text-xs text-muted-foreground font-medium mb-1">
-                      SKUs to review:
-                    </p>
-                    <p className="text-xs text-foreground">
-                      {bi.inventory_health_score.watchlist.join(", ")}
-                    </p>
-                  </div>
-                )}
-              {bi.inventory_health_score.warning && (
-                <p className="text-xs text-amber-500 bg-amber-500/5 border border-amber-500/20 rounded px-3 py-2">
-                  ⚠ {bi.inventory_health_score.warning}
-                </p>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Confidence:{" "}
-                <span className="font-mono">
-                  {(bi.inventory_health_score.confidence ?? "").toUpperCase()}
-                </span>
-                {bi.inventory_health_score.confidence_reason ? (
-                  <span> — {bi.inventory_health_score.confidence_reason}</span>
-                ) : bi.inventory_health_score.data_source ? (
-                  <span> — based on {bi.inventory_health_score.data_source}</span>
-                ) : null}
-              </p>
-            </div>
-          </section>
-        )}
-
-        {bi?.early_warning_alerts &&
-          bi.early_warning_alerts.alerts &&
-          bi.early_warning_alerts.alerts.length > 0 && (
-          <section className="section-spacing">
-            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
-              Early Warning Alerts
-              {bi.early_warning_alerts.has_critical && (
-                <span className="ml-2 text-red-500 font-bold text-[10px] bg-red-500/10 border border-red-500/20 rounded px-1.5 py-0.5">
-                  CRITICAL
-                </span>
-              )}
-              {!bi.early_warning_alerts.has_critical && bi.early_warning_alerts.has_high && (
-                <span className="ml-2 text-amber-500 font-bold text-[10px] bg-amber-500/10 border border-amber-500/20 rounded px-1.5 py-0.5">
-                  HIGH
-                </span>
-              )}
-            </h3>
-            <div className="space-y-3">
-              {bi.early_warning_alerts.alerts.map((alert, idx) => {
-                const sevColors: Record<string, string> = {
-                  critical: "border-red-500/40 bg-red-500/5",
-                  high: "border-amber-500/40 bg-amber-500/5",
-                  medium: "border-yellow-500/30 bg-yellow-500/5",
-                  low: "border-border bg-card",
-                };
-                const sevTextColors: Record<string, string> = {
-                  critical: "text-red-500",
-                  high: "text-amber-500",
-                  medium: "text-yellow-600",
-                  low: "text-muted-foreground",
-                };
-                const borderClass = sevColors[alert.severity] || sevColors.low;
-                const textClass = sevTextColors[alert.severity] || sevTextColors.low;
- 
-                return (
-                  <div
-                    key={alert.alert_code + idx}
-                    className={`border rounded-lg p-4 space-y-2 ${borderClass}`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className={`text-[10px] font-bold font-mono uppercase ${textClass}`}>
-                        {alert.severity}
-                      </span>
-                      <span className="text-sm font-medium text-foreground">
-                        {alert.title}
-                      </span>
-                    </div>
-                    <p className="text-xs text-foreground/80 leading-relaxed">
-                      {alert.description}
-                    </p>
-                    {alert.driver && (
-                      <p className="text-xs text-muted-foreground">
-                        <span className="font-medium">Driver:</span> {alert.driver}
-                      </p>
-                    )}
-                    {alert.action_direction && (
-                      <p className="text-xs text-primary">
-                        <span className="font-medium">Action:</span> {alert.action_direction}
-                      </p>
-                    )}
-                    {alert.confidence && (
-                      <p className="text-[10px] text-muted-foreground font-mono">
-                        Confidence: {alert.confidence.toUpperCase()}
-                        {alert.confidence_basis && <span> — {alert.confidence_basis}</span>}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
-        {bi?.executive_takeaways && Array.isArray(bi.executive_takeaways) && bi.executive_takeaways.length > 0 && (
-          <section className="section-spacing">
-            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">Executive Takeaways</h3>
-            <div className="bg-card border border-border rounded-lg p-6">
-              <ul className="list-disc pl-5 space-y-2">
-                {bi.executive_takeaways.slice(0, 6).map((t, idx) => (
-                  <li key={idx} className="text-sm text-foreground">{t}</li>
-                ))}
-              </ul>
-            </div>
-          </section>
-        )}
- 
-        {bi?.enhanced_executive_summary && bi.enhanced_executive_summary.narrative && (
-          <section className="section-spacing">
-            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
-              Enhanced Executive Summary
-            </h3>
-            <div className="bg-card border border-border rounded-lg p-6 space-y-4">
-              <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                {bi.enhanced_executive_summary.overall_sentiment && (
-                  <span>
-                    Outlook:{" "}
-                    <span className={`font-mono font-bold ${
-                      bi.enhanced_executive_summary.overall_sentiment === "positive" ? "text-emerald-600" :
-                      bi.enhanced_executive_summary.overall_sentiment === "negative" ? "text-red-500" :
-                      bi.enhanced_executive_summary.overall_sentiment === "mixed" ? "text-amber-500" :
-                      "text-muted-foreground"
-                    }`}>
-                      {bi.enhanced_executive_summary.overall_sentiment.toUpperCase()}
-                    </span>
-                  </span>
-                )}
-                {bi.enhanced_executive_summary.confidence && (
-                  <span>Confidence: <span className="font-mono">{bi.enhanced_executive_summary.confidence.toUpperCase()}</span></span>
-                )}
-                {bi.enhanced_executive_summary.data_coverage && (
-                  <span>Coverage: <span className="font-mono">{bi.enhanced_executive_summary.data_coverage.replace(/_/g, " ").toUpperCase()}</span></span>
-                )}
-              </div>
- 
-              <p className="text-sm text-foreground leading-relaxed">
-                {bi.enhanced_executive_summary.narrative}
-              </p>
- 
-              {bi.enhanced_executive_summary.key_positives && bi.enhanced_executive_summary.key_positives.length > 0 && (
-                <div className="pt-3 border-t border-border/60">
-                  <p className="text-xs font-medium text-emerald-600 mb-2">Key Strengths</p>
-                  <div className="space-y-1">
-                    {bi.enhanced_executive_summary.key_positives.slice(0, 4).map((p, i) => (
-                      <p key={i} className="text-xs text-foreground/80">+ {p}</p>
-                    ))}
-                  </div>
-                </div>
-              )}
- 
-              {bi.enhanced_executive_summary.key_risks && bi.enhanced_executive_summary.key_risks.length > 0 && (
-                <div className="pt-3 border-t border-border/60">
-                  <p className="text-xs font-medium text-red-500 mb-2">Key Risks</p>
-                  <div className="space-y-1">
-                    {bi.enhanced_executive_summary.key_risks.slice(0, 4).map((r, i) => (
-                      <p key={i} className="text-xs text-foreground/80">- {r}</p>
-                    ))}
-                  </div>
-                </div>
-              )}
- 
-              {bi.enhanced_executive_summary.watchpoints && bi.enhanced_executive_summary.watchpoints.length > 0 && (
-                <div className="pt-3 border-t border-border/60">
-                  <p className="text-xs font-medium text-muted-foreground mb-2">Leadership Watchpoints</p>
-                  <div className="space-y-1">
-                    {bi.enhanced_executive_summary.watchpoints.slice(0, 4).map((w, i) => (
-                      <p key={i} className="text-xs text-foreground/80">{w}</p>
-                    ))}
-                  </div>
-                </div>
-              )}
- 
-              {bi.enhanced_executive_summary.warning && (
-                <p className="text-xs text-amber-500 bg-amber-500/5 border border-amber-500/20 rounded px-3 py-2">
-                  {bi.enhanced_executive_summary.warning}
-                </p>
-              )}
-            </div>
-          </section>
-        )}
-
-        <section className="section-spacing">
-          <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">Executive Summary</h3>
-          <div className="bg-card border border-border rounded-lg p-8">
-            <p className="text-foreground leading-reading text-base">
-              {report.summary || report.executive_summary || "No summary available."}
-            </p>
-          </div>
-        </section>
-
-        {bi?.mom_commentary && bi.mom_commentary.commentary && (
-          <section className="section-spacing">
-            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
-              Period-over-Period Commentary
-            </h3>
-            <div className="bg-card border border-border rounded-lg p-6 space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="flex flex-wrap gap-2">
-                  <StatusBadge 
-                    status="complete" 
-                    label={bi.mom_commentary.direction?.toUpperCase() || "FLAT"} 
-                  />
-                  {bi.mom_commentary.magnitude && bi.mom_commentary.magnitude !== "no_baseline" && (
-                    <StatusBadge 
-                      status="complete" 
-                      label={bi.mom_commentary.magnitude.toUpperCase()} 
-                    />
-                  )}
-                  {bi.mom_commentary.is_meaningful && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
-                      MEANINGFUL
-                    </span>
-                  )}
-                </div>
-                <div className="flex gap-4 text-[10px] font-mono whitespace-nowrap">
-                   {bi.mom_commentary.revenue_baseline != null && (
-                     <div className="text-muted-foreground">
-                       BASELINE: <span className="text-foreground">${bi.mom_commentary.revenue_baseline.toLocaleString()}</span>
-                     </div>
-                   )}
-                   <div className="text-muted-foreground">
-                     CURRENT: <span className="text-foreground">${bi.mom_commentary.revenue_current?.toLocaleString()}</span>
-                   </div>
-                   {bi.mom_commentary.percent_change != null && (
-                     <div className="text-muted-foreground">
-                       CHANGE: <span className={bi.mom_commentary.percent_change >= 0 ? "text-emerald-500" : "text-red-500"}>
-                         {bi.mom_commentary.percent_change >= 0 ? "+" : ""}{bi.mom_commentary.percent_change.toFixed(1)}%
-                       </span>
-                     </div>
-                   )}
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-border/60">
-                <p className="text-sm text-foreground leading-relaxed italic">
-                  "{bi.mom_commentary.commentary}"
-                </p>
-              </div>
-
-              {bi.mom_commentary.interpretation && (
-                <div className="p-3 bg-muted/30 border border-border/50 rounded-md">
-                  <p className="text-xs text-foreground">
-                    <span className="font-bold text-primary mr-1">Interpretation:</span>
-                    {bi.mom_commentary.interpretation}
-                  </p>
-                </div>
-              )}
-
-              {bi.mom_commentary.driver_hint && (
-                <p className="text-xs text-muted-foreground">
-                  <span className="font-medium">Potential Driver:</span> {bi.mom_commentary.driver_hint}
-                </p>
-              )}
-
-              <div className="flex items-center justify-between pt-2">
-                <p className="text-[10px] text-muted-foreground font-mono">
-                  Confidence: {bi.mom_commentary.confidence?.toUpperCase()} (n={bi.mom_commentary.sample_size?.toLocaleString()})
-                </p>
-                {bi.mom_commentary.warning && (
-                  <span className="text-[10px] text-amber-500 font-medium">
-                    ⚠ {bi.mom_commentary.warning}
-                  </span>
-                )}
-              </div>
-            </div>
-          </section>
-        )}
-
-        <section className="section-spacing">
-          <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">Signals</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-card border border-border rounded-lg p-5 space-y-2">
-              <p className="text-xs text-muted-foreground">Trend Direction</p>
-              <StatusBadge status="complete" label={bi?.trend?.direction || report.trend_direction || "—"} />
-            </div>
-            <div className="bg-card border border-border rounded-lg p-5 space-y-2">
-              <p className="text-xs text-muted-foreground">Stability</p>
-              <StatusBadge status="complete" label={bi?.stability?.category || report.stability || "—"} />
-            </div>
-            <div className="bg-card border border-border rounded-lg p-5 space-y-2">
-              <p className="text-xs text-muted-foreground">Efficiency Signal</p>
-              <StatusBadge status="complete" label={bi?.efficiency?.signal || report.efficiency_signal || "—"} />
-            </div>
-            <div className="bg-card border border-border rounded-lg p-5 space-y-2">
-              <p className="text-xs text-muted-foreground">Concentration Risk</p>
-              <StatusBadge status="complete" label={bi?.concentration?.risk_level || report.concentration_risk || "—"} />
-            </div>
-          </div>
-        </section>
- 
-        {bi?.cohort_product_performance &&
-          bi.cohort_product_performance.cohorts &&
-          bi.cohort_product_performance.cohorts.length > 0 && (
-          <section className="section-spacing">
-            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
-              Product Cohort Performance
-              {bi.cohort_product_performance.has_declining && (
-                <span className="ml-2 text-red-500 font-bold text-[10px] bg-red-500/10 border border-red-500/20 rounded px-1.5 py-0.5">
-                  DECLINING
-                </span>
-              )}
-            </h3>
-            {bi.cohort_product_performance.cohort_basis && (
-              <p className="text-xs text-muted-foreground mb-3">
-                Grouped by: <span className="font-mono">{bi.cohort_product_performance.cohort_basis.replace(/_/g, " ")}</span>
-              </p>
-            )}
-            <div className="space-y-3">
-              {bi.cohort_product_performance.cohorts.map((cohort, idx) => {
-                const tierColors: Record<string, string> = {
-                  top_performer: "border-emerald-500/40 bg-emerald-500/5",
-                  stable_performer: "border-border bg-card",
-                  underperformer: "border-amber-500/30 bg-amber-500/5",
-                  declining_cohort: "border-red-500/40 bg-red-500/5",
-                  insufficient_data: "border-border bg-muted/30",
-                };
-                const tierTextColors: Record<string, string> = {
-                  top_performer: "text-emerald-600",
-                  stable_performer: "text-foreground",
-                  underperformer: "text-amber-600",
-                  declining_cohort: "text-red-500",
-                  insufficient_data: "text-muted-foreground",
-                };
-                const borderClass = tierColors[cohort.performance_tier] || tierColors.stable_performer;
-                const textClass = tierTextColors[cohort.performance_tier] || tierTextColors.stable_performer;
- 
-                return (
-                  <div
-                    key={cohort.cohort_label + idx}
-                    className={`border rounded-lg p-4 space-y-2 ${borderClass}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[10px] font-bold font-mono uppercase ${textClass}`}>
-                          {cohort.performance_tier.replace(/_/g, " ")}
-                        </span>
-                        <span className="text-sm font-medium text-foreground">
-                          {cohort.cohort_label}
-                        </span>
-                      </div>
-                      <span className="text-xs font-mono text-muted-foreground">
-                        {cohort.revenue_share_pct.toFixed(1)}% rev
-                      </span>
-                    </div>
-                    <div className="flex gap-4 text-xs text-muted-foreground">
-                      <span>{cohort.product_count} products</span>
-                      <span>{cohort.transaction_count.toLocaleString()} txns</span>
-                      {cohort.period_growth_pct != null && (
-                        <span className={cohort.period_growth_pct >= 0 ? "text-emerald-600" : "text-red-500"}>
-                          {cohort.period_growth_pct >= 0 ? "+" : ""}{cohort.period_growth_pct.toFixed(1)}% growth
-                        </span>
-                      )}
-                      <span>Stability: {cohort.stability}</span>
-                    </div>
-                    <p className="text-xs text-foreground/80 leading-relaxed">
-                      {cohort.explanation}
-                    </p>
-                    {cohort.warning && (
-                      <p className="text-xs text-amber-500 bg-amber-500/5 border border-amber-500/20 rounded px-2 py-1">
-                        {cohort.warning}
-                      </p>
-                    )}
-                    <p className="text-[10px] text-muted-foreground font-mono">
-                      Confidence: {cohort.confidence.toUpperCase()}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-            {bi.cohort_product_performance.warning && (
-              <p className="text-xs text-amber-500 mt-3">
-                {bi.cohort_product_performance.warning}
-              </p>
-            )}
-          </section>
-        )}
- 
-        {bi?.customer_segmentation &&
-          bi.customer_segmentation.segments &&
-          bi.customer_segmentation.segments.length > 0 && (
-          <section className="section-spacing">
-            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
-              Customer Segmentation
-              {bi.customer_segmentation.has_at_risk && (
-                <span className="ml-2 text-amber-500 font-bold text-[10px] bg-amber-500/10 border border-amber-500/20 rounded px-1.5 py-0.5">
-                  AT RISK
-                </span>
-              )}
-              {bi.customer_segmentation.has_declining && !bi.customer_segmentation.has_at_risk && (
-                <span className="ml-2 text-red-500 font-bold text-[10px] bg-red-500/10 border border-red-500/20 rounded px-1.5 py-0.5">
-                  DECLINING
-                </span>
-              )}
-            </h3>
-            <div className="flex gap-4 text-xs text-muted-foreground mb-3">
-              {bi.customer_segmentation.segment_basis && (
-                <span>Method: <span className="font-mono">{bi.customer_segmentation.segment_basis.toUpperCase()}</span></span>
-              )}
-              {bi.customer_segmentation.total_customers != null && (
-                <span>Customers: <span className="font-mono">{bi.customer_segmentation.total_customers.toLocaleString()}</span></span>
-              )}
-              <span>Segments: <span className="font-mono">{bi.customer_segmentation.segments.length}</span></span>
-            </div>
-            <div className="space-y-3">
-              {bi.customer_segmentation.segments.map((seg, idx) => {
-                const tierColors: Record<string, string> = {
-                  high_value: "border-emerald-500/40 bg-emerald-500/5",
-                  growing: "border-blue-500/40 bg-blue-500/5",
-                  stable_value: "border-border bg-card",
-                  at_risk: "border-amber-500/40 bg-amber-500/5",
-                  declining: "border-red-500/40 bg-red-500/5",
-                  insufficient_data: "border-border bg-muted/30",
-                };
-                const tierTextColors: Record<string, string> = {
-                  high_value: "text-emerald-600",
-                  growing: "text-blue-600",
-                  stable_value: "text-foreground",
-                  at_risk: "text-amber-600",
-                  declining: "text-red-500",
-                  insufficient_data: "text-muted-foreground",
-                };
-                const borderClass = tierColors[seg.tier] || tierColors.stable_value;
-                const textClass = tierTextColors[seg.tier] || tierTextColors.stable_value;
- 
-                return (
-                  <div
-                    key={seg.segment_label + idx}
-                    className={`border rounded-lg p-4 space-y-2 ${borderClass}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[10px] font-bold font-mono uppercase ${textClass}`}>
-                          {seg.tier.replace(/_/g, " ")}
-                        </span>
-                        <span className="text-sm font-medium text-foreground">
-                          {seg.segment_label}
-                        </span>
-                      </div>
-                      <span className="text-xs font-mono text-muted-foreground">
-                        {seg.revenue_share_pct.toFixed(1)}% rev
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                      <span>{seg.customer_count.toLocaleString()} customers</span>
-                      {seg.avg_order_frequency != null && (
-                        <span>Freq: {seg.avg_order_frequency.toFixed(1)}</span>
-                      )}
-                      {seg.avg_recency_days != null && (
-                        <span>Recency: {seg.avg_recency_days.toFixed(0)}d</span>
-                      )}
-                      {seg.period_growth_pct != null && (
-                        <span className={seg.period_growth_pct >= 0 ? "text-emerald-600" : "text-red-500"}>
-                          {seg.period_growth_pct >= 0 ? "+" : ""}{seg.period_growth_pct.toFixed(1)}% growth
-                        </span>
-                      )}
-                      <span>Stability: {seg.stability}</span>
-                    </div>
-                    <p className="text-xs text-foreground/80 leading-relaxed">
-                      {seg.explanation}
-                    </p>
-                    {seg.warning && (
-                      <p className="text-xs text-amber-500 bg-amber-500/5 border border-amber-500/20 rounded px-2 py-1">
-                        {seg.warning}
-                      </p>
-                    )}
-                    <p className="text-[10px] text-muted-foreground font-mono">
-                      Confidence: {seg.confidence.toUpperCase()}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-            {bi.customer_segmentation.warning && (
-              <p className="text-xs text-amber-500 mt-3">
-                {bi.customer_segmentation.warning}
-              </p>
-            )}
-          </section>
-        )}
- 
-        {bi?.concentration_risk_dashboard &&
-          bi.concentration_risk_dashboard.dimensions &&
-          bi.concentration_risk_dashboard.dimensions.length > 0 && (
-          <section className="section-spacing">
-            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
-              Concentration Risk Dashboard
-              {bi.concentration_risk_dashboard.has_critical && (
-                <span className="ml-2 text-red-500 font-bold text-[10px] bg-red-500/10 border border-red-500/20 rounded px-1.5 py-0.5">
-                  CRITICAL
-                </span>
-              )}
-              {!bi.concentration_risk_dashboard.has_critical && bi.concentration_risk_dashboard.has_high && (
-                <span className="ml-2 text-amber-500 font-bold text-[10px] bg-amber-500/10 border border-amber-500/20 rounded px-1.5 py-0.5">
-                  HIGH
-                </span>
-              )}
-            </h3>
-            <div className="flex gap-4 text-xs text-muted-foreground mb-3">
-              <span>Overall: <span className="font-mono font-bold">{bi.concentration_risk_dashboard.overall_risk?.toUpperCase()}</span></span>
-              <span>Score: <span className="font-mono">{bi.concentration_risk_dashboard.overall_score?.toFixed(1)}/100</span></span>
-              <span>Dimensions: <span className="font-mono">{bi.concentration_risk_dashboard.dimensions.length}</span></span>
-            </div>
-            <div className="space-y-3">
-              {bi.concentration_risk_dashboard.dimensions.map((dim, idx) => {
-                const riskColors: Record<string, string> = {
-                  critical: "border-red-500/40 bg-red-500/5",
-                  high: "border-amber-500/40 bg-amber-500/5",
-                  moderate: "border-yellow-500/30 bg-yellow-500/5",
-                  low: "border-emerald-500/30 bg-emerald-500/5",
-                };
-                const riskTextColors: Record<string, string> = {
-                  critical: "text-red-500",
-                  high: "text-amber-500",
-                  moderate: "text-yellow-600",
-                  low: "text-emerald-600",
-                };
-                const borderClass = riskColors[dim.risk_level] || riskColors.low;
-                const textClass = riskTextColors[dim.risk_level] || riskTextColors.low;
- 
-                return (
-                  <div
-                    key={dim.dimension + idx}
-                    className={`border rounded-lg p-4 space-y-2 ${borderClass}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[10px] font-bold font-mono uppercase ${textClass}`}>
-                          {dim.risk_level}
-                        </span>
-                        <span className="text-sm font-medium text-foreground capitalize">
-                          {dim.dimension} Concentration
-                        </span>
-                      </div>
-                      <span className="text-xs font-mono text-muted-foreground">
-                        {dim.composite_score.toFixed(1)}/100
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                      <span>HHI: {dim.hhi.toFixed(0)}</span>
-                      <span>Gini: {dim.gini.toFixed(2)}</span>
-                      <span>Top 1: {dim.top_1_share_pct.toFixed(1)}%</span>
-                      <span>Top 5: {dim.top_5_share_pct.toFixed(1)}%</span>
-                      <span>{dim.contributor_count} contributors</span>
-                      {dim.trend && (
-                        <span className={dim.trend === "decreasing" ? "text-emerald-600" : dim.trend === "increasing" ? "text-red-500" : "text-muted-foreground"}>
-                          Trend: {dim.trend}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-foreground/80 leading-relaxed">
-                      {dim.explanation}
-                    </p>
-                    {dim.top_contributors && dim.top_contributors.length > 0 && (
-                      <div className="pt-1">
-                        <p className="text-[10px] text-muted-foreground font-medium mb-1">Top contributors:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {dim.top_contributors.slice(0, 5).map((c, ci) => (
-                            <span key={ci} className="text-[10px] font-mono bg-muted/50 border border-border rounded px-1.5 py-0.5">
-                              {c.name.length > 30 ? c.name.slice(0, 30) + "..." : c.name} ({c.share_pct.toFixed(1)}%)
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {dim.warning && (
-                      <p className="text-xs text-amber-500 bg-amber-500/5 border border-amber-500/20 rounded px-2 py-1">
-                        {dim.warning}
-                      </p>
-                    )}
-                    <p className="text-[10px] text-muted-foreground font-mono">
-                      Confidence: {dim.confidence.toUpperCase()}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-            {bi.concentration_risk_dashboard.warning && (
-              <p className="text-xs text-amber-500 mt-3">
-                {bi.concentration_risk_dashboard.warning}
-              </p>
-            )}
-          </section>
-        )}
- 
-        {bi?.data_quality && (
-          <section className="section-spacing">
-            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
-              Data Quality Summary
-            </h3>
-            <div className="bg-card border border-border rounded-lg p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">Cleaning Result:</span>
-                    <p className="font-medium text-foreground">
-                      {bi.data_quality.rows_after?.toLocaleString()} rows preserved{" "}
-                      <span className="text-xs text-muted-foreground font-normal">
-                        (from {bi.data_quality.rows_before?.toLocaleString()})
-                      </span>
-                    </p>
-                  </div>
-                  
-                  {bi.data_quality.granularity && bi.data_quality.granularity.granularity !== "unknown" && (
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">Granularity:</span>
-                      <p className="font-medium text-foreground capitalize">
-                        {bi.data_quality.granularity.granularity.replace(/_/g, " ")}
-                        <span className="ml-2 text-[10px] font-mono text-muted-foreground">
-                          ({bi.data_quality.granularity.confidence?.toUpperCase()} CONFIDENCE)
-                        </span>
-                      </p>
-                      {bi.data_quality.granularity.explanation && (
-                        <p className="text-[10px] text-muted-foreground mt-0.5">{bi.data_quality.granularity.explanation}</p>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-3">
-                  {bi.data_quality.schema_detected && bi.data_quality.schema_detected.detected_columns && (
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">Fields Detected:</span>
-                      <div className="flex flex-wrap gap-1.5 mt-1">
-                        {Object.keys(bi.data_quality.schema_detected.detected_columns).sort().map(field => (
-                          <span key={field} className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono text-foreground">
-                            {field.toUpperCase()}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {bi.data_quality.date_columns_parsed && bi.data_quality.date_columns_parsed.length > 0 && (
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">Timeline:</span>
-                      <p className="text-xs text-foreground">
-                        Parsed from: <span className="font-mono">{bi.data_quality.date_columns_parsed.join(", ")}</span>
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {(bi.data_quality.warnings && bi.data_quality.warnings.length > 0) && (
-                <div className="pt-3 border-t border-border/60">
-                  <p className="text-[10px] font-bold text-amber-500 uppercase tracking-tight mb-2">Preprocessing Warnings</p>
-                  <div className="space-y-1">
-                    {bi.data_quality.warnings.map((w, i) => (
-                      <p key={i} className="text-xs text-amber-600/90 italic">⚠ {w}</p>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </section>
-        )}
- 
-        {/* Business Insight Detail Sections */}
-        {hasBI && (
-
-
-
-          <section className="section-spacing space-y-6">
-            {[
-              { label: "Trend Analysis", data: bi?.trend },
-              { label: "Revenue Stability", data: bi?.stability },
-              { label: "Revenue Efficiency", data: bi?.efficiency },
-              { label: "Revenue Concentration", data: bi?.concentration },
-            ]
-              .filter((s) => s.data && (s.data.driver || s.data.implication || s.data.action_direction))
-              .map((section) => (
-                <div key={section.label} className="bg-card border border-border rounded-lg p-6 space-y-3">
-                  <h4 className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
-                    {section.label}
-                  </h4>
-                  {section.data?.description && (
-                    <p className="text-sm text-foreground leading-relaxed">{section.data.description}</p>
-                  )}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-border/60">
-                    {section.data?.driver && (
-                      <div className="text-xs">
-                        <span className="text-muted-foreground">Driver: </span>
-                        <span className="text-foreground">{section.data.driver}</span>
-                      </div>
-                    )}
-                    {section.data?.implication && (
-                      <div className="text-xs">
-                        <span className="text-muted-foreground">Implication: </span>
-                        <span className="text-foreground">{section.data.implication}</span>
-                      </div>
-                    )}
-                    {section.data?.action_direction && (
-                      <div className="text-xs">
-                        <span className="text-muted-foreground">Action: </span>
-                        <span className="text-primary font-medium">{section.data.action_direction}</span>
-                      </div>
-                    )}
-                  </div>
-                  {section.data?.confidence && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Confidence: <span className="font-mono">{String(section.data.confidence).toUpperCase()}</span>
-                      {section.data.confidence_basis && (
-                        <span> — {section.data.confidence_basis}</span>
-                      )}
-                    </p>
-                  )}
-                </div>
-              ))}
-          </section>
-        )}
-
-        {/* Products to Watch */}
-        {bi?.enhanced_products_to_watch && bi.enhanced_products_to_watch.products && bi.enhanced_products_to_watch.products.length > 0 ? (
-          <section className="section-spacing">
-            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
-              Products to Watch (Enhanced)
-              {bi.enhanced_products_to_watch.has_declining && (
-                <span className="ml-2 text-red-500 font-bold text-[10px] bg-red-500/10 border border-red-500/20 rounded px-1.5 py-0.5">
-                  DECLINING DETECTED
-                </span>
-              )}
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {bi.enhanced_products_to_watch.products.map((p, idx) => {
-                const statusColors: Record<string, string> = {
-                  declining: "text-red-500 bg-red-500/5 border-red-500/20",
-                  unstable: "text-amber-500 bg-amber-500/5 border-amber-500/20",
-                  watch: "text-blue-500 bg-blue-500/5 border-blue-500/20",
-                  improving: "text-emerald-500 bg-emerald-500/5 border-emerald-500/20",
-                  low_confidence: "text-muted-foreground bg-muted/50 border-border",
-                };
-                return (
-                  <div key={idx} className="bg-card border border-border rounded-lg p-5 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold text-foreground truncate max-w-[70%]">{p.product}</span>
-                      <span className={`text-[10px] font-bold font-mono px-2 py-0.5 rounded border ${statusColors[p.status] || statusColors.watch}`}>
-                        {p.status.toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="flex gap-4 text-[10px] font-mono text-muted-foreground">
-                      <span>Share: {p.revenue_share_pct.toFixed(1)}%</span>
-                      {p.trend_direction && p.trend_direction !== "insufficient_data" && (
-                        <span>Trend: {p.trend_direction.toUpperCase()}</span>
-                      )}
-                      <span>Conf: {p.confidence.toUpperCase()}</span>
-                    </div>
-                    <p className="text-xs text-foreground/80 leading-relaxed">
-                      {p.reason}
-                    </p>
-                    {p.action_direction && (
-                      <p className="text-xs text-primary font-medium pt-2 border-t border-border/40">
-                        {p.action_direction}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            {bi.enhanced_products_to_watch.warning && (
-              <p className="text-xs text-amber-500 mt-3">⚠ {bi.enhanced_products_to_watch.warning}</p>
-            )}
-          </section>
-        ) : (
-          bi?.products_to_watch && Array.isArray(bi.products_to_watch) && bi.products_to_watch.length > 0 && (
-            <section className="section-spacing">
-              <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
-                Products to Watch
-              </h3>
-              <div className="bg-card border border-border rounded-lg p-6">
-                <ul className="list-disc pl-5 space-y-1">
-                  {bi.products_to_watch.map((p: string, idx: number) => (
-                    <li key={idx} className="text-sm text-foreground">{p}</li>
+        {/* Schema coverage warnings — an honest, designed notice, not a silent gap */}
+        {schemaWarnings.length > 0 && (
+          <div className="mb-8 rounded-lg border border-signal-slowing/30 bg-signal-slowing/[0.06] p-4">
+            <div className="flex items-start gap-2.5">
+              <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-signal-slowing" aria-hidden />
+              <div>
+                <p className="text-sm font-medium text-foreground">Some columns weren't detected</p>
+                <ul className="mt-1.5 space-y-1">
+                  {schemaWarnings.slice(0, 4).map((w, i) => (
+                    <li key={i} className="text-xs leading-relaxed text-muted-foreground">{w}</li>
                   ))}
                 </ul>
-                <p className="text-xs text-muted-foreground mt-3">
-                  These products are underperforming relative to the portfolio — consider reviewing pricing, availability, or positioning.
-                </p>
               </div>
-            </section>
-          )
+            </div>
+          </div>
         )}
 
-        {bi?.scope && ((bi.scope.analyzed && bi.scope.analyzed.length > 0) || (bi.scope.not_analyzed && bi.scope.not_analyzed.length > 0)) && (
-          <section className="section-spacing">
-            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-4">
-              Analysis Scope
-            </h3>
-            <div className="bg-card border border-border rounded-lg p-5 space-y-3">
-              {bi.scope.analyzed && bi.scope.analyzed.length > 0 && (
-                <div>
-                  <p className="text-[10px] font-mono text-emerald-600 uppercase mb-2">Analyzed Fields</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {bi.scope.analyzed.map((f: string, i: number) => (
-                      <span key={i} className="text-[10px] px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded text-emerald-700 dark:text-emerald-400 font-mono">
-                        {f}
-                      </span>
-                    ))}
-                  </div>
+        {/* HERO — the attention ledger */}
+        <section className="mb-8">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="eyebrow">Today's attention ledger</h2>
+            <button
+              onClick={() => navigate("/insights")}
+              className="focus-calm group inline-flex items-center gap-1 rounded text-xs font-medium text-primary hover:text-accent"
+            >
+              Full detail
+              <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+            </button>
+          </div>
+
+          {ledgerItems.length > 0 ? (
+            <AttentionLedger items={ledgerItems} />
+          ) : (
+            <div className="flex items-center gap-3 rounded-lg border border-signal-clear/30 bg-signal-clear/[0.06] px-5 py-5">
+              <CheckCircle2 className="h-5 w-5 shrink-0 text-signal-clear" aria-hidden />
+              <p className="text-sm text-foreground">
+                No churn, dead stock, or overdue payments are flagged in this dataset.
+              </p>
+            </div>
+          )}
+        </section>
+
+        {/* Headline figures — understated inline strip, not hero cards */}
+        {headlineFigures.length > 0 && (
+          <Reveal className="mb-10 grid grid-cols-1 divide-y divide-border overflow-hidden rounded-lg border border-border bg-card sm:grid-cols-3 sm:divide-x sm:divide-y-0" stagger={0.08}>
+            {headlineFigures.map((f) => (
+              <RevealItem key={f.label}>
+                <div className="px-5 py-4">
+                  <p className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">{f.label}</p>
+                  <CountUp
+                    value={f.value}
+                    format={formatINRLakh}
+                    className="mt-1 block font-mono text-xl font-semibold tabular-nums text-foreground"
+                  />
+                  {f.sub && <p className="mt-0.5 text-xs text-muted-foreground">{f.sub}</p>}
                 </div>
+              </RevealItem>
+            ))}
+          </Reveal>
+        )}
+
+        {/* Executive summary — calm reading block */}
+        {summary && (
+          <section className="mb-10">
+            <h2 className="eyebrow mb-3">Summary</h2>
+            <div className="rounded-lg border border-border bg-card p-6">
+              <p className="text-[15px] leading-relaxed text-foreground">{summary}</p>
+            </div>
+          </section>
+        )}
+
+        {/* Business signals — a quiet inline row, not a card grid */}
+        {signals.length > 0 && (
+          <section className="mb-10">
+            <h2 className="eyebrow mb-3">Signals</h2>
+            <div className="flex flex-wrap gap-x-8 gap-y-3 rounded-lg border border-border bg-card px-5 py-4">
+              {signals.map((s) => (
+                <div key={s.label}>
+                  <p className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">{s.label}</p>
+                  <p className="mt-0.5 text-sm font-medium capitalize text-foreground">
+                    {String(s.value).replace(/_/g, " ")}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Health scores — compact, restrained (no big-number hero template) */}
+        {(bi?.revenue_stability_index || bi?.inventory_health_score) && (
+          <section className="mb-4">
+            <h2 className="eyebrow mb-3">Health</h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {bi?.revenue_stability_index && (
+                <ScoreTile
+                  label="Revenue stability"
+                  score={Math.round(bi.revenue_stability_index.score)}
+                  tag={bi.revenue_stability_index.label}
+                />
               )}
-              {bi.scope.not_analyzed && bi.scope.not_analyzed.length > 0 && (
-                <div>
-                  <p className="text-[10px] font-mono text-muted-foreground uppercase mb-2">Not Analyzed</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {bi.scope.not_analyzed.map((f: string, i: number) => (
-                      <span key={i} className="text-[10px] px-2 py-0.5 bg-muted/40 border border-border rounded text-muted-foreground font-mono">
-                        {f}
-                      </span>
-                    ))}
-                  </div>
-                </div>
+              {bi?.inventory_health_score && (
+                <ScoreTile
+                  label="Inventory health"
+                  score={Math.round(bi.inventory_health_score.score)}
+                  tag={bi.inventory_health_score.label}
+                />
               )}
             </div>
           </section>
         )}
+
+        <div className="pt-2">
+          <button
+            onClick={() => navigate("/insights")}
+            className="focus-calm group inline-flex items-center gap-1.5 rounded text-sm font-medium text-primary hover:text-accent"
+          >
+            See churn, dead stock and receivables in detail
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+          </button>
+        </div>
       </div>
     </AppLayout>
+  );
+}
+
+function ScoreTile({ label, score, tag }: { label: string; score: number; tag: string }) {
+  const tone = score >= 70 ? "text-signal-clear" : score >= 40 ? "text-signal-slowing" : "text-signal-overdue";
+  return (
+    <div className="flex items-baseline justify-between rounded-lg border border-border bg-card px-5 py-4">
+      <div>
+        <p className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">{label}</p>
+        <p className="mt-1 text-sm font-medium capitalize text-foreground">{tag}</p>
+      </div>
+      <div className="text-right">
+        <span className={cn("font-mono text-2xl font-semibold tabular-nums", tone)}>{score}</span>
+        <span className="text-xs text-muted-foreground">/100</span>
+      </div>
+    </div>
   );
 }

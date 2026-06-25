@@ -163,20 +163,38 @@ export default function Report() {
           </section>
 
           {/* Quick Metrics */}
-          <section className="print:grid print:grid-cols-3 print:gap-4 print:my-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <section className="print:grid print:grid-cols-5 print:gap-4 print:my-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div className="bg-card border border-border p-4 rounded-xl space-y-1">
                 <span className="text-xs font-mono text-muted-foreground uppercase">Dataset Status</span>
                 <p className="text-lg font-display font-semibold text-foreground capitalize">{run.status}</p>
               </div>
               <div className="bg-card border border-border p-4 rounded-xl space-y-1">
                 <span className="text-xs font-mono text-muted-foreground uppercase">Total Findings</span>
-                <p className="text-lg font-display font-semibold text-foreground">{insightCount} automated insights</p>
+                <p className="text-lg font-display font-semibold text-foreground">{insightCount} insights</p>
               </div>
+              <MetricCard
+                label="Total Transactions"
+                value={
+                  run.insight_report?.total_transactions != null
+                    ? run.insight_report.total_transactions.toLocaleString()
+                    : "—"
+                }
+              />
+              <MetricCard
+                label="Products Analyzed"
+                value={
+                  run.insight_report?.products_analyzed != null
+                    ? run.insight_report.products_analyzed.toLocaleString()
+                    : run.insight_report?.business_insights?.enhanced_products_to_watch?.total_products_analyzed != null
+                    ? run.insight_report.business_insights.enhanced_products_to_watch.total_products_analyzed.toLocaleString()
+                    : "—"
+                }
+              />
               <div className="bg-card border border-border p-4 rounded-xl space-y-1">
-                <span className="text-xs font-mono text-muted-foreground uppercase">Baseline Period</span>
+                <span className="text-xs font-mono text-muted-foreground uppercase">Baseline</span>
                 <p className="text-lg font-display font-semibold text-foreground">
-                  {run.baseline_file_path ? "Baseline period active" : "No baseline period"}
+                  {run.baseline_file_path ? "Active" : "None"}
                 </p>
               </div>
             </div>
