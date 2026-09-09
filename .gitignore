@@ -4,7 +4,6 @@
 # Secrets — NEVER commit
 .env
 .env.*
-!.env.production
 !.env.example
 !.env*.example
 
@@ -13,13 +12,20 @@ certbot/
 
 # Node
 node_modules/
+frontend/node_modules/
 frontend/dist/
 
-# Data
+# Data & Audit Artifacts
 *.sqlite3
 service_b/data/
 service_a/uploads/
-service_a/staticfiles/
+
+# Kaizen Lite (local development only - not needed for Streamlit Cloud)
+kaizen_lite/data/
+kaizen_lite/*.sqlite3
+kaizen_lite/config/
+kaizen_lite/pending_requests.csv
+kaizen_lite/.streamlit/secrets.toml
 
 # IDE
 .vscode/

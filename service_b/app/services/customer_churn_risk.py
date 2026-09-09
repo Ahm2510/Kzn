@@ -117,7 +117,7 @@ def compute_customer_churn_risk(
 
         if not cust_col:
             return CustomerChurnRiskResult(
-                warning="No customer / party / shop column detected; churn analysis not applicable.",
+                warning="No customer / party / account column detected; churn analysis not applicable.",
                 confidence="low",
             )
 
@@ -286,6 +286,6 @@ def _build_headline_action(top: List[ChurnCustomer], revenue_at_risk: float) -> 
     n = len(flagged)
     rev_str = format_inr_lakh(sum(r.total_revenue for r in flagged))
     return (
-        f"Call these {n} shop(s) this week — they used to order regularly and have gone quiet, "
+        f"Follow up with these {n} account(s) this week — they used to order regularly and have gone quiet, "
         f"with {rev_str} of historic business at risk."
     )

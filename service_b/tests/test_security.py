@@ -34,7 +34,7 @@ class TestFileUploadValidation:
     def client(self):
         """Create test client with rate limiting disabled."""
         # Import here to get mocked settings
-        from service_b.app import app
+        from app.main import app
         return TestClient(app)
     
     @pytest.fixture
@@ -87,7 +87,7 @@ class TestRateLimiting:
     
     def test_rate_limiter_configured(self):
         """Test that rate limiter is configured in app."""
-        from service_b.app import app, limiter
+        from app.main import app, limiter
         assert hasattr(app.state, "limiter")
         assert limiter is not None
     
@@ -154,7 +154,7 @@ class TestErrorHandling:
     @pytest.fixture
     def client(self):
         """Create test client."""
-        from service_b.app import app
+        from app.main import app
         return TestClient(app)
     
     def test_malformed_csv_returns_400_not_500(self, client):
@@ -180,7 +180,7 @@ class TestHealthEndpoint:
     @pytest.fixture
     def client(self):
         """Create test client."""
-        from service_b.app import app
+        from app.main import app
         return TestClient(app)
     
     def test_health_endpoint_exists(self, client):

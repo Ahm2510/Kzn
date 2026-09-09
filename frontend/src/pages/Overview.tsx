@@ -117,7 +117,7 @@ export default function Overview() {
   const headlineFigures = [
     { label: "Outstanding", value: bi?.receivables_risk?.total_outstanding, sub: bi?.receivables_risk?.customer_count ? `${bi.receivables_risk.customer_count} customers` : undefined },
     { label: "Dead stock", value: bi?.inventory_health_score?.total_dead_stock_value ?? undefined, sub: bi?.inventory_health_score?.dead_stock_count ? `${bi.inventory_health_score.dead_stock_count} SKUs` : undefined },
-    { label: "Revenue at risk", value: bi?.customer_churn_risk?.revenue_at_risk, sub: bi?.customer_churn_risk ? `${(bi.customer_churn_risk.at_risk_count ?? 0) + (bi.customer_churn_risk.churned_count ?? 0)} shops` : undefined },
+    { label: "Revenue at risk", value: bi?.customer_churn_risk?.revenue_at_risk, sub: bi?.customer_churn_risk ? `${(bi.customer_churn_risk.at_risk_count ?? 0) + (bi.customer_churn_risk.churned_count ?? 0)} accounts` : undefined },
   ].filter((f) => typeof f.value === "number" && (f.value as number) > 0) as { label: string; value: number; sub?: string }[];
 
   const schemaWarnings = bi?.schema_warnings ?? [];

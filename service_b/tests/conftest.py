@@ -12,7 +12,7 @@ if str(PROJECT_ROOT) not in sys.path:
 import pytest
 from fastapi.testclient import TestClient
 
-from service_b.app import app
+from app.main import app
 
 
 @pytest.fixture(scope="session")

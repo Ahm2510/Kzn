@@ -49,11 +49,13 @@ def record(name, passed, detail=""):
         print(msg.encode("ascii", "replace").decode("ascii"))
 
 
+import pytest
+
 def load_ecom_data(max_rows=50000):
     csv_path = os.path.join(os.path.dirname(__file__), "..", "..", "ecom_data.csv")
     csv_path = os.path.abspath(csv_path)
     if not os.path.exists(csv_path):
-        raise FileNotFoundError(f"ecom_data.csv not found at {csv_path}")
+        pytest.skip(f"ecom_data.csv not found at {csv_path}")
     for encoding in ["utf-8", "latin-1", "cp1252"]:
         try:
             df = pd.read_csv(csv_path, nrows=max_rows, encoding=encoding)

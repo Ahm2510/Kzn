@@ -46,12 +46,12 @@ export default function Login() {
             Know who's churning, what stock is dead, and which payments are overdue.
           </h1>
           <p className="mt-6 text-lg leading-relaxed text-muted-foreground">
-            Distribution intelligence for FMCG, pharma, and auto-parts distributors. Built to be read in ten
+            Financial health audits for your clients, ready in minutes. Built to be read in ten
             seconds, not studied for an hour.
           </p>
         </div>
         <p className="text-xs font-mono uppercase tracking-[0.16em] text-muted-foreground">
-          Distribution Intelligence
+          Financial Health Intelligence
         </p>
       </div>
 

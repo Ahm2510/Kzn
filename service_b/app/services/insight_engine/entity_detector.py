@@ -250,7 +250,7 @@ def resolve_schema(
 
 # Human-readable labels for schema warnings.
 _REQUIRED_FOR_NICHE = {
-    "customer_col": "customer / party / shop name",
+    "customer_col": "customer / account name",
     "sku_col": "product / SKU",
 }
 _OPTIONAL_FOR_NICHE = {
@@ -272,13 +272,13 @@ def build_schema_warnings(
     """
     warnings: list = []
     if not schema:
-        return ["Could not analyze the dataset's columns for distributor fields."]
+        return ["Could not analyze the dataset's columns for key business fields."]
 
     for key, label in _REQUIRED_FOR_NICHE.items():
         col, conf, _mode = schema.get(key, (None, 0.0, "none"))
         if col is None:
             warnings.append(
-                f"No {label} column detected. Customer-level distributor "
+                f"No {label} column detected. Customer-level "
                 f"insights (churn, segmentation) cannot be generated for this file."
             )
 

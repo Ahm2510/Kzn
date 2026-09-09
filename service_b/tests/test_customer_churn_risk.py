@@ -61,8 +61,8 @@ def test_ranking_puts_highest_revenue_at_risk_first():
     flagged = [c for c in result.customers if c.risk in ("at_risk", "churned")]
     # Revenue at risk should be the sum of flagged customers' revenue and > 0.
     assert result.revenue_at_risk > 0
-    # The headline action must be operator-facing and mention calling shops.
-    assert result.headline_action and "call" in result.headline_action.lower()
+    # The headline action must be operator-facing and mention follow up with accounts.
+    assert result.headline_action and "follow up" in result.headline_action.lower()
     # Flagged are ordered churned-first then by revenue desc within risk tier.
     assert len(flagged) >= 2
 

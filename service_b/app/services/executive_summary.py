@@ -212,7 +212,7 @@ def _collect_risks(bi: Dict[str, Any]) -> List[str]:
     ccr = bi.get("customer_churn_risk")
     if ccr and ccr.get("has_at_risk"):
         flagged = (ccr.get("at_risk_count") or 0) + (ccr.get("churned_count") or 0)
-        risks.append(f"{flagged} shop(s) have gone quiet and may be churning.")
+        risks.append(f"{flagged} account(s) have gone quiet and may be churning.")
 
     # Receivables (distribution niche)
     rr = bi.get("receivables_risk")
@@ -222,8 +222,8 @@ def _collect_risks(bi: Dict[str, Any]) -> List[str]:
         )
 
     return risks
- 
- 
+
+
 def _collect_headline_metrics(bi: Dict[str, Any]) -> List[str]:
     """Top-line rupee figures for the distributor niche — presented with the
     same prominence as existing headline metrics."""
@@ -261,7 +261,7 @@ def _collect_headline_metrics(bi: Dict[str, Any]) -> List[str]:
         if rev_at_risk and flagged:
             metrics.append(
                 f"{format_inr_lakh(rev_at_risk)} of historic revenue is at risk across "
-                f"{flagged} quiet shop(s)."
+                f"{flagged} quiet account(s)."
             )
 
     return metrics

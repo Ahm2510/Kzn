@@ -22,22 +22,10 @@ class ServiceBClient:
         baseline_file_path: Optional[str] = None,
         cleaning_options: Optional[Dict[str, Any]] = None,
         metric_schema: Optional[str] = None,
+        firm_name: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Call service_b /v1/analyze endpoint.
-        
-        Args:
-            current_file_path: Path to the current CSV file
-            baseline_file_path: Optional path to baseline CSV file
-            cleaning_options: Optional cleaning options dict
-            metric_schema: Optional metric schema hint (e.g. 'auto', 'revenue', 'cost', 'custom:<col>')
-            
-        Returns:
-            Response dict with 'report' and 'pdf_path' keys
-            
-        Raises:
-            requests.RequestException: If the HTTP request fails
-            ValueError: If service_b returns an error response
         """
         url = f"{self.base_url}/v1/analyze"
         
@@ -55,14 +43,8 @@ class ServiceBClient:
                 baseline_file = open(baseline_file_path, 'rb')
                 files['baseline_file'] = (os.path.basename(baseline_file_path), baseline_file, 'text/csv')
             
-            # Prepare cleaning options as form data
-            # FastAPI endpoint signature: `cleaning: CleaningOptions = CleaningOptions()`
-            # Without Form() wrapper, FastAPI may not parse from multipart correctly
-            # We send as individual fields; if parsing fails, service_b will use defaults
             data = {}
             if cleaning_options:
-                # Frontend sends camelCase keys; Service B expects snake_case.
-                # Keep backward compatibility by accepting both.
                 key_map = {
                     "dropDuplicates": "drop_duplicates",
                     "drop_duplicates": "drop_duplicates",
@@ -79,8 +61,6 @@ class ServiceBClient:
                     mapped_key = key_map.get(key, key)
                     normalized_cleaning_options[mapped_key] = value
 
-                # Send each cleaning option as a separate form field
-                # FastAPI might parse these into the CleaningOptions model
                 for key, value in normalized_cleaning_options.items():
                     if isinstance(value, bool):
                         data[key] = 'true' if value else 'false'
@@ -89,6 +69,9 @@ class ServiceBClient:
             
             if metric_schema is not None:
                 data['metric_schema'] = metric_schema
+
+            if firm_name:
+                data['firm_name'] = firm_name
             
             headers = {}
             if self.internal_secret:

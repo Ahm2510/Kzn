@@ -28,9 +28,13 @@ def _run_analysis_background(analysis_run_id, current_file_path, baseline_file_p
     django.db.connections.close_all()
 
     try:
-        analysis_run = AnalysisRun.objects.get(id=analysis_run_id)
+        analysis_run = AnalysisRun.objects.select_related('project__workspace').get(id=analysis_run_id)
         analysis_run.status = 'running'
         analysis_run.save()
+
+        firm_name = ""
+        if analysis_run.project and analysis_run.project.workspace:
+            firm_name = analysis_run.project.workspace.firm_name or analysis_run.project.workspace.name
 
         client = get_service_b_client()
         result = client.analyze(
@@ -38,6 +42,7 @@ def _run_analysis_background(analysis_run_id, current_file_path, baseline_file_p
             baseline_file_path=baseline_file_path,
             cleaning_options=cleaning_options,
             metric_schema=metric_schema,
+            firm_name=firm_name,
         )
 
         # Save PDF from service_b response to service_a storage
@@ -104,10 +109,14 @@ class AnalysisRunViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # Filter by projects owned by the user
-        return AnalysisRun.objects.filter(
+        # Filter by projects owned by the user and workspace
+        queryset = AnalysisRun.objects.filter(
             project__owner=self.request.user
-        ).select_related('project')
+        ).select_related('project', 'project__workspace')
+        workspace_id = self.request.query_params.get('workspace') or self.request.headers.get('X-Workspace-Id')
+        if workspace_id:
+            queryset = queryset.filter(project__workspace_id=workspace_id)
+        return queryset
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -119,9 +128,13 @@ class AnalysisRunViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
-        # Get project (validated by serializer)
+        # Get project (validated by serializer and scoped to user and workspace if provided)
         project_id = serializer.validated_data['project_id']
-        project = get_object_or_404(Project, id=project_id, owner=request.user)
+        workspace_id = self.request.query_params.get('workspace') or self.request.headers.get('X-Workspace-Id')
+        if workspace_id:
+            project = get_object_or_404(Project, id=project_id, owner=request.user, workspace_id=workspace_id)
+        else:
+            project = get_object_or_404(Project, id=project_id, owner=request.user)
         
         # Save uploaded files
         current_file_path = save_uploaded_file(

@@ -1,12 +1,13 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
+import { useActiveWorkspace, useUpdateWorkspace } from "@/hooks/useWorkspaces";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { LogOut, ShieldAlert, Key, User as UserIcon, Moon, Sun, ShieldCheck } from "lucide-react";
+import { LogOut, ShieldAlert, Key, User as UserIcon, Moon, Sun, ShieldCheck, Building2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -18,7 +19,43 @@ const ENVIRONMENT = import.meta.env.MODE || "development";
 export default function Settings() {
   const { user, logout, changePassword, isAdmin } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { activeWorkspace } = useActiveWorkspace();
+  const updateWorkspace = useUpdateWorkspace();
   const navigate = useNavigate();
+
+  // Branding fields
+  const [clientName, setClientName] = useState(activeWorkspace?.name || "");
+  const [firmName, setFirmName] = useState(activeWorkspace?.firm_name || "");
+  const [isSavingBranding, setIsSavingBranding] = useState(false);
+
+  useEffect(() => {
+    if (activeWorkspace) {
+      setClientName(activeWorkspace.name);
+      setFirmName(activeWorkspace.firm_name || "");
+    }
+  }, [activeWorkspace]);
+
+  const handleBrandingSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeWorkspace) return;
+    if (!clientName.trim()) {
+      toast.error("Client name is required.");
+      return;
+    }
+    setIsSavingBranding(true);
+    try {
+      await updateWorkspace.mutateAsync({
+        id: activeWorkspace.id,
+        data: { name: clientName.trim(), firm_name: firmName.trim() },
+      });
+      toast.success("Client & report branding updated!");
+    } catch (err: unknown) {
+      const error = err as Error;
+      toast.error(error.message || "Failed to update client branding.");
+    } finally {
+      setIsSavingBranding(false);
+    }
+  };
 
   // Password fields
   const [oldPassword, setOldPassword] = useState("");
@@ -122,6 +159,50 @@ export default function Settings() {
                 </span>
               </div>
             </div>
+          </section>
+        )}
+
+        {/* Client & White-Label PDF Branding */}
+        {activeWorkspace && (
+          <section className="bg-card border border-border/80 rounded-xl p-6 space-y-4 shadow-sm">
+            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-primary" /> Active Client & White-Label Branding
+            </h3>
+
+            <form onSubmit={handleBrandingSubmit} className="space-y-4 pt-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="active-client-name">Client Name</Label>
+                <Input
+                  id="active-client-name"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                  placeholder="e.g. Apex Traders Pvt Ltd"
+                  className="bg-muted/20 border-border"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="active-firm-name">CA Firm Header Name (White-Label PDF Header)</Label>
+                <Input
+                  id="active-firm-name"
+                  value={firmName}
+                  onChange={(e) => setFirmName(e.target.value)}
+                  placeholder="e.g. Sharma & Associates CA Firm"
+                  className="bg-muted/20 border-border"
+                />
+                <p className="text-xs text-muted-foreground">
+                  When set, exported PDF audit reports for this client will be white-labeled with your firm's header name.
+                </p>
+              </div>
+
+              <Button
+                type="submit"
+                disabled={isSavingBranding}
+                className="bg-primary text-primary-foreground hover:bg-primary/95 font-medium shadow-sm"
+              >
+                {isSavingBranding ? "Saving Branding..." : "Save Branding"}
+              </Button>
+            </form>
           </section>
         )}
 

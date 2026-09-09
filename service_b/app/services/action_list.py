@@ -30,7 +30,7 @@ class ActionItem(BaseModel):
 
 
 def _churn_item(churn) -> Optional[ActionItem]:
-    """Top churn action: which quiet shops to call this week."""
+    """Top churn action: which quiet accounts to call this week."""
     if churn is None:
         return None
     has_at_risk = getattr(churn, "has_at_risk", None)
@@ -39,7 +39,7 @@ def _churn_item(churn) -> Optional[ActionItem]:
         return None
     customers = getattr(churn, "customers", []) or []
     names = ", ".join(c.customer for c in customers if c.risk in ("churned", "at_risk"))[:200]
-    detail = f"Quiet shops: {names}." if names else None
+    detail = f"Quiet accounts: {names}." if names else None
     return ActionItem(category="churn", priority=1, headline=headline, detail=detail)
 
 

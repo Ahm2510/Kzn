@@ -8,4 +8,8 @@
 **/.env
 **/.env.*
 **/node_modules
-frontend1/dist
+frontend/dist
+*.sqlite3
+temp_audit_data/
+audit_data/
+ecom_data.csv

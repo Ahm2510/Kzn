@@ -162,11 +162,11 @@ export default function Insights() {
         {churn && churn.has_at_risk && (
           <RiskSection
             level={(churn.churned_count ?? 0) > 0 ? "overdue" : "slowing"}
-            title="Shops going quiet"
+            title="Accounts going quiet"
             headline={
               <>
                 <CountUp value={churn.revenue_at_risk ?? 0} format={formatINRLakh} className="font-mono font-semibold tabular-nums text-foreground" />
-                {" "}of historic revenue at risk across {formatCount((churn.at_risk_count ?? 0) + (churn.churned_count ?? 0))} shops.
+                {" "}of historic revenue at risk across {formatCount((churn.at_risk_count ?? 0) + (churn.churned_count ?? 0))} accounts.
                 {" "}Following up is likely to recover revenue.
               </>
             }

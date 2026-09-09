@@ -21,13 +21,15 @@ from app.services.early_warnings import (
 )
  
  
+import pytest
+
 def _load_ecom_data() -> pd.DataFrame:
     """Load ecom_data.csv from project root."""
     csv_path = os.path.join(
         os.path.dirname(__file__), "..", "..", "ecom_data.csv"
     )
     if not os.path.exists(csv_path):
-        raise FileNotFoundError(f"ecom_data.csv not found at {csv_path}")
+        pytest.skip(f"ecom_data.csv not found at {csv_path}")
     df = pd.read_csv(csv_path, encoding="latin-1", nrows=10000)  # limit for test speed
     # Compute revenue fallback
     if "Revenue" not in df.columns and "Quantity" in df.columns and "UnitPrice" in df.columns:

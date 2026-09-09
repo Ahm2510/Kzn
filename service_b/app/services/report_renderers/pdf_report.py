@@ -495,6 +495,7 @@ def render_pdf(
     report: InsightReport,
     output_path: str,
     business_insights: Optional[Dict[str, Any]] = None,
+    firm_name: Optional[str] = None,
 ) -> None:
     """
     Render a professional PDF report from an InsightReport.
@@ -626,8 +627,12 @@ def render_pdf(
     # ------------------------------------------------------------------
     # Thick accent bar at top
     story.append(HRFlowable(width="100%", thickness=3, color=HexColor("#2C2C2C"), spaceAfter=12, spaceBefore=0))
-    story.append(Paragraph("Business Insight Report", title_style))
-    story.append(Paragraph("Revenue Analysis \u2022 Confidential", subtitle_style))
+    if firm_name:
+        story.append(Paragraph(_escape(firm_name), title_style))
+        story.append(Paragraph("Business Health Audit Report \u2022 Confidential", subtitle_style))
+    else:
+        story.append(Paragraph("Business Insight Report", title_style))
+        story.append(Paragraph("Revenue Analysis \u2022 Confidential", subtitle_style))
     
     date_str = datetime.now().strftime("%B %d, %Y at %I:%M %p")
     story.append(Paragraph(f"Report generated: {date_str}", date_style))
@@ -1055,7 +1060,7 @@ def render_pdf(
             story.append(Paragraph(_escape(_negative_revenue_note()), small_muted_style))
             story.append(Spacer(1, 0.1 * inch))
     else:
-        story.append(Paragraph("<i>No metrics available.</i>", metrics_style))
+        story.append(Paragraph("<i>No metrics available.</i>", body_style))
 
     story.append(Spacer(1, 0.25 * inch))
 
@@ -1243,7 +1248,7 @@ def render_pdf(
                 story.append(Paragraph("Customer Churn Risk", section_heading_style))
                 flagged = (ccr.get("at_risk_count") or 0) + (ccr.get("churned_count") or 0)
                 rev_at_risk = ccr.get("revenue_at_risk")
-                headline = f"<b>{flagged}</b> shop(s) have gone quiet"
+                headline = f"<b>{flagged}</b> account(s) have gone quiet"
                 if rev_at_risk:
                     headline += f", with <b>{_inr_pdf(_format_inr_lakh(rev_at_risk))}</b> of historic revenue at risk"
                 headline += ". Following up with these customers is likely to recover revenue."
@@ -1664,7 +1669,7 @@ def render_pdf(
         story.append(
             Paragraph(
                 "<i>No significant insights detected in the analysis.</i>",
-                insights_style,
+                body_style,
             )
         )
 

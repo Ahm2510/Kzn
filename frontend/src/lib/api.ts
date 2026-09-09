@@ -102,19 +102,43 @@ export const authApi = {
   me: () => api<{ user: DjangoUser }>("/auth/me/"),
 };
 
+// ── Workspaces / Clients ──
+
+export interface Workspace {
+  id: number;
+  name: string;
+  owner: number;
+  firm_name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export const workspacesApi = {
+  list: () => api<Workspace[]>("/workspaces/"),
+  create: (name: string, firmName?: string) =>
+    api<Workspace>("/workspaces/", { method: "POST", body: { name, firm_name: firmName ?? "" } }),
+  get: (id: number) => api<Workspace>(`/workspaces/${id}/`),
+  update: (id: number, data: Partial<Workspace>) =>
+    api<Workspace>(`/workspaces/${id}/`, { method: "PATCH", body: data }),
+  delete: (id: number) => api(`/workspaces/${id}/`, { method: "DELETE" }),
+};
+
 // ── Projects ──
 
 export interface Project {
   id: number;
   name: string;
   owner: number;
+  workspace?: number | null;
   created_at: string;
   updated_at: string;
 }
 
 export const projectsApi = {
-  list: () => api<Project[]>("/projects/"),
-  create: (name: string) => api<Project>("/projects/", { method: "POST", body: { name } }),
+  list: (workspaceId?: number | null) =>
+    api<Project[]>(workspaceId ? `/projects/?workspace=${workspaceId}` : "/projects/"),
+  create: (name: string, workspaceId?: number | null) =>
+    api<Project>("/projects/", { method: "POST", body: { name, workspace: workspaceId } }),
   get: (id: number) => api<Project>(`/projects/${id}/`),
   delete: (id: number) => api(`/projects/${id}/`, { method: "DELETE" }),
 };
@@ -586,18 +610,27 @@ export interface InsightReport {
 }
 
 export const analysisApi = {
-  list: () => api<AnalysisRun[]>("/analysis-runs/"),
+  list: (workspaceId?: number | null) =>
+    api<AnalysisRun[]>(workspaceId ? `/analysis-runs/?workspace=${workspaceId}` : "/analysis-runs/"),
 
   get: (id: number) => api<AnalysisRun>(`/analysis-runs/${id}/`),
 
-  create: (projectId: number, currentFile: File, baselineFile?: File | null, cleaningOptions?: Record<string, boolean>, metricSchema?: string) => {
+  create: (
+    projectId: number,
+    currentFile: File,
+    baselineFile?: File | null,
+    cleaningOptions?: Record<string, boolean>,
+    metricSchema?: string,
+    workspaceId?: number | null
+  ) => {
     const fd = new FormData();
     fd.append("project_id", String(projectId));
     fd.append("current_file", currentFile);
     if (baselineFile) fd.append("baseline_file", baselineFile);
     if (cleaningOptions) fd.append("cleaning_options", JSON.stringify(cleaningOptions));
     if (metricSchema) fd.append("metric_schema", metricSchema);
-    return api<AnalysisRun>("/analysis-runs/", { method: "POST", formData: fd });
+    const url = workspaceId ? `/analysis-runs/?workspace=${workspaceId}` : "/analysis-runs/";
+    return api<AnalysisRun>(url, { method: "POST", formData: fd });
   },
 
   delete: (id: number) => api(`/analysis-runs/${id}/`, { method: "DELETE" }),

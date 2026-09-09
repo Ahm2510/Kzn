@@ -204,6 +204,7 @@ async def analyze(
     normalize_columns: bool = Form(True),
     metric_schema: str | None = Form(None),
     include_pdf: bool = Form(True),
+    firm_name: str | None = Form(None),
     _auth: bool = Depends(require_internal_auth),
 ):
     pdf_path = None  # Track for cleanup on error
@@ -416,7 +417,7 @@ async def analyze(
                 fd, pdf_path = tempfile.mkstemp(suffix=".pdf")
                 os.close(fd)
                 await asyncio.to_thread(
-                    render_pdf, report, pdf_path, business_insights=business_insights
+                    render_pdf, report, pdf_path, business_insights=business_insights, firm_name=firm_name
                 )
             except Exception as e:
                 logger.error(f"PDF generation error: {type(e).__name__}: {e}", exc_info=True)

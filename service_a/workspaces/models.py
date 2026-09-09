@@ -10,3 +10,7 @@ User = get_user_model()
 class Workspace(TimeStampedModel):
     name = models.CharField(max_length=255)
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
+    firm_name = models.CharField(max_length=255, default='', blank=True)
+
+    def __str__(self):
+        return self.name

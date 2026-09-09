@@ -548,7 +548,7 @@ export default function Report() {
               </div>
               <div className="flex items-center gap-2 font-mono">
                 <Database className="w-4 h-4 shrink-0" />
-                <span>WORKSPACE ID: Kaizen_V1 / PIPELINE RUN #{run.id}</span>
+                <span>CLIENT: {run.project ? `ID #${run.project}` : "Kaizen_V1"} / PIPELINE RUN #{run.id}</span>
               </div>
             </div>
           </section>

@@ -1,0 +1,406 @@
+Party Name,Voucher Date,Item Name,Quantity,Amount,Cost,Closing Balance
+Apex Logistics Ltd,2025-01-01,Custom System Integration,2,500000,320000.0,350000.0
+Apex Logistics Ltd,2025-01-01,Enterprise Consulting Package,1,150000,90000.0,350000.0
+Horizon Enterprises,2025-01-01,Enterprise Consulting Package,1,150000,90000.0,0.0
+Apex Logistics Ltd,2025-01-02,Software License Subscription,1,35000,15000.0,350000.0
+Vanguard Solutions,2025-01-05,Software License Subscription,4,140000,60000.0,1250000.0
+Horizon Enterprises,2025-01-06,Enterprise Consulting Package,2,300000,180000.0,0.0
+Vanguard Solutions,2025-01-06,Custom System Integration,3,750000,480000.0,1250000.0
+Summit Global Services,2025-01-07,Custom System Integration,1,250000,160000.0,0.0
+Apex Logistics Ltd,2025-01-08,Custom System Integration,3,750000,480000.0,350000.0
+Zenith Tech Systems,2025-01-08,Cloud Infrastructure Managed Services,1,80000,45000.0,850000.0
+Metro Retail Pvt Ltd,2025-01-10,Software License Subscription,3,105000,45000.0,0.0
+Vanguard Solutions,2025-01-13,Enterprise Consulting Package,2,300000,180000.0,1250000.0
+Zenith Tech Systems,2025-01-15,Enterprise Consulting Package,4,600000,360000.0,850000.0
+Horizon Enterprises,2025-01-17,Custom System Integration,2,500000,320000.0,0.0
+Apex Logistics Ltd,2025-01-17,Annual Maintenance & Support,3,150000,75000.0,350000.0
+Horizon Enterprises,2025-01-20,Software License Subscription,2,70000,30000.0,0.0
+Metro Retail Pvt Ltd,2025-01-20,Annual Maintenance & Support,2,100000,50000.0,0.0
+Metro Retail Pvt Ltd,2025-01-20,Custom System Integration,2,500000,320000.0,0.0
+Zenith Tech Systems,2025-01-23,Enterprise Consulting Package,2,300000,180000.0,850000.0
+Zenith Tech Systems,2025-01-23,Custom System Integration,4,1000000,640000.0,850000.0
+Apex Logistics Ltd,2025-01-25,Software License Subscription,3,105000,45000.0,350000.0
+Metro Retail Pvt Ltd,2025-01-26,Cloud Infrastructure Managed Services,2,160000,90000.0,0.0
+Apex Logistics Ltd,2025-01-26,Annual Maintenance & Support,3,150000,75000.0,350000.0
+Vanguard Solutions,2025-01-26,Cloud Infrastructure Managed Services,4,320000,180000.0,1250000.0
+Beacon Industries,2025-01-28,Annual Maintenance & Support,4,200000,100000.0,0.0
+Zenith Tech Systems,2025-01-29,Annual Maintenance & Support,2,100000,50000.0,850000.0
+Horizon Enterprises,2025-02-01,Cloud Infrastructure Managed Services,4,320000,180000.0,0.0
+Horizon Enterprises,2025-02-01,Cloud Infrastructure Managed Services,3,240000,135000.0,0.0
+Horizon Enterprises,2025-02-04,Enterprise Consulting Package,3,450000,270000.0,0.0
+Apex Logistics Ltd,2025-02-07,Cloud Infrastructure Managed Services,2,160000,90000.0,350000.0
+Metro Retail Pvt Ltd,2025-02-07,Custom System Integration,2,500000,320000.0,0.0
+Pioneer Trading Co,2025-02-10,Custom System Integration,2,500000,320000.0,0.0
+Vanguard Solutions,2025-02-11,Software License Subscription,1,35000,15000.0,1250000.0
+Horizon Enterprises,2025-02-11,Cloud Infrastructure Managed Services,1,80000,45000.0,0.0
+Pioneer Trading Co,2025-02-12,Custom System Integration,2,500000,320000.0,0.0
+Apex Logistics Ltd,2025-02-12,Software License Subscription,1,35000,15000.0,350000.0
+Metro Retail Pvt Ltd,2025-02-13,Enterprise Consulting Package,2,300000,180000.0,0.0
+Apex Logistics Ltd,2025-02-13,Cloud Infrastructure Managed Services,2,160000,90000.0,350000.0
+Apex Logistics Ltd,2025-02-13,Software License Subscription,4,140000,60000.0,350000.0
+Vanguard Solutions,2025-02-14,Annual Maintenance & Support,3,150000,75000.0,1250000.0
+Apex Logistics Ltd,2025-02-14,Custom System Integration,4,1000000,640000.0,350000.0
+Pioneer Trading Co,2025-02-14,Cloud Infrastructure Managed Services,1,80000,45000.0,0.0
+Apex Logistics Ltd,2025-02-15,Enterprise Consulting Package,2,300000,180000.0,350000.0
+Apex Logistics Ltd,2025-02-18,Enterprise Consulting Package,2,300000,180000.0,350000.0
+Zenith Tech Systems,2025-02-19,Enterprise Consulting Package,2,300000,180000.0,850000.0
+Metro Retail Pvt Ltd,2025-02-21,Software License Subscription,2,70000,30000.0,0.0
+Vanguard Solutions,2025-02-21,Software License Subscription,4,140000,60000.0,1250000.0
+Apex Logistics Ltd,2025-02-21,Cloud Infrastructure Managed Services,4,320000,180000.0,350000.0
+Apex Logistics Ltd,2025-02-22,Cloud Infrastructure Managed Services,3,240000,135000.0,350000.0
+Metro Retail Pvt Ltd,2025-02-24,Enterprise Consulting Package,1,150000,90000.0,0.0
+Apex Logistics Ltd,2025-02-24,Custom System Integration,1,250000,160000.0,350000.0
+Apex Logistics Ltd,2025-02-25,Cloud Infrastructure Managed Services,2,160000,90000.0,350000.0
+Apex Logistics Ltd,2025-02-27,Annual Maintenance & Support,1,50000,25000.0,350000.0
+Apex Logistics Ltd,2025-03-01,Software License Subscription,1,35000,15000.0,350000.0
+Summit Global Services,2025-03-01,Annual Maintenance & Support,2,100000,50000.0,0.0
+Apex Logistics Ltd,2025-03-01,Cloud Infrastructure Managed Services,2,160000,90000.0,350000.0
+Apex Logistics Ltd,2025-03-03,Enterprise Consulting Package,4,600000,360000.0,350000.0
+Apex Logistics Ltd,2025-03-05,Software License Subscription,4,140000,60000.0,350000.0
+Apex Logistics Ltd,2025-03-05,Custom System Integration,2,500000,320000.0,350000.0
+Vanguard Solutions,2025-03-06,Enterprise Consulting Package,3,450000,270000.0,1250000.0
+Apex Logistics Ltd,2025-03-06,Software License Subscription,4,140000,60000.0,350000.0
+Metro Retail Pvt Ltd,2025-03-06,Software License Subscription,2,70000,30000.0,0.0
+Apex Logistics Ltd,2025-03-07,Annual Maintenance & Support,1,50000,25000.0,350000.0
+Horizon Enterprises,2025-03-07,Annual Maintenance & Support,4,200000,100000.0,0.0
+Apex Logistics Ltd,2025-03-07,Software License Subscription,2,70000,30000.0,350000.0
+Apex Logistics Ltd,2025-03-10,Enterprise Consulting Package,4,600000,360000.0,350000.0
+Horizon Enterprises,2025-03-10,Software License Subscription,3,105000,45000.0,0.0
+Summit Global Services,2025-03-10,Annual Maintenance & Support,3,150000,75000.0,0.0
+Apex Logistics Ltd,2025-03-11,Custom System Integration,4,1000000,640000.0,350000.0
+Apex Logistics Ltd,2025-03-11,Enterprise Consulting Package,1,150000,90000.0,350000.0
+Beacon Industries,2025-03-13,Enterprise Consulting Package,1,150000,90000.0,0.0
+Metro Retail Pvt Ltd,2025-03-13,Software License Subscription,3,105000,45000.0,0.0
+Apex Logistics Ltd,2025-03-13,Custom System Integration,1,250000,160000.0,350000.0
+Apex Logistics Ltd,2025-03-14,Cloud Infrastructure Managed Services,3,240000,135000.0,350000.0
+Horizon Enterprises,2025-03-14,Software License Subscription,1,35000,15000.0,0.0
+Apex Logistics Ltd,2025-03-17,Enterprise Consulting Package,2,300000,180000.0,350000.0
+Apex Logistics Ltd,2025-03-17,Enterprise Consulting Package,2,300000,180000.0,350000.0
+Apex Logistics Ltd,2025-03-17,Software License Subscription,2,70000,30000.0,350000.0
+Apex Logistics Ltd,2025-03-20,Custom System Integration,4,1000000,640000.0,350000.0
+Apex Logistics Ltd,2025-03-20,Enterprise Consulting Package,1,150000,90000.0,350000.0
+Zenith Tech Systems,2025-03-23,Enterprise Consulting Package,1,150000,90000.0,850000.0
+Apex Logistics Ltd,2025-03-23,Annual Maintenance & Support,3,150000,75000.0,350000.0
+Metro Retail Pvt Ltd,2025-03-24,Cloud Infrastructure Managed Services,1,80000,45000.0,0.0
+Apex Logistics Ltd,2025-03-24,Annual Maintenance & Support,1,50000,25000.0,350000.0
+Zenith Tech Systems,2025-03-24,Software License Subscription,2,70000,30000.0,850000.0
+Apex Logistics Ltd,2025-03-26,Custom System Integration,1,250000,160000.0,350000.0
+Horizon Enterprises,2025-03-28,Enterprise Consulting Package,3,450000,270000.0,0.0
+Beacon Industries,2025-03-31,Annual Maintenance & Support,2,100000,50000.0,0.0
+Zenith Tech Systems,2025-03-31,Annual Maintenance & Support,4,200000,100000.0,850000.0
+Vanguard Solutions,2025-04-01,Custom System Integration,4,1000000,640000.0,1250000.0
+Zenith Tech Systems,2025-04-04,Custom System Integration,2,500000,320000.0,850000.0
+Vanguard Solutions,2025-04-04,Enterprise Consulting Package,4,600000,360000.0,1250000.0
+Pioneer Trading Co,2025-04-04,Cloud Infrastructure Managed Services,2,160000,90000.0,0.0
+Apex Logistics Ltd,2025-04-05,Annual Maintenance & Support,2,100000,50000.0,350000.0
+Apex Logistics Ltd,2025-04-05,Annual Maintenance & Support,4,200000,100000.0,350000.0
+Zenith Tech Systems,2025-04-07,Custom System Integration,3,750000,480000.0,850000.0
+Horizon Enterprises,2025-04-07,Cloud Infrastructure Managed Services,3,240000,135000.0,0.0
+Pioneer Trading Co,2025-04-08,Custom System Integration,2,500000,320000.0,0.0
+Apex Logistics Ltd,2025-04-11,Software License Subscription,4,140000,60000.0,350000.0
+Apex Logistics Ltd,2025-04-11,Custom System Integration,4,1000000,640000.0,350000.0
+Apex Logistics Ltd,2025-04-14,Software License Subscription,2,70000,30000.0,350000.0
+Apex Logistics Ltd,2025-04-14,Cloud Infrastructure Managed Services,1,80000,45000.0,350000.0
+Metro Retail Pvt Ltd,2025-04-14,Software License Subscription,2,70000,30000.0,0.0
+Apex Logistics Ltd,2025-04-16,Custom System Integration,3,750000,480000.0,350000.0
+Horizon Enterprises,2025-04-16,Enterprise Consulting Package,3,450000,270000.0,0.0
+Horizon Enterprises,2025-04-19,Custom System Integration,4,1000000,640000.0,0.0
+Vanguard Solutions,2025-04-19,Software License Subscription,2,70000,30000.0,1250000.0
+Horizon Enterprises,2025-04-20,Cloud Infrastructure Managed Services,2,160000,90000.0,0.0
+Horizon Enterprises,2025-04-20,Custom System Integration,4,1000000,640000.0,0.0
+Apex Logistics Ltd,2025-04-23,Annual Maintenance & Support,4,200000,100000.0,350000.0
+Horizon Enterprises,2025-04-26,Cloud Infrastructure Managed Services,4,320000,180000.0,0.0
+Metro Retail Pvt Ltd,2025-04-26,Annual Maintenance & Support,4,200000,100000.0,0.0
+Zenith Tech Systems,2025-04-26,Annual Maintenance & Support,1,50000,25000.0,850000.0
+Horizon Enterprises,2025-04-28,Software License Subscription,3,105000,45000.0,0.0
+Apex Logistics Ltd,2025-04-28,Annual Maintenance & Support,3,150000,75000.0,350000.0
+Apex Logistics Ltd,2025-04-28,Annual Maintenance & Support,2,100000,50000.0,350000.0
+Apex Logistics Ltd,2025-04-29,Cloud Infrastructure Managed Services,1,80000,45000.0,350000.0
+Pioneer Trading Co,2025-05-01,Software License Subscription,2,70000,30000.0,0.0
+Vanguard Solutions,2025-05-01,Cloud Infrastructure Managed Services,4,320000,180000.0,1250000.0
+Apex Logistics Ltd,2025-05-03,Enterprise Consulting Package,1,150000,90000.0,350000.0
+Apex Logistics Ltd,2025-05-05,Software License Subscription,4,140000,60000.0,350000.0
+Apex Logistics Ltd,2025-05-06,Enterprise Consulting Package,4,600000,360000.0,350000.0
+Apex Logistics Ltd,2025-05-06,Cloud Infrastructure Managed Services,3,240000,135000.0,350000.0
+Summit Global Services,2025-05-06,Cloud Infrastructure Managed Services,4,320000,180000.0,0.0
+Pioneer Trading Co,2025-05-09,Cloud Infrastructure Managed Services,4,320000,180000.0,0.0
+Apex Logistics Ltd,2025-05-09,Annual Maintenance & Support,3,150000,75000.0,350000.0
+Horizon Enterprises,2025-05-12,Custom System Integration,4,1000000,640000.0,0.0
+Apex Logistics Ltd,2025-05-12,Custom System Integration,2,500000,320000.0,350000.0
+Apex Logistics Ltd,2025-05-14,Software License Subscription,1,35000,15000.0,350000.0
+Apex Logistics Ltd,2025-05-14,Annual Maintenance & Support,4,200000,100000.0,350000.0
+Vanguard Solutions,2025-05-17,Enterprise Consulting Package,4,600000,360000.0,1250000.0
+Metro Retail Pvt Ltd,2025-05-19,Cloud Infrastructure Managed Services,1,80000,45000.0,0.0
+Apex Logistics Ltd,2025-05-19,Cloud Infrastructure Managed Services,4,320000,180000.0,350000.0
+Apex Logistics Ltd,2025-05-22,Software License Subscription,4,140000,60000.0,350000.0
+Metro Retail Pvt Ltd,2025-05-22,Custom System Integration,3,750000,480000.0,0.0
+Vanguard Solutions,2025-05-22,Cloud Infrastructure Managed Services,2,160000,90000.0,1250000.0
+Apex Logistics Ltd,2025-05-24,Cloud Infrastructure Managed Services,1,80000,45000.0,350000.0
+Horizon Enterprises,2025-05-26,Cloud Infrastructure Managed Services,2,160000,90000.0,0.0
+Zenith Tech Systems,2025-05-26,Annual Maintenance & Support,1,50000,25000.0,850000.0
+Metro Retail Pvt Ltd,2025-05-28,Enterprise Consulting Package,1,150000,90000.0,0.0
+Horizon Enterprises,2025-05-28,Annual Maintenance & Support,4,200000,100000.0,0.0
+Apex Logistics Ltd,2025-05-28,Custom System Integration,4,1000000,640000.0,350000.0
+Metro Retail Pvt Ltd,2025-05-30,Custom System Integration,4,1000000,640000.0,0.0
+Apex Logistics Ltd,2025-06-01,Enterprise Consulting Package,4,600000,360000.0,350000.0
+Apex Logistics Ltd,2025-06-01,Software License Subscription,1,35000,15000.0,350000.0
+Horizon Enterprises,2025-06-03,Enterprise Consulting Package,1,150000,90000.0,0.0
+Zenith Tech Systems,2025-06-04,Software License Subscription,2,70000,30000.0,850000.0
+Metro Retail Pvt Ltd,2025-06-05,Enterprise Consulting Package,2,300000,180000.0,0.0
+Apex Logistics Ltd,2025-06-07,Custom System Integration,2,500000,320000.0,350000.0
+Horizon Enterprises,2025-06-07,Enterprise Consulting Package,2,300000,180000.0,0.0
+Summit Global Services,2025-06-07,Enterprise Consulting Package,1,150000,90000.0,0.0
+Horizon Enterprises,2025-06-09,Cloud Infrastructure Managed Services,4,320000,180000.0,0.0
+Summit Global Services,2025-06-09,Annual Maintenance & Support,1,50000,25000.0,0.0
+Horizon Enterprises,2025-06-09,Annual Maintenance & Support,1,50000,25000.0,0.0
+Zenith Tech Systems,2025-06-12,Software License Subscription,1,35000,15000.0,850000.0
+Zenith Tech Systems,2025-06-12,Software License Subscription,1,35000,15000.0,850000.0
+Metro Retail Pvt Ltd,2025-06-14,Custom System Integration,1,250000,160000.0,0.0
+Metro Retail Pvt Ltd,2025-06-14,Custom System Integration,1,250000,160000.0,0.0
+Zenith Tech Systems,2025-06-14,Cloud Infrastructure Managed Services,1,80000,45000.0,850000.0
+Horizon Enterprises,2025-06-16,Cloud Infrastructure Managed Services,2,160000,90000.0,0.0
+Metro Retail Pvt Ltd,2025-06-16,Software License Subscription,3,105000,45000.0,0.0
+Vanguard Solutions,2025-06-19,Cloud Infrastructure Managed Services,4,320000,180000.0,1250000.0
+Zenith Tech Systems,2025-06-19,Software License Subscription,3,105000,45000.0,850000.0
+Apex Logistics Ltd,2025-06-19,Annual Maintenance & Support,1,50000,25000.0,350000.0
+Apex Logistics Ltd,2025-06-21,Cloud Infrastructure Managed Services,4,320000,180000.0,350000.0
+Apex Logistics Ltd,2025-06-21,Cloud Infrastructure Managed Services,3,240000,135000.0,350000.0
+Apex Logistics Ltd,2025-06-22,Custom System Integration,3,750000,480000.0,350000.0
+Apex Logistics Ltd,2025-06-22,Software License Subscription,3,105000,45000.0,350000.0
+Metro Retail Pvt Ltd,2025-06-25,Annual Maintenance & Support,1,50000,25000.0,0.0
+Apex Logistics Ltd,2025-06-26,Software License Subscription,2,70000,30000.0,350000.0
+Vanguard Solutions,2025-06-26,Cloud Infrastructure Managed Services,4,320000,180000.0,1250000.0
+Zenith Tech Systems,2025-06-26,Enterprise Consulting Package,3,450000,270000.0,850000.0
+Vanguard Solutions,2025-06-27,Custom System Integration,3,750000,480000.0,1250000.0
+Metro Retail Pvt Ltd,2025-06-27,Software License Subscription,3,105000,45000.0,0.0
+Metro Retail Pvt Ltd,2025-06-29,Custom System Integration,4,1000000,640000.0,0.0
+Apex Logistics Ltd,2025-06-29,Custom System Integration,2,500000,320000.0,350000.0
+Apex Logistics Ltd,2025-06-29,Annual Maintenance & Support,3,150000,75000.0,350000.0
+Metro Retail Pvt Ltd,2025-06-30,Annual Maintenance & Support,2,100000,50000.0,0.0
+Apex Logistics Ltd,2025-06-30,Cloud Infrastructure Managed Services,3,240000,135000.0,350000.0
+Vanguard Solutions,2025-06-30,Software License Subscription,3,105000,45000.0,1250000.0
+Apex Logistics Ltd,2025-07-01,Custom System Integration,2,500000,320000.0,350000.0
+Vanguard Solutions,2025-07-03,Annual Maintenance & Support,3,150000,75000.0,1250000.0
+Metro Retail Pvt Ltd,2025-07-04,Annual Maintenance & Support,4,200000,100000.0,0.0
+Horizon Enterprises,2025-07-05,Cloud Infrastructure Managed Services,4,320000,180000.0,0.0
+Apex Logistics Ltd,2025-07-07,Enterprise Consulting Package,3,450000,270000.0,350000.0
+Summit Global Services,2025-07-07,Cloud Infrastructure Managed Services,1,80000,45000.0,0.0
+Metro Retail Pvt Ltd,2025-07-08,Software License Subscription,1,35000,15000.0,0.0
+Apex Logistics Ltd,2025-07-08,Software License Subscription,3,105000,45000.0,350000.0
+Apex Logistics Ltd,2025-07-09,Cloud Infrastructure Managed Services,2,160000,90000.0,350000.0
+Metro Retail Pvt Ltd,2025-07-12,Cloud Infrastructure Managed Services,3,240000,135000.0,0.0
+Zenith Tech Systems,2025-07-12,Cloud Infrastructure Managed Services,3,240000,135000.0,850000.0
+Apex Logistics Ltd,2025-07-15,Enterprise Consulting Package,2,300000,180000.0,350000.0
+Horizon Enterprises,2025-07-15,Custom System Integration,1,250000,160000.0,0.0
+Apex Logistics Ltd,2025-07-15,Annual Maintenance & Support,1,50000,25000.0,350000.0
+Apex Logistics Ltd,2025-07-16,Software License Subscription,4,140000,60000.0,350000.0
+Apex Logistics Ltd,2025-07-18,Custom System Integration,4,1000000,640000.0,350000.0
+Apex Logistics Ltd,2025-07-19,Custom System Integration,2,500000,320000.0,350000.0
+Metro Retail Pvt Ltd,2025-07-19,Software License Subscription,2,70000,30000.0,0.0
+Horizon Enterprises,2025-07-19,Custom System Integration,2,500000,320000.0,0.0
+Apex Logistics Ltd,2025-07-20,Custom System Integration,3,750000,480000.0,350000.0
+Metro Retail Pvt Ltd,2025-07-22,Custom System Integration,4,1000000,640000.0,0.0
+Metro Retail Pvt Ltd,2025-07-24,Cloud Infrastructure Managed Services,1,80000,45000.0,0.0
+Horizon Enterprises,2025-07-24,Cloud Infrastructure Managed Services,3,240000,135000.0,0.0
+Horizon Enterprises,2025-07-24,Enterprise Consulting Package,1,150000,90000.0,0.0
+Zenith Tech Systems,2025-07-25,Software License Subscription,1,35000,15000.0,850000.0
+Beacon Industries,2025-07-25,Custom System Integration,1,250000,160000.0,0.0
+Vanguard Solutions,2025-07-25,Annual Maintenance & Support,4,200000,100000.0,1250000.0
+Metro Retail Pvt Ltd,2025-07-28,Custom System Integration,2,500000,320000.0,0.0
+Beacon Industries,2025-07-28,Cloud Infrastructure Managed Services,4,320000,180000.0,0.0
+Summit Global Services,2025-07-28,Cloud Infrastructure Managed Services,3,240000,135000.0,0.0
+Apex Logistics Ltd,2025-07-30,Enterprise Consulting Package,2,300000,180000.0,350000.0
+Apex Logistics Ltd,2025-07-30,Cloud Infrastructure Managed Services,3,240000,135000.0,350000.0
+Zenith Tech Systems,2025-08-02,Software License Subscription,1,35000,15000.0,850000.0
+Metro Retail Pvt Ltd,2025-08-02,Custom System Integration,3,750000,480000.0,0.0
+Beacon Industries,2025-08-04,Cloud Infrastructure Managed Services,1,80000,45000.0,0.0
+Metro Retail Pvt Ltd,2025-08-07,Enterprise Consulting Package,2,300000,180000.0,0.0
+Metro Retail Pvt Ltd,2025-08-07,Software License Subscription,4,140000,60000.0,0.0
+Horizon Enterprises,2025-08-07,Enterprise Consulting Package,2,300000,180000.0,0.0
+Apex Logistics Ltd,2025-08-09,Custom System Integration,4,1000000,640000.0,350000.0
+Pioneer Trading Co,2025-08-09,Cloud Infrastructure Managed Services,1,80000,45000.0,0.0
+Apex Logistics Ltd,2025-08-09,Software License Subscription,2,70000,30000.0,350000.0
+Apex Logistics Ltd,2025-08-12,Enterprise Consulting Package,4,600000,360000.0,350000.0
+Beacon Industries,2025-08-13,Enterprise Consulting Package,4,600000,360000.0,0.0
+Zenith Tech Systems,2025-08-14,Cloud Infrastructure Managed Services,3,240000,135000.0,850000.0
+Metro Retail Pvt Ltd,2025-08-14,Custom System Integration,4,1000000,640000.0,0.0
+Zenith Tech Systems,2025-08-14,Cloud Infrastructure Managed Services,2,160000,90000.0,850000.0
+Apex Logistics Ltd,2025-08-16,Annual Maintenance & Support,2,100000,50000.0,350000.0
+Zenith Tech Systems,2025-08-16,Custom System Integration,4,1000000,640000.0,850000.0
+Apex Logistics Ltd,2025-08-16,Software License Subscription,3,105000,45000.0,350000.0
+Vanguard Solutions,2025-08-17,Software License Subscription,4,140000,60000.0,1250000.0
+Zenith Tech Systems,2025-08-17,Cloud Infrastructure Managed Services,4,320000,180000.0,850000.0
+Metro Retail Pvt Ltd,2025-08-19,Software License Subscription,4,140000,60000.0,0.0
+Metro Retail Pvt Ltd,2025-08-19,Custom System Integration,2,500000,320000.0,0.0
+Horizon Enterprises,2025-08-22,Annual Maintenance & Support,4,200000,100000.0,0.0
+Vanguard Solutions,2025-08-23,Cloud Infrastructure Managed Services,4,320000,180000.0,1250000.0
+Beacon Industries,2025-08-23,Annual Maintenance & Support,4,200000,100000.0,0.0
+Metro Retail Pvt Ltd,2025-08-24,Software License Subscription,3,105000,45000.0,0.0
+Apex Logistics Ltd,2025-08-25,Cloud Infrastructure Managed Services,1,80000,45000.0,350000.0
+Vanguard Solutions,2025-08-25,Cloud Infrastructure Managed Services,2,160000,90000.0,1250000.0
+Vanguard Solutions,2025-08-26,Custom System Integration,3,750000,480000.0,1250000.0
+Horizon Enterprises,2025-08-26,Cloud Infrastructure Managed Services,1,80000,45000.0,0.0
+Zenith Tech Systems,2025-08-28,Cloud Infrastructure Managed Services,3,240000,135000.0,850000.0
+Horizon Enterprises,2025-08-28,Cloud Infrastructure Managed Services,1,80000,45000.0,0.0
+Horizon Enterprises,2025-08-28,Annual Maintenance & Support,3,150000,75000.0,0.0
+Apex Logistics Ltd,2025-08-29,Enterprise Consulting Package,1,150000,90000.0,350000.0
+Metro Retail Pvt Ltd,2025-08-29,Custom System Integration,1,250000,160000.0,0.0
+Apex Logistics Ltd,2025-08-29,Enterprise Consulting Package,3,450000,270000.0,350000.0
+Metro Retail Pvt Ltd,2025-08-31,Annual Maintenance & Support,4,200000,100000.0,0.0
+Metro Retail Pvt Ltd,2025-08-31,Annual Maintenance & Support,2,100000,50000.0,0.0
+Horizon Enterprises,2025-09-01,Cloud Infrastructure Managed Services,2,160000,90000.0,0.0
+Apex Logistics Ltd,2025-09-03,Cloud Infrastructure Managed Services,3,240000,135000.0,350000.0
+Metro Retail Pvt Ltd,2025-09-03,Enterprise Consulting Package,4,600000,360000.0,0.0
+Pioneer Trading Co,2025-09-03,Software License Subscription,2,70000,30000.0,0.0
+Summit Global Services,2025-09-04,Software License Subscription,3,105000,45000.0,0.0
+Horizon Enterprises,2025-09-04,Cloud Infrastructure Managed Services,3,240000,135000.0,0.0
+Apex Logistics Ltd,2025-09-06,Cloud Infrastructure Managed Services,4,320000,180000.0,350000.0
+Apex Logistics Ltd,2025-09-06,Cloud Infrastructure Managed Services,3,240000,135000.0,350000.0
+Beacon Industries,2025-09-09,Custom System Integration,1,250000,160000.0,0.0
+Beacon Industries,2025-09-09,Cloud Infrastructure Managed Services,3,240000,135000.0,0.0
+Zenith Tech Systems,2025-09-10,Enterprise Consulting Package,4,600000,360000.0,850000.0
+Zenith Tech Systems,2025-09-10,Custom System Integration,2,500000,320000.0,850000.0
+Horizon Enterprises,2025-09-10,Custom System Integration,2,500000,320000.0,0.0
+Horizon Enterprises,2025-09-13,Annual Maintenance & Support,1,50000,25000.0,0.0
+Apex Logistics Ltd,2025-09-16,Cloud Infrastructure Managed Services,1,80000,45000.0,350000.0
+Horizon Enterprises,2025-09-16,Annual Maintenance & Support,1,50000,25000.0,0.0
+Pioneer Trading Co,2025-09-16,Custom System Integration,4,1000000,640000.0,0.0
+Apex Logistics Ltd,2025-09-17,Software License Subscription,3,105000,45000.0,350000.0
+Pioneer Trading Co,2025-09-20,Annual Maintenance & Support,3,150000,75000.0,0.0
+Pioneer Trading Co,2025-09-20,Cloud Infrastructure Managed Services,3,240000,135000.0,0.0
+Vanguard Solutions,2025-09-20,Custom System Integration,1,250000,160000.0,1250000.0
+Apex Logistics Ltd,2025-09-22,Annual Maintenance & Support,4,200000,100000.0,350000.0
+Apex Logistics Ltd,2025-09-25,Cloud Infrastructure Managed Services,1,80000,45000.0,350000.0
+Apex Logistics Ltd,2025-09-25,Enterprise Consulting Package,4,600000,360000.0,350000.0
+Vanguard Solutions,2025-09-27,Custom System Integration,4,1000000,640000.0,1250000.0
+Zenith Tech Systems,2025-09-27,Custom System Integration,1,250000,160000.0,850000.0
+Horizon Enterprises,2025-09-27,Cloud Infrastructure Managed Services,1,80000,45000.0,0.0
+Apex Logistics Ltd,2025-09-30,Software License Subscription,2,70000,30000.0,350000.0
+Horizon Enterprises,2025-09-30,Cloud Infrastructure Managed Services,3,240000,135000.0,0.0
+Horizon Enterprises,2025-09-30,Enterprise Consulting Package,2,300000,180000.0,0.0
+Apex Logistics Ltd,2025-10-01,Cloud Infrastructure Managed Services,1,80000,45000.0,350000.0
+Pioneer Trading Co,2025-10-02,Annual Maintenance & Support,4,200000,100000.0,0.0
+Horizon Enterprises,2025-10-04,Software License Subscription,4,140000,60000.0,0.0
+Horizon Enterprises,2025-10-04,Annual Maintenance & Support,4,200000,100000.0,0.0
+Zenith Tech Systems,2025-10-07,Software License Subscription,4,140000,60000.0,850000.0
+Vanguard Solutions,2025-10-09,Annual Maintenance & Support,4,200000,100000.0,1250000.0
+Zenith Tech Systems,2025-10-11,Enterprise Consulting Package,3,450000,270000.0,850000.0
+Apex Logistics Ltd,2025-10-14,Cloud Infrastructure Managed Services,3,240000,135000.0,350000.0
+Apex Logistics Ltd,2025-10-14,Enterprise Consulting Package,4,600000,360000.0,350000.0
+Apex Logistics Ltd,2025-10-14,Annual Maintenance & Support,1,50000,25000.0,350000.0
+Apex Logistics Ltd,2025-10-15,Annual Maintenance & Support,2,100000,50000.0,350000.0
+Apex Logistics Ltd,2025-10-15,Software License Subscription,2,70000,30000.0,350000.0
+Zenith Tech Systems,2025-10-18,Annual Maintenance & Support,3,150000,75000.0,850000.0
+Apex Logistics Ltd,2025-10-19,Annual Maintenance & Support,2,100000,50000.0,350000.0
+Metro Retail Pvt Ltd,2025-10-19,Annual Maintenance & Support,1,50000,25000.0,0.0
+Horizon Enterprises,2025-10-19,Enterprise Consulting Package,2,300000,180000.0,0.0
+Vanguard Solutions,2025-10-20,Annual Maintenance & Support,3,150000,75000.0,1250000.0
+Apex Logistics Ltd,2025-10-20,Custom System Integration,1,250000,160000.0,350000.0
+Metro Retail Pvt Ltd,2025-10-21,Enterprise Consulting Package,1,150000,90000.0,0.0
+Metro Retail Pvt Ltd,2025-10-21,Custom System Integration,1,250000,160000.0,0.0
+Metro Retail Pvt Ltd,2025-10-21,Annual Maintenance & Support,1,50000,25000.0,0.0
+Metro Retail Pvt Ltd,2025-10-24,Cloud Infrastructure Managed Services,1,80000,45000.0,0.0
+Apex Logistics Ltd,2025-10-24,Cloud Infrastructure Managed Services,4,320000,180000.0,350000.0
+Metro Retail Pvt Ltd,2025-10-24,Enterprise Consulting Package,4,600000,360000.0,0.0
+Apex Logistics Ltd,2025-10-27,Enterprise Consulting Package,3,450000,270000.0,350000.0
+Horizon Enterprises,2025-10-27,Enterprise Consulting Package,2,300000,180000.0,0.0
+Horizon Enterprises,2025-10-29,Software License Subscription,3,105000,45000.0,0.0
+Apex Logistics Ltd,2025-10-29,Software License Subscription,3,105000,45000.0,350000.0
+Metro Retail Pvt Ltd,2025-10-29,Software License Subscription,4,140000,60000.0,0.0
+Apex Logistics Ltd,2025-10-30,Software License Subscription,2,70000,30000.0,350000.0
+Metro Retail Pvt Ltd,2025-10-30,Annual Maintenance & Support,4,200000,100000.0,0.0
+Apex Logistics Ltd,2025-10-30,Cloud Infrastructure Managed Services,4,320000,180000.0,350000.0
+Apex Logistics Ltd,2025-11-01,Cloud Infrastructure Managed Services,3,240000,182250.0,350000.0
+Horizon Enterprises,2025-11-01,Custom System Integration,2,500000,432000.0,0.0
+Horizon Enterprises,2025-11-01,Cloud Infrastructure Managed Services,1,80000,60750.0,0.0
+Apex Logistics Ltd,2025-11-02,Enterprise Consulting Package,3,450000,364500.0,350000.0
+Apex Logistics Ltd,2025-11-03,Software License Subscription,3,105000,60750.0,350000.0
+Horizon Enterprises,2025-11-03,Cloud Infrastructure Managed Services,3,240000,182250.0,0.0
+Pioneer Trading Co,2025-11-03,Cloud Infrastructure Managed Services,1,80000,60750.0,0.0
+Apex Logistics Ltd,2025-11-05,Enterprise Consulting Package,2,300000,243000.0,350000.0
+Apex Logistics Ltd,2025-11-05,Cloud Infrastructure Managed Services,2,160000,121500.0,350000.0
+Zenith Tech Systems,2025-11-05,Custom System Integration,3,750000,648000.0,850000.0
+Horizon Enterprises,2025-11-06,Cloud Infrastructure Managed Services,1,80000,60750.0,0.0
+Horizon Enterprises,2025-11-06,Custom System Integration,1,250000,216000.0,0.0
+Vanguard Solutions,2025-11-07,Custom System Integration,3,750000,648000.0,1250000.0
+Apex Logistics Ltd,2025-11-07,Annual Maintenance & Support,2,100000,67500.0,350000.0
+Apex Logistics Ltd,2025-11-10,Annual Maintenance & Support,1,50000,33750.0,350000.0
+Apex Logistics Ltd,2025-11-10,Software License Subscription,2,70000,40500.0,350000.0
+Apex Logistics Ltd,2025-11-10,Cloud Infrastructure Managed Services,3,240000,182250.0,350000.0
+Apex Logistics Ltd,2025-11-11,Custom System Integration,1,250000,216000.0,350000.0
+Pioneer Trading Co,2025-11-11,Annual Maintenance & Support,2,100000,67500.0,0.0
+Horizon Enterprises,2025-11-14,Custom System Integration,4,1000000,864000.0,0.0
+Vanguard Solutions,2025-11-19,Enterprise Consulting Package,3,450000,364500.0,1250000.0
+Apex Logistics Ltd,2025-11-21,Software License Subscription,4,140000,81000.0,350000.0
+Apex Logistics Ltd,2025-11-24,Annual Maintenance & Support,4,200000,135000.0,350000.0
+Beacon Industries,2025-11-24,Enterprise Consulting Package,1,150000,121500.0,0.0
+Apex Logistics Ltd,2025-11-24,Annual Maintenance & Support,2,100000,67500.0,350000.0
+Apex Logistics Ltd,2025-11-26,Enterprise Consulting Package,4,600000,486000.0,350000.0
+Vanguard Solutions,2025-11-26,Annual Maintenance & Support,2,100000,67500.0,1250000.0
+Vanguard Solutions,2025-11-28,Software License Subscription,3,105000,60750.0,1250000.0
+Apex Logistics Ltd,2025-11-28,Enterprise Consulting Package,4,600000,486000.0,350000.0
+Apex Logistics Ltd,2025-11-28,Enterprise Consulting Package,3,450000,364500.0,350000.0
+Horizon Enterprises,2025-12-01,Cloud Infrastructure Managed Services,3,240000,182250.0,0.0
+Apex Logistics Ltd,2025-12-01,Enterprise Consulting Package,3,450000,364500.0,350000.0
+Horizon Enterprises,2025-12-02,Custom System Integration,1,250000,216000.0,0.0
+Apex Logistics Ltd,2025-12-05,Custom System Integration,3,750000,648000.0,350000.0
+Apex Logistics Ltd,2025-12-05,Annual Maintenance & Support,1,50000,33750.0,350000.0
+Pioneer Trading Co,2025-12-06,Custom System Integration,3,750000,648000.0,0.0
+Vanguard Solutions,2025-12-06,Annual Maintenance & Support,2,100000,67500.0,1250000.0
+Apex Logistics Ltd,2025-12-07,Annual Maintenance & Support,2,100000,67500.0,350000.0
+Apex Logistics Ltd,2025-12-10,Cloud Infrastructure Managed Services,4,320000,243000.0,350000.0
+Summit Global Services,2025-12-13,Software License Subscription,3,105000,60750.0,0.0
+Zenith Tech Systems,2025-12-13,Custom System Integration,2,500000,432000.0,850000.0
+Zenith Tech Systems,2025-12-18,Software License Subscription,1,35000,20250.0,850000.0
+Apex Logistics Ltd,2025-12-18,Enterprise Consulting Package,3,450000,364500.0,350000.0
+Apex Logistics Ltd,2025-12-20,Custom System Integration,3,750000,648000.0,350000.0
+Apex Logistics Ltd,2025-12-20,Enterprise Consulting Package,4,600000,486000.0,350000.0
+Zenith Tech Systems,2025-12-22,Enterprise Consulting Package,4,600000,486000.0,850000.0
+Pioneer Trading Co,2025-12-22,Software License Subscription,2,70000,40500.0,0.0
+Apex Logistics Ltd,2025-12-24,Enterprise Consulting Package,4,600000,486000.0,350000.0
+Apex Logistics Ltd,2025-12-24,Custom System Integration,1,250000,216000.0,350000.0
+Apex Logistics Ltd,2025-12-27,Annual Maintenance & Support,4,200000,135000.0,350000.0
+Beacon Industries,2025-12-27,Software License Subscription,2,70000,40500.0,0.0
+Apex Logistics Ltd,2025-12-27,Custom System Integration,4,1000000,864000.0,350000.0
+Apex Logistics Ltd,2025-12-29,Custom System Integration,1,250000,216000.0,350000.0
+Apex Logistics Ltd,2026-01-02,Software License Subscription,2,70000,30000.0,350000.0
+Apex Logistics Ltd,2026-01-02,Software License Subscription,2,70000,30000.0,350000.0
+Summit Global Services,2026-01-04,Cloud Infrastructure Managed Services,2,160000,90000.0,0.0
+Pioneer Trading Co,2026-01-10,Enterprise Consulting Package,4,600000,360000.0,0.0
+Apex Logistics Ltd,2026-01-10,Custom System Integration,2,500000,320000.0,350000.0
+Summit Global Services,2026-01-11,Cloud Infrastructure Managed Services,2,160000,90000.0,0.0
+Apex Logistics Ltd,2026-01-11,Annual Maintenance & Support,2,100000,50000.0,350000.0
+Zenith Tech Systems,2026-01-12,Enterprise Consulting Package,1,150000,90000.0,850000.0
+Apex Logistics Ltd,2026-01-16,Software License Subscription,2,70000,30000.0,350000.0
+Apex Logistics Ltd,2026-01-19,Custom System Integration,2,500000,320000.0,350000.0
+Summit Global Services,2026-01-19,Software License Subscription,3,105000,45000.0,0.0
+Apex Logistics Ltd,2026-01-22,Annual Maintenance & Support,3,150000,75000.0,350000.0
+Summit Global Services,2026-01-22,Cloud Infrastructure Managed Services,2,160000,90000.0,0.0
+Summit Global Services,2026-01-24,Cloud Infrastructure Managed Services,4,320000,180000.0,0.0
+Vanguard Solutions,2026-01-24,Cloud Infrastructure Managed Services,4,320000,180000.0,1250000.0
+Summit Global Services,2026-01-24,Annual Maintenance & Support,2,100000,50000.0,0.0
+Summit Global Services,2026-01-28,Software License Subscription,1,35000,15000.0,0.0
+Apex Logistics Ltd,2026-01-28,Annual Maintenance & Support,3,150000,75000.0,350000.0
+Zenith Tech Systems,2026-01-31,Enterprise Consulting Package,2,300000,180000.0,850000.0
+Summit Global Services,2026-02-02,Cloud Infrastructure Managed Services,1,80000,45000.0,0.0
+Apex Logistics Ltd,2026-02-02,Custom System Integration,2,500000,320000.0,350000.0
+Apex Logistics Ltd,2026-02-04,Enterprise Consulting Package,3,450000,270000.0,350000.0
+Zenith Tech Systems,2026-02-05,Annual Maintenance & Support,1,50000,25000.0,850000.0
+Apex Logistics Ltd,2026-02-05,Cloud Infrastructure Managed Services,2,160000,90000.0,350000.0
+Apex Logistics Ltd,2026-02-08,Enterprise Consulting Package,1,150000,90000.0,350000.0
+Zenith Tech Systems,2026-02-10,Software License Subscription,4,140000,60000.0,850000.0
+Apex Logistics Ltd,2026-02-11,Enterprise Consulting Package,1,150000,90000.0,350000.0
+Apex Logistics Ltd,2026-02-11,Software License Subscription,4,140000,60000.0,350000.0
+Zenith Tech Systems,2026-02-12,Cloud Infrastructure Managed Services,1,80000,45000.0,850000.0
+Vanguard Solutions,2026-02-15,Custom System Integration,4,1000000,640000.0,1250000.0
+Apex Logistics Ltd,2026-02-15,Custom System Integration,2,500000,320000.0,350000.0
+Apex Logistics Ltd,2026-02-18,Enterprise Consulting Package,3,450000,270000.0,350000.0
+Apex Logistics Ltd,2026-02-18,Software License Subscription,1,35000,15000.0,350000.0
+Apex Logistics Ltd,2026-02-20,Cloud Infrastructure Managed Services,3,240000,135000.0,350000.0
+Apex Logistics Ltd,2026-02-20,Enterprise Consulting Package,3,450000,270000.0,350000.0
+Apex Logistics Ltd,2026-02-21,Enterprise Consulting Package,3,450000,270000.0,350000.0
+Apex Logistics Ltd,2026-02-21,Custom System Integration,3,750000,480000.0,350000.0
+Zenith Tech Systems,2026-02-24,Cloud Infrastructure Managed Services,4,320000,180000.0,850000.0
+Zenith Tech Systems,2026-02-27,Enterprise Consulting Package,4,600000,360000.0,850000.0
+Apex Logistics Ltd,2026-02-28,Annual Maintenance & Support,1,50000,25000.0,350000.0
+Apex Logistics Ltd,2026-02-28,Custom System Integration,4,1000000,640000.0,350000.0
