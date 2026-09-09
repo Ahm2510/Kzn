@@ -1,0 +1,93 @@
+"""
+Authentication module using streamlit-authenticator with Streamlit secrets.
+Handles login, session state, and firm_id resolution.
+"""
+import streamlit as st
+import streamlit_authenticator as stauth
+from typing import Optional
+
+
+def get_authenticator():
+    """Initialize and return the streamlit-authenticator instance from secrets."""
+    # Load credentials from Streamlit secrets
+    credentials = st.secrets.get("credentials", {"usernames": {}})
+    
+    # Get cookie secret from secrets
+    cookie_secret = st.secrets.get("cookie_secret")
+    if not cookie_secret:
+        raise ValueError("COOKIE_SECRET not set in Streamlit secrets")
+    
+    # Build config
+    config = {
+        "credentials": credentials,
+        "cookie": {
+            "name": "kaizen_lite_auth",
+            "key": cookie_secret,
+            "expiry_days": 7
+        }
+    }
+    
+    authenticator = stauth.Authenticate(
+        config["credentials"],
+        config["cookie"]["name"],
+        config["cookie"]["key"],
+        config["cookie"]["expiry_days"],
+    )
+    return authenticator
+
+
+def login():
+    """Handle login and set session state."""
+    authenticator = get_authenticator()
+    
+    name, authentication_status, username = authenticator.login("Login", "main")
+    
+    if authentication_status:
+        # Resolve firm_id from email
+        from db import get_firm_by_email
+        credentials = st.secrets.get("credentials", {"usernames": {}})
+        user_config = credentials.get("usernames", {}).get(username)
+        if user_config:
+            email = user_config.get("email")
+            firm = get_firm_by_email(email)
+            if firm:
+                st.session_state["firm_id"] = firm["firm_id"]
+                st.session_state["firm_name"] = firm["firm_name"]
+                st.session_state["username"] = username
+            else:
+                st.error("Firm account not found in database. Contact support.")
+                st.session_state["authentication_status"] = False
+        else:
+            st.error("User configuration error.")
+            st.session_state["authentication_status"] = False
+    elif authentication_status is False:
+        st.error("Username/password is incorrect")
+    elif authentication_status is None:
+        pass  # No login attempt yet
+    
+    return name, authentication_status, username
+
+
+def logout():
+    """Handle logout and clear session state."""
+    authenticator = get_authenticator()
+    authenticator.logout("Logout", "main")
+    
+    # Clear session state
+    for key in ["firm_id", "firm_name", "username", "authentication_status"]:
+        st.session_state.pop(key, None)
+
+
+def is_logged_in() -> bool:
+    """Check if user is logged in."""
+    return st.session_state.get("authentication_status") is True
+
+
+def get_firm_id() -> Optional[int]:
+    """Get the current firm_id from session state."""
+    return st.session_state.get("firm_id")
+
+
+def get_firm_name() -> Optional[str]:
+    """Get the current firm_name from session state."""
+    return st.session_state.get("firm_name")
