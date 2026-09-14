@@ -10,12 +10,19 @@ from io import BytesIO
 
 
 def get_s3_client():
-    """Get an S3 client configured from Streamlit secrets."""
+    """Get an S3-compatible client configured from Streamlit secrets."""
+    # Support both AWS S3 and Cloudflare R2
+    endpoint_url = st.secrets.get("s3_endpoint_url")  # For R2: https://<accountid>.r2.cloudflarestorage.com
+    access_key = st.secrets.get("aws_access_key_id") or st.secrets.get("r2_access_key_id")
+    secret_key = st.secrets.get("aws_secret_access_key") or st.secrets.get("r2_secret_access_key")
+    region = st.secrets.get("aws_region", "us-east-1")
+    
     return boto3.client(
         's3',
-        aws_access_key_id=st.secrets.get("aws_access_key_id"),
-        aws_secret_access_key=st.secrets.get("aws_secret_access_key"),
-        region_name=st.secrets.get("aws_region", "us-east-1")
+        endpoint_url=endpoint_url,
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_key,
+        region_name=region
     )
 
 

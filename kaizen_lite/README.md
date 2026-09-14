@@ -17,7 +17,15 @@ Kaizen Lite is now configured for Streamlit Cloud deployment with:
    - Get a free database from [ElephantSQL](https://www.elephantsql.com/) or [Neon](https://neon.tech/)
    - Note the connection string: `postgresql://user:password@host:port/database`
 
-2. **AWS S3 Bucket**
+2. **File Storage (AWS S3 or Cloudflare R2)**
+   
+   **Option A: Cloudflare R2 (Free - Recommended)**
+   - Create account at [Cloudflare R2](https://dash.cloudflare.com/)
+   - Go to R2 → Create bucket
+   - Get R2 API token from [Profile → API Tokens](https://dash.cloudflare.com/profile/api-tokens)
+   - Note the account ID, access key ID, secret access key, and bucket name
+   
+   **Option B: AWS S3**
    - Create an S3 bucket in AWS
    - Create an IAM user with `s3:PutObject` and `s3:GetObject` permissions
    - Note the access key ID, secret access key, and bucket name
@@ -47,11 +55,19 @@ Kaizen Lite is now configured for Streamlit Cloud deployment with:
    # Database
    database_url = "postgresql://user:password@host:port/database"
    
-   # AWS S3
-   aws_access_key_id = "your-aws-access-key-id"
-   aws_secret_access_key = "your-aws-secret-access-key"
-   aws_region = "us-east-1"
-   s3_bucket_name = "your-bucket-name"
+   # File Storage (choose one)
+   
+   # Option A: Cloudflare R2 (Free)
+   s3_endpoint_url = "https://<account-id>.r2.cloudflarestorage.com"
+   r2_access_key_id = "your-r2-access-key-id"
+   r2_secret_access_key = "your-r2-secret-access-key"
+   s3_bucket_name = "your-r2-bucket-name"
+   
+   # Option B: AWS S3
+   # aws_access_key_id = "your-aws-access-key-id"
+   # aws_secret_access_key = "your-aws-secret-access-key"
+   # aws_region = "us-east-1"
+   # s3_bucket_name = "your-bucket-name"
    
    # Authentication
    cookie_secret = "random-secret-key-for-cookies"
