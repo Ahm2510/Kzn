@@ -14,15 +14,27 @@ import json
 from datetime import datetime
 from typing import Dict, Any, Optional, List
 
-# Import service_b modules
-from app.services.preprocessing import preprocess_with_options
-from app.services.schemas.insight.cleaning import CleaningOptions
-from app.services.insight_engine.column_detector import detect_revenue_column
-from app.services.insight_engine.engine import InsightEngine
-from app.services.business_insights.generator import BusinessInsightGenerator
-from app.services.executive_summary import compute_enhanced_executive_summary
-from app.services.action_list import build_action_list
-from app.services.report_renderers.pdf_report import render_pdf
+# Import service_b modules using absolute imports to avoid naming conflicts
+import importlib
+
+# Dynamically import to avoid circular import with kaizen_lite/app.py
+preprocessing = importlib.import_module("app.services.preprocessing")
+cleaning = importlib.import_module("app.services.schemas.insight.cleaning")
+column_detector = importlib.import_module("app.services.insight_engine.column_detector")
+engine = importlib.import_module("app.services.insight_engine.engine")
+business_insights = importlib.import_module("app.services.business_insights.generator")
+executive_summary = importlib.import_module("app.services.executive_summary")
+action_list = importlib.import_module("app.services.action_list")
+pdf_report = importlib.import_module("app.services.report_renderers.pdf_report")
+
+preprocess_with_options = preprocessing.preprocess_with_options
+CleaningOptions = cleaning.CleaningOptions
+detect_revenue_column = column_detector.detect_revenue_column
+InsightEngine = engine.InsightEngine
+BusinessInsightGenerator = business_insights.BusinessInsightGenerator
+compute_enhanced_executive_summary = executive_summary.compute_enhanced_executive_summary
+build_action_list = action_list.build_action_list
+render_pdf = pdf_report.render_pdf
 
 
 def analyze_ledger(
@@ -118,8 +130,8 @@ def generate_pdf(
     """
     Generate a white-labeled PDF report and return as bytes.
     """
-    from app.schemas.insight.report import InsightReport
-    from app.services.report_renderers.pdf_report import render_pdf
+    report_schema = importlib.import_module("app.schemas.insight.report")
+    InsightReport = report_schema.InsightReport
     
     report = InsightReport(**analysis_result["report"])
     business_insights = analysis_result["business_insights"]
