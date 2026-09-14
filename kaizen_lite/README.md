@@ -46,7 +46,7 @@ Kaizen Lite is now configured for Streamlit Cloud deployment with:
    - Go to [share.streamlit.io](https://share.streamlit.io)
    - Click "New app"
    - Select your GitHub repository
-   - Set main file path to `kaizen_lite/app.py`
+   - Set main file path to `kaizen_lite/main.py`
 
 3. **Configure Secrets**
    In Streamlit Cloud, go to your app's Settings → Secrets and add:
@@ -125,14 +125,14 @@ For local testing, you can still run with SQLite and local file storage:
 
 3. **Run the app:**
    ```bash
-   streamlit run app.py
+   streamlit run main.py
    ```
 
 ---
 
 ## Architecture
 
-- **app.py**: Main entrypoint with routing logic
+- **main.py**: Main entrypoint with routing logic
 - **auth.py**: Streamlit-authenticator integration (uses Streamlit secrets)
 - **db.py**: PostgreSQL database helper with scoped queries
 - **storage.py**: AWS S3 helper for file uploads/downloads
@@ -150,7 +150,7 @@ All database queries are scoped by `firm_id`:
 
 ```
 /kaizen_lite/
-  app.py                   # Streamlit entrypoint
+  main.py                  # Streamlit entrypoint
   auth.py                  # Login/session logic
   db.py                    # PostgreSQL helper
   storage.py               # S3 storage helper

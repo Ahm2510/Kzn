@@ -3,14 +3,11 @@
 ## Files Created
 
 ### Core Application
-- `app.py` - Streamlit entrypoint with routing logic
+- `main.py` - Streamlit entrypoint with routing logic
 - `auth.py` - Streamlit-authenticator integration
 - `db.py` - SQLite database helper with scoped queries
 - `analysis_engine.py` - In-process calls to service_b modules
 - `delta_computation.py` - Period-over-period delta logic (core differentiator)
-- `add_firm.py` - CLI script for onboarding firms
-
-### Views
 - `views/homepage.py` - Public homepage with request access form
 - `views/dashboard.py` - Authenticated dashboard with client list
 - `views/client_detail.py` - Client detail with upload, results, PDF download, history
@@ -54,7 +51,7 @@ The `compute_deltas()` function:
 ### Database Schema
 - `firms` table: firm_id, firm_name, contact_email, created_at, logo_path
 - `clients` table: client_id, firm_id, client_name, created_at (UNIQUE on firm_id, client_name)
-- `reports` table: report_id, client_id, uploaded_filename, generated_at, pdf_path, summary_json
+- `reports` table: report_id, client_id, uploaded_filename, generated_at, pdf_path, summary_json, new_column
 
 ## Verification Checklist
 
@@ -134,35 +131,22 @@ streamlit run app.py
 
 ```
 /kaizen_lite/
-  app.py
-  auth.py
-  add_firm.py
-  analysis_engine.py
-  delta_computation.py
-  db.py
+  main.py                  # Streamlit entrypoint
+  auth.py                  # Login/session logic
   requirements.txt
-  .env.example
-  README.md
-  config/
-    firms.yaml
-  data/
-    {firm_id}/
-      {client_id}/
-        uploads/
-        reports/
+  db.py                    # PostgreSQL helper
+  storage.py               # S3 storage helper
+  analysis_engine.py       # Service B integration
+  delta_computation.py     # Delta logic
+  .streamlit/
+    secrets.toml.example   # Secrets template
   views/
     __init__.py
     homepage.py
     dashboard.py
     client_detail.py
-  pending_requests.csv (created on first request)
-  kaizen_lite.sqlite3 (created on first run)
+    admin.py
+    about.py
 ```
 
-## Git Ignore Updates
-
-Added to .gitignore:
-- kaizen_lite/data/
-- kaizen_lite/*.sqlite3
-- kaizen_lite/config/firms.yaml
-- kaizen_lite/pending_requests.csv
+## Admin View Usage Instructions
