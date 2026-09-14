@@ -5,9 +5,15 @@ Imports and calls service_b's analysis modules in-process.
 import sys
 from pathlib import Path
 
-# Add service_b to Python path for in-process imports
+# Add service_b/app to Python path BEFORE kaizen_lite to avoid naming conflicts
+# This ensures service_b's app module is found first
 SERVICE_B_PATH = Path(__file__).parent.parent / "service_b"
-sys.path.insert(0, str(SERVICE_B_PATH))
+SERVICE_B_APP_PATH = SERVICE_B_PATH / "app"
+
+# Insert service_b/app at the beginning of sys.path
+sys.path.insert(0, str(SERVICE_B_APP_PATH))
+# Also add service_b parent for any relative imports
+sys.path.insert(1, str(SERVICE_B_PATH))
 
 import pandas as pd
 import json
@@ -18,14 +24,14 @@ from typing import Dict, Any, Optional, List
 import importlib
 
 # Dynamically import to avoid circular import with kaizen_lite/app.py
-preprocessing = importlib.import_module("app.services.preprocessing")
-cleaning = importlib.import_module("app.services.schemas.insight.cleaning")
-column_detector = importlib.import_module("app.services.insight_engine.column_detector")
-engine = importlib.import_module("app.services.insight_engine.engine")
-business_insights = importlib.import_module("app.services.business_insights.generator")
-executive_summary = importlib.import_module("app.services.executive_summary")
-action_list = importlib.import_module("app.services.action_list")
-pdf_report = importlib.import_module("app.services.report_renderers.pdf_report")
+preprocessing = importlib.import_module("services.preprocessing")
+cleaning = importlib.import_module("services.schemas.insight.cleaning")
+column_detector = importlib.import_module("services.insight_engine.column_detector")
+engine = importlib.import_module("services.insight_engine.engine")
+business_insights = importlib.import_module("services.business_insights.generator")
+executive_summary = importlib.import_module("services.executive_summary")
+action_list = importlib.import_module("services.action_list")
+pdf_report = importlib.import_module("services.report_renderers.pdf_report")
 
 preprocess_with_options = preprocessing.preprocess_with_options
 CleaningOptions = cleaning.CleaningOptions
@@ -64,9 +70,10 @@ def analyze_ledger(
         raise ValueError("No revenue-like column detected. Please ensure your data contains a column such as 'revenue', 'sales', 'amount', or 'total'.")
     
     # Run insight engine
-    engine = InsightEngine()
-    from app.schemas.insight.report import InsightReport
-    report = engine.run(current_df=df_clean, baseline_df=None)
+    insight_engine_instance = InsightEngine()
+    report_schema = importlib.import_module("schemas.insight.report")
+    InsightReport = report_schema.InsightReport
+    report = insight_engine_instance.run(current_df=df_clean, baseline_df=None)
     
     # Generate business insights (this orchestrates all modules: RSI, IHS, EWA, CRD, churn, receivables, margin, etc.)
     bi_generator = BusinessInsightGenerator()
@@ -130,7 +137,7 @@ def generate_pdf(
     """
     Generate a white-labeled PDF report and return as bytes.
     """
-    report_schema = importlib.import_module("app.schemas.insight.report")
+    report_schema = importlib.import_module("schemas.insight.report")
     InsightReport = report_schema.InsightReport
     
     report = InsightReport(**analysis_result["report"])
