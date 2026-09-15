@@ -5,7 +5,6 @@ Handles login, session state, and firm_id resolution.
 import streamlit as st
 import streamlit_authenticator as stauth
 from typing import Optional
-@st.cache_resource(show_spinner=False)
 def get_authenticator():
     """Initialize and return the streamlit-authenticator instance from secrets."""
     import json
@@ -52,6 +51,7 @@ def login():
         # Resolve firm_id from email if missing
         if "firm_id" not in st.session_state:
             _resolve_firm_from_username(username)
+            st.rerun()
     elif authentication_status is False:
         st.error("Username/password is incorrect")
     elif authentication_status is None:
@@ -72,9 +72,7 @@ def logout():
 
 def is_logged_in() -> bool:
     """Check if user is logged in."""
-    authenticator = get_authenticator()
-    # In v0.4.x, login() handles cookie verification even if we don't render the form
-    # but we must call it or check authentication_status
+    # We don't call get_authenticator() here to avoid StreamlitDuplicateElementKey
     if st.session_state.get("authentication_status"):
         # If logged in but firm_id missing (e.g., from cookie auto-login or rerun), resolve it
         if "firm_id" not in st.session_state:
