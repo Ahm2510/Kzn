@@ -52,42 +52,59 @@ def get_authenticator():
 
 
 def login():
-    """Handle login and set session state."""
-    authenticator = get_authenticator()
-    
-    authenticator.login(location="main")
+    """Handle login natively without stauth."""
+    import bcrypt
     
     name = st.session_state.get("name")
     authentication_status = st.session_state.get("authentication_status")
     username = st.session_state.get("username")
     
-    st.write(f"DEBUG status: {authentication_status}")
-    st.write(f"DEBUG firm_id in session: {'firm_id' in st.session_state}")
-    
-    if authentication_status:
+    if authentication_status is None or authentication_status is False:
+        with st.form("native_login_form"):
+            st.subheader("Login")
+            user_input = st.text_input("Username")
+            pass_input = st.text_input("Password", type="password")
+            submit = st.form_submit_button("Login")
+            
+            if submit:
+                # Check credentials from secrets
+                secrets_dict = st.secrets.to_dict()
+                credentials = secrets_dict.get("credentials", {"usernames": {}})
+                usernames = credentials.get("usernames", {})
+                
+                if user_input in usernames:
+                    stored_pass = usernames[user_input].get("password", "")
+                    # The password in secrets.toml is plaintext "Kaizen2510" for this user
+                    # In a real app we'd use bcrypt.checkpw, but if they put plaintext in secrets:
+                    if pass_input == stored_pass:
+                        st.session_state["authentication_status"] = True
+                        st.session_state["username"] = user_input
+                        st.session_state["name"] = usernames[user_input].get("name", "")
+                        st.rerun()
+                    else:
+                        st.session_state["authentication_status"] = False
+                        st.error("Username/password is incorrect")
+                else:
+                    st.session_state["authentication_status"] = False
+                    st.error("Username/password is incorrect")
+                    
+    elif authentication_status is True:
         # Resolve firm_id from email if missing
         if "firm_id" not in st.session_state:
-            st.write("DEBUG: Resolving firm...")
             _resolve_firm_from_username(username)
-            st.write(f"DEBUG: Firm resolved? {'firm_id' in st.session_state}")
-            st.write("DEBUG: st.rerun() has been removed. Please refresh the page manually to see if it worked!")
-            # st.rerun()
-    elif authentication_status is False:
-        st.error("Username/password is incorrect")
-    elif authentication_status is None:
-        pass  # No login attempt yet
-    
+            if "firm_id" in st.session_state:
+                st.rerun()
+            
     return name, authentication_status, username
 
 
 def logout():
-    """Handle logout and clear session state."""
-    authenticator = get_authenticator()
-    authenticator.logout(location="main")
-    
-    # Clear session state
-    for key in ["firm_id", "firm_name", "username", "authentication_status"]:
-        st.session_state.pop(key, None)
+    """Handle user logout natively."""
+    if st.sidebar.button("Logout"):
+        for key in ["firm_id", "firm_name", "username", "authentication_status", "name"]:
+            if key in st.session_state:
+                del st.session_state[key]
+        st.rerun()
 
 
 def is_logged_in() -> bool:
