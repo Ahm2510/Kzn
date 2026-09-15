@@ -62,8 +62,7 @@ def render():
             st.info(f"Generated password: `{password}`")
         
         # Hash password
-        hasher = stauth.Hasher([password])
-        hashed_password = hasher.generate()[0]
+        hashed_password = stauth.Hasher.hash(password)
         
         # Check if email already exists
         existing = get_firm_by_email(contact_email)
