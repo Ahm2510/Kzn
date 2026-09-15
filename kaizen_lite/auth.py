@@ -74,9 +74,17 @@ def login():
                 
                 if user_input in usernames:
                     stored_pass = usernames[user_input].get("password", "")
-                    # The password in secrets.toml is plaintext "Kaizen2510" for this user
-                    # In a real app we'd use bcrypt.checkpw, but if they put plaintext in secrets:
-                    if pass_input == stored_pass:
+                    
+                    is_valid = False
+                    if stored_pass.startswith("$2b$"):
+                        try:
+                            is_valid = bcrypt.checkpw(pass_input.encode('utf-8'), stored_pass.encode('utf-8'))
+                        except Exception:
+                            is_valid = False
+                    else:
+                        is_valid = (pass_input == stored_pass)
+                        
+                    if is_valid:
                         st.session_state["authentication_status"] = True
                         st.session_state["username"] = user_input
                         st.session_state["name"] = usernames[user_input].get("name", "")
