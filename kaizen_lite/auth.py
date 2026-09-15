@@ -40,7 +40,7 @@ def login():
     """Handle login and set session state."""
     authenticator = get_authenticator()
     
-    name, authentication_status, username = authenticator.login("Login", "main")
+    name, authentication_status, username = authenticator.login(location="main")
     
     if authentication_status:
         # Resolve firm_id from email
@@ -71,7 +71,7 @@ def login():
 def logout():
     """Handle logout and clear session state."""
     authenticator = get_authenticator()
-    authenticator.logout("Logout", "main")
+    authenticator.logout(location="main")
     
     # Clear session state
     for key in ["firm_id", "firm_name", "username", "authentication_status"]:
