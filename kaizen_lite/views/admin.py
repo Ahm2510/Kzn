@@ -83,8 +83,14 @@ def render():
             - Password: `{password}`
             
             **Next Steps:**
-            1. Add the credentials to Streamlit secrets under `credentials.usernames.{username}`
-            2. Share the username and password with the firm
+            1. Copy the following TOML block and add it to your Streamlit Cloud Secrets:
+            ```toml
+            [credentials.usernames.{username}]
+            email = "{contact_email}"
+            name = "{firm_name}"
+            password = "{hashed_password}"
+            ```
+            2. Share the username (`{username}`) and plaintext password (`{password}`) with the firm so they can log in.
             """)
         except Exception as e:
             st.error(f"Failed to create firm: {str(e)}")
