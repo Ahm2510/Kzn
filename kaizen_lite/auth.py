@@ -61,6 +61,9 @@ def login():
     authentication_status = st.session_state.get("authentication_status")
     username = st.session_state.get("username")
     
+    st.write(f"DEBUG status: {authentication_status}")
+    st.write(f"DEBUG session: {st.session_state}")
+    
     if authentication_status:
         # Resolve firm_id from email if missing
         if "firm_id" not in st.session_state:
