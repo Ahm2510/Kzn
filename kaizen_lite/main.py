@@ -29,6 +29,9 @@ def main():
         initial_sidebar_state="expanded"
     )
     
+    from auth import reset_authenticator
+    reset_authenticator()
+    
     # Check for special views via query params
     query_params = st.query_params
     if "view" in query_params:
