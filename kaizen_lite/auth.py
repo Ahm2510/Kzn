@@ -102,26 +102,29 @@ def is_logged_in() -> bool:
 
 
 def _resolve_firm_from_username(username):
-    if not username:
-        return
-    from db import get_firm_by_email
-    import json
-    secrets_dict = st.secrets.to_dict()
-    credentials = secrets_dict.get("credentials", {"usernames": {}})
-    user_config = credentials.get("usernames", {}).get(username)
-    if user_config:
-        email = user_config.get("email")
-        firm = get_firm_by_email(email)
-        if firm:
-            st.session_state["firm_id"] = firm["firm_id"]
-            st.session_state["firm_name"] = firm["firm_name"]
-            st.session_state["username"] = username
+    try:
+        if not username:
+            return
+        from db import get_firm_by_email
+        import json
+        secrets_dict = st.secrets.to_dict()
+        credentials = secrets_dict.get("credentials", {"usernames": {}})
+        user_config = credentials.get("usernames", {}).get(username)
+        if user_config:
+            email = user_config.get("email")
+            firm = get_firm_by_email(email)
+            if firm:
+                st.session_state["firm_id"] = firm["firm_id"]
+                st.session_state["firm_name"] = firm["firm_name"]
+                st.session_state["username"] = username
+            else:
+                st.error("Firm account not found in database. Contact support.")
+                st.session_state["authentication_status"] = False
         else:
-            st.error("Firm account not found in database. Contact support.")
+            st.error("User configuration error.")
             st.session_state["authentication_status"] = False
-    else:
-        st.error("User configuration error.")
-        st.session_state["authentication_status"] = False
+    except Exception as e:
+        st.error(f"FATAL ERROR inside _resolve_firm_from_username: {e}")
 
 
 def get_firm_id() -> Optional[int]:
