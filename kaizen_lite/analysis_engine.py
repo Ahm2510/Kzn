@@ -16,7 +16,7 @@ from typing import Dict, Any, Optional, List
 
 # Import service_b modules
 from app.services.preprocessing import preprocess_with_options
-from app.services.schemas.insight.cleaning import CleaningOptions
+from app.schemas.insight.cleaning import CleaningOptions
 from app.services.insight_engine.column_detector import detect_revenue_column
 from app.services.insight_engine.engine import InsightEngine
 from app.services.business_insights.generator import BusinessInsightGenerator
