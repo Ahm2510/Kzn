@@ -9,8 +9,10 @@ from typing import Optional
 
 def get_authenticator():
     """Initialize and return the streamlit-authenticator instance from secrets."""
-    # Load credentials from Streamlit secrets
-    credentials = st.secrets.get("credentials", {"usernames": {}})
+    import json
+    # Convert secrets to a standard Python dictionary to prevent item assignment errors
+    secrets_dict = st.secrets.to_dict()
+    credentials = secrets_dict.get("credentials", {"usernames": {}})
     
     # Get cookie secret from secrets
     cookie_secret = st.secrets.get("cookie_secret")
@@ -32,6 +34,7 @@ def get_authenticator():
         config["cookie"]["name"],
         config["cookie"]["key"],
         config["cookie"]["expiry_days"],
+        auto_hash=False,
     )
     return authenticator
 
