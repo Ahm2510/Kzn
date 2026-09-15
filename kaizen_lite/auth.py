@@ -62,12 +62,15 @@ def login():
     username = st.session_state.get("username")
     
     st.write(f"DEBUG status: {authentication_status}")
-    st.write(f"DEBUG session: {st.session_state}")
+    st.write(f"DEBUG firm_id in session: {'firm_id' in st.session_state}")
     
     if authentication_status:
         # Resolve firm_id from email if missing
         if "firm_id" not in st.session_state:
+            st.write("DEBUG: Resolving firm...")
             _resolve_firm_from_username(username)
+            st.write(f"DEBUG: Firm resolved? {'firm_id' in st.session_state}")
+            st.write("DEBUG: Triggering rerun!")
             st.rerun()
     elif authentication_status is False:
         st.error("Username/password is incorrect")
