@@ -34,7 +34,7 @@ def get_authenticator():
         config["cookie"]["name"],
         config["cookie"]["key"],
         config["cookie"]["expiry_days"],
-        auto_hash=False,
+        auto_hash=True,
     )
     return authenticator
 
