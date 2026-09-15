@@ -5,11 +5,9 @@ Handles login, session state, and firm_id resolution.
 import streamlit as st
 import streamlit_authenticator as stauth
 from typing import Optional
+@st.cache_resource(show_spinner=False)
 def get_authenticator():
     """Initialize and return the streamlit-authenticator instance from secrets."""
-    if "authenticator" in st.session_state:
-        return st.session_state["authenticator"]
-
     import json
     # Convert secrets to a standard Python dictionary to prevent item assignment errors
     secrets_dict = st.secrets.to_dict()
@@ -37,7 +35,6 @@ def get_authenticator():
         config["cookie"]["expiry_days"],
         auto_hash=True,
     )
-    st.session_state["authenticator"] = authenticator
     return authenticator
 
 
