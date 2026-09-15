@@ -70,8 +70,8 @@ def login():
             st.write("DEBUG: Resolving firm...")
             _resolve_firm_from_username(username)
             st.write(f"DEBUG: Firm resolved? {'firm_id' in st.session_state}")
-            st.write("DEBUG: Triggering rerun!")
-            st.rerun()
+            st.write("DEBUG: st.rerun() has been removed. Please refresh the page manually to see if it worked!")
+            # st.rerun()
     elif authentication_status is False:
         st.error("Username/password is incorrect")
     elif authentication_status is None:
