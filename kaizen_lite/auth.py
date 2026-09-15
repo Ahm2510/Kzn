@@ -50,23 +50,9 @@ def login():
     username = st.session_state.get("username")
     
     if authentication_status:
-        # Resolve firm_id from email
-        from db import get_firm_by_email
-        credentials = st.secrets.get("credentials", {"usernames": {}})
-        user_config = credentials.get("usernames", {}).get(username)
-        if user_config:
-            email = user_config.get("email")
-            firm = get_firm_by_email(email)
-            if firm:
-                st.session_state["firm_id"] = firm["firm_id"]
-                st.session_state["firm_name"] = firm["firm_name"]
-                st.session_state["username"] = username
-            else:
-                st.error("Firm account not found in database. Contact support.")
-                st.session_state["authentication_status"] = False
-        else:
-            st.error("User configuration error.")
-            st.session_state["authentication_status"] = False
+        # Resolve firm_id from email if missing
+        if "firm_id" not in st.session_state:
+            _resolve_firm_from_username(username)
     elif authentication_status is False:
         st.error("Username/password is incorrect")
     elif authentication_status is None:
@@ -87,7 +73,38 @@ def logout():
 
 def is_logged_in() -> bool:
     """Check if user is logged in."""
-    return st.session_state.get("authentication_status") is True
+    authenticator = get_authenticator()
+    # In v0.4.x, login() handles cookie verification even if we don't render the form
+    # but we must call it or check authentication_status
+    if st.session_state.get("authentication_status"):
+        # If logged in but firm_id missing (e.g., from cookie auto-login or rerun), resolve it
+        if "firm_id" not in st.session_state:
+            _resolve_firm_from_username(st.session_state.get("username"))
+        return st.session_state.get("authentication_status") is True
+    return False
+
+
+def _resolve_firm_from_username(username):
+    if not username:
+        return
+    from db import get_firm_by_email
+    import json
+    secrets_dict = st.secrets.to_dict()
+    credentials = secrets_dict.get("credentials", {"usernames": {}})
+    user_config = credentials.get("usernames", {}).get(username)
+    if user_config:
+        email = user_config.get("email")
+        firm = get_firm_by_email(email)
+        if firm:
+            st.session_state["firm_id"] = firm["firm_id"]
+            st.session_state["firm_name"] = firm["firm_name"]
+            st.session_state["username"] = username
+        else:
+            st.error("Firm account not found in database. Contact support.")
+            st.session_state["authentication_status"] = False
+    else:
+        st.error("User configuration error.")
+        st.session_state["authentication_status"] = False
 
 
 def get_firm_id() -> Optional[int]:
