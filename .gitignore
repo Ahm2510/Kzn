@@ -30,3 +30,4 @@ kaizen_lite/.streamlit/secrets.toml
 # IDE
 .vscode/
 .idea/
+.neon
