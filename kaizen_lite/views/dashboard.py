@@ -40,8 +40,6 @@ def render():
                     st.rerun()
         else:
             st.info("No clients yet")
-            logout()
-            st.rerun()
     
     # Main area
     st.markdown("# Dashboard")
