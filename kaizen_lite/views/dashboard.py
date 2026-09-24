@@ -2,7 +2,7 @@
 Dashboard view - authenticated view showing all clients for a firm.
 """
 import streamlit as st
-from auth import is_logged_in, get_firm_id, get_firm_name, logout
+from auth import get_firm_id, get_firm_name
 from db import get_scoped_clients, create_client, get_client_report_count, get_client_last_report_date
 from delta_computation import compute_client_risk_trend
 
@@ -20,7 +20,6 @@ def render():
     # Sidebar
     with st.sidebar:
         st.markdown(f"### {firm_name}")
-        logout()
         st.markdown("---")
         
         # About link

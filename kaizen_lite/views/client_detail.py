@@ -6,7 +6,7 @@ import pandas as pd
 from datetime import datetime
 import json
 
-from auth import is_logged_in, get_firm_id, get_firm_name, logout
+from auth import get_firm_id, get_firm_name
 from db import (
     get_client_by_id,
     get_scoped_reports,
@@ -20,10 +20,6 @@ from storage import upload_file, download_file, generate_pdf_key
 
 def render():
     """Render the client detail view."""
-    if not is_logged_in():
-        st.error("Please log in to access this page.")
-        return
-    
     # Get client_id from session state or redirect
     client_id = st.session_state.get("selected_client_id")
     if not client_id:
@@ -44,7 +40,6 @@ def render():
         if st.button("← Back to Dashboard"):
             st.session_state.pop("selected_client_id", None)
             st.rerun()
-        logout()
         st.markdown("---")
         st.markdown("[What is Kaizen Lite?](?view=about)")
         st.markdown("---")
