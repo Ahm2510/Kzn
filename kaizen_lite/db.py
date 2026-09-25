@@ -10,8 +10,11 @@ from sqlalchemy.orm import sessionmaker
 
 
 def get_connection_string():
-    """Get PostgreSQL connection string from Streamlit secrets."""
-    return st.secrets.get("database_url")
+    """Get PostgreSQL connection string from Streamlit secrets, forced onto the psycopg3 driver."""
+    conn_str = st.secrets.get("database_url")
+    if conn_str and conn_str.startswith("postgresql://"):
+        conn_str = "postgresql+psycopg://" + conn_str[len("postgresql://"):]
+    return conn_str
 
 
 def get_engine():
